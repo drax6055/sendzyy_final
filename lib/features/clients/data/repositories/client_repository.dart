@@ -1,22 +1,28 @@
 import 'package:dio/dio.dart';
 import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
+import 'package:iFloraBuzz/features/clients/data/models/paginated_clients.dart';
 
 class ClientRepository {
   final Dio _dio;
 
   ClientRepository(this._dio);
 
-  Future<List<ClientModel>> getClients({String search = ''}) async {
+  Future<PaginatedClients> getClients({
+    int? page,
+    int? limit,
+    String search = '',
+    String groupId = '',
+  }) async {
     try {
       final response = await _dio.get('/api/clients', queryParameters: {
-        'limit': 10000,
+        if (page != null) 'page': page,
+        if (limit != null) 'limit': limit,
         if (search.isNotEmpty) 'search': search,
+        if (groupId.isNotEmpty) 'groupId': groupId,
       });
       if (response.statusCode == 200 && response.data is Map) {
         final data = response.data as Map<String, dynamic>;
-        return (data['clients'] as List)
-            .map((json) => ClientModel.fromJson(json))
-            .toList();
+        return PaginatedClients.fromJson(data);
       } else {
         throw Exception('Failed to load clients');
       }

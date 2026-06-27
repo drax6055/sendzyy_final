@@ -130,10 +130,8 @@ class _BulkSendPageState extends State<BulkSendPage> {
     if (selected == null || selected.clientIds.isEmpty) return;
 
     final repo = getIt<ClientRepository>();
-    final allClients = await repo.getClients();
-    final groupClients = allClients
-        .where((c) => selected.clientIds.contains(c.id))
-        .toList();
+    final paginatedResult = await repo.getClients(groupId: selected.id);
+    final groupClients = paginatedResult.clients;
 
     final existing = _recipients.map((r) => r.mobileNumber).toSet();
     final toAdd = groupClients

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 
@@ -33,6 +34,15 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
   bool _isSubmitting = false;
   bool _isResolving = false;
 
+  final List<ClientModel> _clients = [];
+  int _currentPage = 1;
+  int _totalPages = 1;
+  int _totalClients = 0;
+  bool _isLoadingClients = false;
+  String? _clientsLoadError;
+  late final ScrollController _clientScrollController;
+  Timer? _searchDebounce;
+
   bool get _isEditMode => widget.group != null;
 
   @override
@@ -40,14 +50,60 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
     super.initState();
     _nameController = TextEditingController(text: widget.group?.name ?? '');
     _selectedClientIds = Set<String>.from(widget.group?.clientIds ?? []);
-    // Fetch clients when dialog opens
-    context.read<ClientsBloc>().add(FetchClients());
+    _clientScrollController = ScrollController()..addListener(_onClientScroll);
+    _loadClients(page: 1);
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _clientScrollController.dispose();
     _nameController.dispose();
     super.dispose();
+  }
+
+  void _onClientScroll() {
+    if (_searchDebounce?.isActive == true) return;
+    if (_clientScrollController.position.pixels >= _clientScrollController.position.maxScrollExtent - 200) {
+      if (!_isLoadingClients && _currentPage < _totalPages) {
+        _loadClients(page: _currentPage + 1);
+      }
+    }
+  }
+
+  Future<void> _loadClients({required int page}) async {
+    if (_isLoadingClients) {
+      return;
+    }
+    setState(() {
+      _isLoadingClients = true;
+      _clientsLoadError = null;
+    });
+
+    try {
+      final repo = getIt<ClientRepository>();
+      final paginatedResult = await repo.getClients(
+        page: page,
+        limit: 50,
+        search: _searchQuery.trim(),
+      );
+
+      setState(() {
+        if (page == 1) {
+          _clients.clear();
+        }
+        _clients.addAll(paginatedResult.clients);
+        _currentPage = paginatedResult.currentPage;
+        _totalPages = paginatedResult.totalPages;
+        _totalClients = paginatedResult.totalClients;
+        _isLoadingClients = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingClients = false;
+        _clientsLoadError = e.toString().replaceAll('Exception: ', '');
+      });
+    }
   }
 
   void _submit() {
@@ -82,15 +138,6 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
     } else {
       context.read<GroupsBloc>().add(CreateGroup(name, clientIds));
     }
-  }
-
-  List<ClientModel> _filterClients(List<ClientModel> clients) {
-    if (_searchQuery.isEmpty) return clients;
-    final q = _searchQuery.toLowerCase();
-    return clients.where((c) {
-      return c.name.toLowerCase().contains(q) ||
-          c.mobileNumber.toLowerCase().contains(q);
-    }).toList();
   }
 
   void _downloadSample() {
@@ -181,7 +228,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
 
       // Fetch/reload clients list to make newly created clients show up in the UI
       if (mounted) {
-        context.read<ClientsBloc>().add(FetchClients());
+        _loadClients(page: 1);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${resolved.length} clients uploaded and selected successfully'),
@@ -362,7 +409,15 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
           ),
           const SizedBox(height: 8),
           TextField(
-            onChanged: (val) => setState(() => _searchQuery = val),
+            onChanged: (val) {
+              setState(() {
+                _searchQuery = val;
+              });
+              _searchDebounce?.cancel();
+              _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+                _loadClients(page: 1);
+              });
+            },
             decoration: const InputDecoration(
               hintText: 'Search by name or mobile...',
               border: OutlineInputBorder(),
@@ -393,100 +448,107 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
   }
 
   Widget _buildClientList() {
-    return BlocBuilder<ClientsBloc, ClientsState>(
-      builder: (context, state) {
-        if (state is ClientsLoading) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (state is ClientsError) {
-          return Center(
-            child: Text(
-              state.message,
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-          );
-        }
-        if (state is ClientsLoaded) {
-          final filtered = _filterClients(state.filteredClients);
-          if (filtered.isEmpty) {
-            return Center(
-              child: Text(
-                _searchQuery.isEmpty ? 'No clients found' : 'No clients match "$_searchQuery"',
-                style: TextStyle(color: Colors.grey.shade500),
-              ),
-            );
-          }
-          final allFilteredSelected = filtered.isNotEmpty && filtered.every((c) => _selectedClientIds.contains(c.id));
-          return Column(
-            children: [
-              CheckboxListTile(
+    if (_isLoadingClients && _clients.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_clientsLoadError != null && _clients.isEmpty) {
+      return Center(
+        child: Text(
+          _clientsLoadError!,
+          style: const TextStyle(color: Colors.red),
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+    if (_clients.isEmpty) {
+      return Center(
+        child: Text(
+          _searchQuery.isEmpty ? 'No clients found' : 'No clients match "$_searchQuery"',
+          style: TextStyle(color: Colors.grey.shade500),
+        ),
+      );
+    }
+
+    final allFilteredSelected = _clients.isNotEmpty && _clients.every((c) => _selectedClientIds.contains(c.id));
+    return Column(
+      children: [
+        CheckboxListTile(
+          dense: true,
+          value: allFilteredSelected,
+          onChanged: (checked) {
+            setState(() {
+              if (checked == true) {
+                for (final client in _clients) {
+                  _selectedClientIds.add(client.id);
+                }
+              } else {
+                for (final client in _clients) {
+                  _selectedClientIds.remove(client.id);
+                }
+              }
+              if (_clientsError != null && _selectedClientIds.isNotEmpty) {
+                _clientsError = null;
+              }
+            });
+          },
+          title: const Text(
+            'Select All',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          activeColor: AppTheme.primaryColor,
+          controlAffinity: ListTileControlAffinity.leading,
+        ),
+        const Divider(height: 1),
+        Expanded(
+          child: ListView.builder(
+            controller: _clientScrollController,
+            itemCount: _clients.length + (_isLoadingClients ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == _clients.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                );
+              }
+
+              final client = _clients[index];
+              final isSelected = _selectedClientIds.contains(client.id);
+              return CheckboxListTile(
                 dense: true,
-                value: allFilteredSelected,
+                value: isSelected,
                 onChanged: (checked) {
                   setState(() {
                     if (checked == true) {
-                      for (final client in filtered) {
-                        _selectedClientIds.add(client.id);
-                      }
+                      _selectedClientIds.add(client.id);
                     } else {
-                      for (final client in filtered) {
-                        _selectedClientIds.remove(client.id);
-                      }
+                      _selectedClientIds.remove(client.id);
                     }
                     if (_clientsError != null && _selectedClientIds.isNotEmpty) {
                       _clientsError = null;
                     }
                   });
                 },
-                title: const Text(
-                  'Select All',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                title: Text(
+                  client.name,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                subtitle: Text(
+                  client.mobileNumber,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
                 activeColor: AppTheme.primaryColor,
                 controlAffinity: ListTileControlAffinity.leading,
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final client = filtered[index];
-                    final isSelected = _selectedClientIds.contains(client.id);
-                    return CheckboxListTile(
-                      dense: true,
-                      value: isSelected,
-                      onChanged: (checked) {
-                        setState(() {
-                          if (checked == true) {
-                            _selectedClientIds.add(client.id);
-                          } else {
-                            _selectedClientIds.remove(client.id);
-                          }
-                          if (_clientsError != null && _selectedClientIds.isNotEmpty) {
-                            _clientsError = null;
-                          }
-                        });
-                      },
-                      title: Text(
-                        client.name,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                      ),
-                      subtitle: Text(
-                        client.mobileNumber,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                      activeColor: AppTheme.primaryColor,
-                      controlAffinity: ListTileControlAffinity.leading,
-                    );
-                  },
-                ),
-              ),
-            ],
-          );
-        }
-        return const SizedBox.shrink();
-      },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -518,9 +580,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
           child: OutlinedButton(
             onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
             style: OutlinedButton.styleFrom(
-              foregroundColor: AppTheme.primaryColor,
-              side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.5)),
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              minimumSize: const Size(0, 48),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text('Cancel'),
@@ -533,7 +593,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              minimumSize: const Size(0, 48),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: _isSubmitting
@@ -542,7 +602,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                     height: 20,
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
-                : Text(_isEditMode ? 'Save' : 'Create'),
+                : Text(_isEditMode ? 'Update' : 'Create'),
           ),
         ),
       ],
@@ -551,5 +611,5 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
 }
 
 extension on String {
-  String? get nullIfEmpty => isEmpty ? null : this;
+  String? get nullIfEmpty => trim().isEmpty ? null : trim();
 }

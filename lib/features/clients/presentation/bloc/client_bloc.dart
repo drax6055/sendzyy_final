@@ -1,15 +1,22 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
+import 'package:iFloraBuzz/features/clients/data/models/paginated_clients.dart';
 import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
 
 // Events
 abstract class ClientsEvent {}
 
-class FetchClients extends ClientsEvent {}
+class FetchClients extends ClientsEvent {
+  final int page;
+  final int limit;
+  FetchClients({this.page = 1, this.limit = 50});
+}
 
 class SearchClients extends ClientsEvent {
   final String query;
-  SearchClients(this.query);
+  final int page;
+  final int limit;
+  SearchClients(this.query, {this.page = 1, this.limit = 50});
 }
 
 class CreateClient extends ClientsEvent {
@@ -37,9 +44,17 @@ class ClientsLoading extends ClientsState {}
 class ClientsLoaded extends ClientsState {
   final List<ClientModel> filteredClients;
   final String searchQuery;
+  final int currentPage;
+  final int totalPages;
+  final int totalClients;
+  final int limit;
 
   ClientsLoaded({
     required this.filteredClients,
+    required this.currentPage,
+    required this.totalPages,
+    required this.totalClients,
+    required this.limit,
     this.searchQuery = '',
   });
 }
@@ -63,18 +78,30 @@ class ClientsBloc extends Bloc<ClientsEvent, ClientsState> {
 
   Future<void> _onFetchClients(FetchClients event, Emitter<ClientsState> emit) async {
     emit(ClientsLoading());
-    await _loadAll(emit, search: '');
+    await _loadAll(emit, page: event.page, limit: event.limit, search: '');
   }
 
   Future<void> _onSearchClients(SearchClients event, Emitter<ClientsState> emit) async {
     emit(ClientsLoading());
-    await _loadAll(emit, search: event.query);
+    await _loadAll(emit, page: event.page, limit: event.limit, search: event.query);
   }
 
-  Future<void> _loadAll(Emitter<ClientsState> emit, {required String search}) async {
+  Future<void> _loadAll(
+    Emitter<ClientsState> emit, {
+    required int page,
+    required int limit,
+    required String search,
+  }) async {
     try {
-      final clients = await _repository.getClients(search: search);
-      emit(ClientsLoaded(filteredClients: clients, searchQuery: search));
+      final paginatedResult = await _repository.getClients(page: page, limit: limit, search: search);
+      emit(ClientsLoaded(
+        filteredClients: paginatedResult.clients,
+        searchQuery: search,
+        currentPage: paginatedResult.currentPage,
+        totalPages: paginatedResult.totalPages,
+        totalClients: paginatedResult.totalClients,
+        limit: limit,
+      ));
     } catch (e) {
       emit(ClientsError(e.toString()));
     }
@@ -85,7 +112,12 @@ class ClientsBloc extends Bloc<ClientsEvent, ClientsState> {
     emit(ClientsLoading());
     try {
       await _repository.createClient(event.client);
-      await _loadAll(emit, search: prev?.searchQuery ?? '');
+      await _loadAll(
+        emit,
+        page: prev?.currentPage ?? 1,
+        limit: prev?.limit ?? 50,
+        search: prev?.searchQuery ?? '',
+      );
     } catch (e) {
       emit(ClientsError(e.toString().replaceAll('Exception: ', '')));
       if (prev != null) emit(prev);
@@ -96,7 +128,12 @@ class ClientsBloc extends Bloc<ClientsEvent, ClientsState> {
     final prev = state is ClientsLoaded ? state as ClientsLoaded : null;
     try {
       await _repository.deleteClient(event.id);
-      await _loadAll(emit, search: prev?.searchQuery ?? '');
+      await _loadAll(
+        emit,
+        page: prev?.currentPage ?? 1,
+        limit: prev?.limit ?? 50,
+        search: prev?.searchQuery ?? '',
+      );
     } catch (e) {
       emit(ClientsError(e.toString().replaceAll('Exception: ', '')));
       if (prev != null) emit(prev);
@@ -108,7 +145,12 @@ class ClientsBloc extends Bloc<ClientsEvent, ClientsState> {
     emit(ClientsLoading());
     try {
       await _repository.bulkImportClients(event.clients);
-      await _loadAll(emit, search: prev?.searchQuery ?? '');
+      await _loadAll(
+        emit,
+        page: 1,
+        limit: prev?.limit ?? 50,
+        search: '',
+      );
     } catch (e) {
       emit(ClientsError(e.toString().replaceAll('Exception: ', '')));
       if (prev != null) emit(prev);
