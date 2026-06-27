@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="A new Flutter project.">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="send_o">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png" />
+
+  <title>Sendzyy</title>
+  <link rel="manifest" href="manifest.json">
+</head>
+<script>
+  // Captured WABA/Phone IDs from the embedded signup postMessage
+  window._metaSignupData = null;
+
+  // 1. Meta JS SDK initialization
+  window.fbAsyncInit = function () {
+    FB.init({
+      appId: '1509853364110343',
+      autoLogAppEvents: true,
+      xfbml: true,
+      version: 'v25.0'
+    });
+  };
+
+  // 2. Listen for postMessage from Meta embedded signup popup/iframe
+  // This fires when user completes setup and carries waba_id + phone_number_id + code
+  window.addEventListener('message', (event) => {
+    if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
+    try {
+      const data = JSON.parse(event.data);
+      if (data.type === 'WA_EMBEDDED_SIGNUP') {
+        // data.data contains { waba_id, phone_number_id } when user completes setup
+        if (data.data && (data.data.waba_id || data.data.phone_number_id)) {
+          window._metaSignupData = {
+            wabaId: data.data.waba_id || null,
+            phoneNumberId: data.data.phone_number_id || null,
+            code: data.data.code || null,
+          };
+        }
+      }
+    } catch (e) { }
+  });
+
+  // 3. Launch WhatsApp Embedded Signup flow via direct URL popup (no JSSDK login required)
+  async function launchWhatsAppSignup() {
+    // Reset captured data before each attempt
+    window._metaSignupData = null;
+
+    return new Promise((resolve) => {
+      const signupUrl =
+        'https://business.facebook.com/messaging/whatsapp/onboard/' +
+        '?app_id=1509853364110343' +
+        '&config_id=1468906758584325' +
+        '&extras=%7B%22sessionInfoVersion%22%3A%223%22%2C%22version%22%3A%22v4%22%7D';
+
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+
+      const popup = window.open(
+        signupUrl,
+        'WhatsAppSignup',
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+      );
+
+      if (!popup) {
+        resolve({ status: 'cancelled' });
+        return;
+      }
+
+      // Listen for postMessage from Meta with the auth code + WABA/phone IDs
+      function onMessage(event) {
+        if (event.origin !== 'https://www.facebook.com' && event.origin !== 'https://web.facebook.com') return;
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === 'WA_EMBEDDED_SIGNUP') {
+            if (data.data && (data.data.waba_id || data.data.phone_number_id)) {
+              window._metaSignupData = {
+                wabaId: data.data.waba_id || null,
+                phoneNumberId: data.data.phone_number_id || null,
+              };
+            }
+          }
+
+          // Meta sends the auth code via postMessage when signup completes
+          if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
+            window.removeEventListener('message', onMessage);
+            clearInterval(pollClosed);
+            if (popup && !popup.closed) popup.close();
+            const code = (data.data && data.data.code)
+              ? data.data.code
+              : (window._metaSignupData && window._metaSignupData.code ? window._metaSignupData.code : '');
+            resolve({
+              status: 'success',
+              code: code,
+              wabaId: window._metaSignupData ? window._metaSignupData.wabaId : null,
+              phoneNumberId: window._metaSignupData ? window._metaSignupData.phoneNumberId : null,
+            });
+          }
+        } catch (e) { }
+      }
+
+      window.addEventListener('message', onMessage);
+
+      // Poll for popup close (user dismissed without completing)
+      const pollClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(pollClosed);
+          window.removeEventListener('message', onMessage);
+          // If we got signup data but no FINISH event, still try to resolve
+          if (window._metaSignupData && (window._metaSignupData.wabaId || window._metaSignupData.phoneNumberId)) {
+            resolve({
+              status: 'success',
+              code: '',
+              wabaId: window._metaSignupData.wabaId,
+              phoneNumberId: window._metaSignupData.phoneNumberId,
+            });
+          } else {
+            resolve({ status: 'cancelled' });
+          }
+        }
+      }, 500);
+    });
+  }
+</script>
+<script async defer crossorigin="anonymous" src="https://connect.facebook.net/en_US/sdk.js"></script>
+
+<body>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    function openRazorpay(options, callback) {
+      console.log('Opening Razorpay with options:', JSON.stringify(options));
+
+      // Use the handler property for standard Razorpay behavior with order_id
+      options.handler = function (response) {
+        console.log('Razorpay Payment Success Response:', JSON.stringify(response));
+        callback(response.razorpay_payment_id, response.razorpay_order_id, response.razorpay_signature);
+      };
+
+      options.modal = {
+        ondismiss: function () {
+          console.log('Razorpay Checkout Modal Dismissed');
+          callback(null, null, null); // Call with nulls so the loading state clears
+        }
+      };
+
+      var rzp1 = new Razorpay(options);
+      rzp1.open();
+    }
+  </script>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+
+</html>

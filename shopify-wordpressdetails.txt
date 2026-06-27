@@ -1,0 +1,91 @@
+Here's the complete setup guide based on your implementation:
+
+Step 1: Start Your Backend
+Make sure your Node.js backend is running and publicly accessible (use ngrok or deploy to a server).
+
+cd backend
+node server.js
+Your webhook base URL will be:
+
+https://your-domain.com/api/leads/webhook/<tenantId>
+Step 2: Generate Your Webhook Secret
+In the panel, go to Sidebar → Integrations.
+
+You'll see your unique webhook URL displayed
+Click "Regenerate" to generate your webhook secret
+Copy the full secret — it's shown only once
+Save it somewhere safe (you'll paste it into Shopify/WordPress)
+Step 3: Connect Shopify
+In Shopify Admin:
+
+Go to Settings → Notifications → Webhooks
+Click "Create webhook"
+Set up two webhooks:
+For new customers:
+
+Event: Customer creation
+Format: JSON
+URL: https://your-domain.com/api/leads/webhook/<tenantId>
+For new orders:
+
+Event: Order creation
+Format: JSON
+URL: https://your-domain.com/api/leads/webhook/<tenantId>
+After creating each webhook, Shopify shows a signing secret — but since you're using X-Webhook-Secret header auth, you need to add a custom header. Use a Shopify app or middleware to inject:
+X-Webhook-Secret: <your-secret-from-step-2>
+Alternatively, Shopify's native HMAC signing (X-Shopify-Hmac-Sha256) is also supported — your backend verifies it using the same secret.
+
+Step 4: Connect WordPress
+Option A — Using a plugin (Contact Form 7, Gravity Forms, etc.):
+
+In your panel under Integrations → WordPress card, copy the PHP snippet
+Paste it into your theme's functions.php or a custom plugin
+The snippet uses wp_remote_post to forward form submissions to your webhook URL with the secret header
+The snippet looks like:
+
+add_action('wpcf7_mail_sent', function($contact_form) {
+    $submission = WPCF7_Submission::get_instance();
+    $data = $submission->get_posted_data();
+    wp_remote_post('https://your-domain.com/api/leads/webhook/<tenantId>', [
+        'headers' => [
+            'Content-Type'     => 'application/json',
+            'X-Webhook-Secret' => 'your-secret-here',
+        ],
+        'body' => json_encode($data),
+    ]);
+});
+Option B — WooCommerce orders:
+
+Same snippet but hook into woocommerce_new_order. The backend auto-detects the billing.* shape.
+
+Step 5: Test the Connection
+Back in the panel under Integrations:
+
+Click "Test Connection" on the Shopify or WordPress card
+It sends a sample payload to your webhook
+You'll see a success/failure toast with the HTTP status
+If it returns 200 {"status":"received","leadId":"..."} — you're live.
+
+Step 6: View Leads in the Panel
+Go to Sidebar → Leads. You'll see:
+
+All incoming leads with name, mobile, source badge (Shopify/WordPress), status, and timestamp
+Filter by source, status, date range, or search by name/mobile
+Click any row to see full lead details including raw form data
+Change lead status per row (New → Contacted → Converted)
+Summary counts and a 7-day bar chart at the top
+Step 7: Set Up Auto-Triggers (Optional)
+In Integrations → Lead Triggers, click "Add Trigger":
+
+Field	Example
+Source	Shopify / WordPress / Any
+Form Name filter	contact-us (leave blank to match all)
+Action	Send WhatsApp Template or Start Chatbot
+Template	Select an approved template
+When a new lead arrives matching the trigger, a WhatsApp message fires automatically and the lead status updates to contacted.
+
+Key things to double-check:
+
+Your backend is publicly reachable (not localhost)
+The X-Webhook-Secret header value matches exactly what was generated in Step 2
+Your whatsappConfig (phoneNumberId + accessToken) is set up if you want auto-triggers to fire
