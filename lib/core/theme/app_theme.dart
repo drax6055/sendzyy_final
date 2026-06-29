@@ -17,6 +17,11 @@ class AppTheme {
         secondary: secondaryColor,
         surface: backgroundColor,
       ),
+      textSelectionTheme: TextSelectionThemeData(
+        selectionColor: Colors.blue.withValues(alpha: 0.4),
+        selectionHandleColor: primaryColor,
+        cursorColor: primaryColor,
+      ),
       textTheme: GoogleFonts.outfitTextTheme(),
       appBarTheme: const AppBarTheme(
         backgroundColor: secondaryColor,

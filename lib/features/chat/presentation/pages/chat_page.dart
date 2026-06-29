@@ -262,95 +262,97 @@ class _ChatPageState extends State<ChatPage> {
         : (DateTime.tryParse(contact['lastActive']?.toString() ?? '') ?? DateTime.now()).toLocal();
     final bool isWithin24h = DateTime.now().difference(lastActive).inHours < 24;
 
-    return Column(
-      children: [
-        // Chat Header
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: AppTheme.secondaryColor,
-                child: Text(
-                  (contact['name'] as String?)?.isNotEmpty == true
-                      ? contact['name'][0].toUpperCase()
-                      : '?',
-                  style: const TextStyle(color: Colors.white),
+    return SelectionArea(
+      child: Column(
+        children: [
+          // Chat Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: AppTheme.secondaryColor,
+                  child: Text(
+                    (contact['name'] as String?)?.isNotEmpty == true
+                        ? contact['name'][0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(color: Colors.white),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        contact['name'] ?? 'Unknown',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          contact['name'] ?? 'Unknown',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        contact['id'] ?? '',
-                        style: TextStyle(fontSize: 16, color: const Color.fromARGB(255, 99, 99, 99)),
-                      ),
-                    ],
-                  ),
-                  Row(
-                    children: [
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isWithin24h ? Colors.green : Colors.grey,
+                        const SizedBox(width: 10),
+                        Text(
+                          contact['id'] ?? '',
+                          style: TextStyle(fontSize: 16, color: const Color.fromARGB(255, 99, 99, 99)),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        isWithin24h
-                            ? '24h Window Open'
-                            : '24h Window Expired (Requires Template)',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade600,
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isWithin24h ? Colors.green : Colors.grey,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              const Spacer(),
-              if (isWithin24h) _WindowTimerWidget(lastActive: lastActive),
-            ],
-          ),
-        ),
-
-        // Messages Areas
-        Expanded(
-          child: Container(
-            color: AppTheme.backgroundColor,
-            padding: const EdgeInsets.all(24),
-            child: ListView.builder(
-              controller: _messagesScrollController,
-              itemCount: state.messages.length,
-              itemBuilder: (context, index) {
-                final msg = state.messages[index];
-                return _buildMessageBubble(msg);
-              },
+                        const SizedBox(width: 8),
+                        Text(
+                          isWithin24h
+                              ? '24h Window Open'
+                              : '24h Window Expired (Requires Template)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                if (isWithin24h) _WindowTimerWidget(lastActive: lastActive),
+              ],
             ),
           ),
-        ),
 
-        // Input Area
-        _buildInputArea(state.selectedContactId!, isWithin24h),
-      ],
+          // Messages Areas
+          Expanded(
+            child: Container(
+              color: AppTheme.backgroundColor,
+              padding: const EdgeInsets.all(24),
+              child: ListView.builder(
+                controller: _messagesScrollController,
+                itemCount: state.messages.length,
+                itemBuilder: (context, index) {
+                  final msg = state.messages[index];
+                  return _buildMessageBubble(msg);
+                },
+              ),
+            ),
+          ),
+
+          // Input Area
+          _buildInputArea(state.selectedContactId!, isWithin24h),
+        ],
+      ),
     );
   }
 
