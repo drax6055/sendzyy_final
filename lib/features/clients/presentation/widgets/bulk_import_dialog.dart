@@ -59,9 +59,6 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
       if (nameIdx == -1 || mobileIdx == -1) {
         throw Exception('CSV must have "name" and "mobile" columns');
       }
-      if (venueIdx == -1) {
-        throw Exception('CSV must have a "venue" column (required field)');
-      }
 
       final clients = <ClientModel>[];
       for (int i = 1; i < rows.length; i++) {
@@ -69,9 +66,9 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
         if (row.isEmpty) continue;
         final name = _cell(row, nameIdx);
         final mobile = _cell(row, mobileIdx);
-        final venue = _cell(row, venueIdx);
+        final rawVenue = _cell(row, venueIdx);
         if (name.isEmpty || mobile.isEmpty) continue;
-        if (venue.isEmpty) continue; // skip rows without venue
+        final venue = rawVenue.isEmpty ? '-' : rawVenue;
         clients.add(ClientModel(
           id: '',
           tenantId: '',
@@ -101,7 +98,7 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
   }
 
   String _cell(List row, int idx) =>
-      idx < row.length ? row[idx].toString().trim() : '';
+      (idx >= 0 && idx < row.length) ? row[idx].toString().trim() : '';
 
   void _import() {
     if (_preview == null || _preview!.isEmpty) return;

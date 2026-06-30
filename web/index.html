@@ -37,6 +37,13 @@
   // Captured WABA/Phone IDs from the embedded signup postMessage
   window._metaSignupData = null;
 
+  const allowedOrigins = [
+    'https://www.facebook.com',
+    'https://web.facebook.com',
+    'https://business.facebook.com',
+    'https://facebook.com'
+  ];
+
   // 1. Meta JS SDK initialization
   window.fbAsyncInit = function () {
     FB.init({
@@ -50,17 +57,16 @@
   // 2. Listen for postMessage from Meta embedded signup popup/iframe
   // This fires when user completes setup and carries waba_id + phone_number_id + code
   window.addEventListener('message', (event) => {
-    if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
+    if (!allowedOrigins.includes(event.origin)) return;
     try {
       const data = JSON.parse(event.data);
       if (data.type === 'WA_EMBEDDED_SIGNUP') {
         // data.data contains { waba_id, phone_number_id } when user completes setup
-        if (data.data && (data.data.waba_id || data.data.phone_number_id)) {
-          window._metaSignupData = {
-            wabaId: data.data.waba_id || null,
-            phoneNumberId: data.data.phone_number_id || null,
-            code: data.data.code || null,
-          };
+        if (data.data) {
+          window._metaSignupData = window._metaSignupData || {};
+          if (data.data.waba_id) window._metaSignupData.wabaId = data.data.waba_id;
+          if (data.data.phone_number_id) window._metaSignupData.phoneNumberId = data.data.phone_number_id;
+          if (data.data.code) window._metaSignupData.code = data.data.code;
         }
       }
     } catch (e) { }
@@ -96,16 +102,16 @@
 
       // Listen for postMessage from Meta with the auth code + WABA/phone IDs
       function onMessage(event) {
-        if (event.origin !== 'https://www.facebook.com' && event.origin !== 'https://web.facebook.com') return;
+        if (!allowedOrigins.includes(event.origin)) return;
         try {
           const data = JSON.parse(event.data);
 
           if (data.type === 'WA_EMBEDDED_SIGNUP') {
-            if (data.data && (data.data.waba_id || data.data.phone_number_id)) {
-              window._metaSignupData = {
-                wabaId: data.data.waba_id || null,
-                phoneNumberId: data.data.phone_number_id || null,
-              };
+            if (data.data) {
+              window._metaSignupData = window._metaSignupData || {};
+              if (data.data.waba_id) window._metaSignupData.wabaId = data.data.waba_id;
+              if (data.data.phone_number_id) window._metaSignupData.phoneNumberId = data.data.phone_number_id;
+              if (data.data.code) window._metaSignupData.code = data.data.code;
             }
           }
 
@@ -138,7 +144,7 @@
           if (window._metaSignupData && (window._metaSignupData.wabaId || window._metaSignupData.phoneNumberId)) {
             resolve({
               status: 'success',
-              code: '',
+              code: window._metaSignupData.code || '',
               wabaId: window._metaSignupData.wabaId,
               phoneNumberId: window._metaSignupData.phoneNumberId,
             });
