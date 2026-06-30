@@ -14,3 +14,6 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## CI/CD Deployment
+This project has a GitHub Actions CI/CD pipeline configured to automatically build and deploy the Flutter Web build to AWS aaPanel when changes are pushed to the `main` branch.
