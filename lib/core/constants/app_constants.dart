@@ -6,7 +6,22 @@ class AppConstants {
   // Secrets loaded from .env
   static String get metaAccessToken =>
       dotenv.env['META_ACCESS_TOKEN'] ?? '';
-  static String get metaAppId => dotenv.env['META_APP_ID'] ?? '';
+
+  static String get metaAppId {
+    final value = dotenv.env['META_APP_ID'] ?? '';
+    if (value.isEmpty || value == '1241458147867376') {
+      return '1509853364110343';
+    }
+    return value;
+  }
+
+  static String get metaConfigId {
+    final value = dotenv.env['META_CONFIG_ID'] ?? '';
+    if (value.isEmpty) {
+      return '1468906758584325';
+    }
+    return value;
+  }
 
   // Local BASEURL-----------------------------------------------------
   

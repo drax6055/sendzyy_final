@@ -46,113 +46,210 @@
 
   // 1. Meta JS SDK initialization
   window.fbAsyncInit = function () {
-    FB.init({
-      appId: '1509853364110343',
-      autoLogAppEvents: true,
-      xfbml: true,
-      version: 'v25.0'
-    });
+    console.log('[MetaSignup-GlobalInit] window.fbAsyncInit called. Initializing Meta JS SDK...');
+    try {
+      FB.init({
+        appId: '1509853364110343',
+        autoLogAppEvents: true,
+        xfbml: true,
+        version: 'v25.0'
+      });
+      console.log('[MetaSignup-GlobalInit] Meta JS SDK initialized successfully (v25.0).');
+    } catch (err) {
+      console.error('[MetaSignup-GlobalInit] FB.init failed inside fbAsyncInit:', err);
+    }
   };
 
   // 2. Listen for postMessage from Meta embedded signup popup/iframe
   // This fires when user completes setup and carries waba_id + phone_number_id + code
   window.addEventListener('message', (event) => {
-    if (!allowedOrigins.includes(event.origin)) return;
+    console.log('[MetaSignup-GlobalMessage] Message event received from origin:', event.origin);
+    if (!allowedOrigins.includes(event.origin)) {
+      console.warn('[MetaSignup-GlobalMessage] Ignored message from unauthorized origin:', event.origin);
+      return;
+    }
     try {
-      const data = JSON.parse(event.data);
-      if (data.type === 'WA_EMBEDDED_SIGNUP') {
-        // data.data contains { waba_id, phone_number_id } when user completes setup
+      const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+      console.log('[MetaSignup-GlobalMessage] Parsed message payload:', JSON.stringify(data, null, 2));
+      if (data && data.type === 'WA_EMBEDDED_SIGNUP') {
+        console.log('[MetaSignup-GlobalMessage] Processing WA_EMBEDDED_SIGNUP message action.');
         if (data.data) {
           window._metaSignupData = window._metaSignupData || {};
-          if (data.data.waba_id) window._metaSignupData.wabaId = data.data.waba_id;
-          if (data.data.phone_number_id) window._metaSignupData.phoneNumberId = data.data.phone_number_id;
-          if (data.data.code) window._metaSignupData.code = data.data.code;
+          if (data.data.waba_id) {
+            window._metaSignupData.wabaId = data.data.waba_id;
+            console.log('[MetaSignup-GlobalMessage] -> Captured WABA ID:', data.data.waba_id);
+          }
+          if (data.data.phone_number_id) {
+            window._metaSignupData.phoneNumberId = data.data.phone_number_id;
+            console.log('[MetaSignup-GlobalMessage] -> Captured Phone Number ID:', data.data.phone_number_id);
+          }
+          if (data.data.code) {
+            window._metaSignupData.code = data.data.code;
+            console.log('[MetaSignup-GlobalMessage] -> Captured Auth Code:', data.data.code);
+          }
+          if (data.data.business_portfolio_id) {
+            window._metaSignupData.businessPortfolioId = data.data.business_portfolio_id;
+            console.log('[MetaSignup-GlobalMessage] -> Captured Business Portfolio ID:', data.data.business_portfolio_id);
+          }
+          const sessionId = data.data.session_id || data.data.sessionId || '';
+          if (sessionId) {
+            window._metaSignupData.sessionId = sessionId;
+            console.log('[MetaSignup-GlobalMessage] -> Captured Session ID:', sessionId);
+          }
+        } else {
+          console.warn('[MetaSignup-GlobalMessage] Received WA_EMBEDDED_SIGNUP event but payload data is empty.');
         }
       }
-    } catch (e) { }
+    } catch (e) {
+      console.error('[MetaSignup-GlobalMessage] Exception parsing or processing message payload:', e);
+    }
   });
 
-  // 3. Launch WhatsApp Embedded Signup flow via direct URL popup (no JSSDK login required)
-  async function launchWhatsAppSignup() {
+  // 3. Launch WhatsApp Embedded Signup flow via JS SDK FB.login
+  async function launchWhatsAppSignup(appId, configId) {
+    console.log('[launchWhatsAppSignup] Beginning Embedded Signup flow.');
+    console.log('[launchWhatsAppSignup] App ID input:', appId);
+    console.log('[launchWhatsAppSignup] Config ID input:', configId);
+
     // Reset captured data before each attempt
     window._metaSignupData = null;
 
+    // Check if the Facebook SDK script was successfully loaded
+    if (!window.FB) {
+      console.error('[launchWhatsAppSignup] ERROR: window.FB is not defined! The Meta SDK script was not loaded. It might be blocked by an adblocker or a firewall.');
+      return {
+        status: 'error_sdk_not_loaded',
+        code: '',
+        wabaId: null,
+        phoneNumberId: null,
+        businessPortfolioId: null,
+        sessionId: '',
+        sessionInfoResponse: JSON.stringify({ error: 'Facebook SDK script not loaded. Check adblockers or network connections.' }),
+      };
+    }
+
+    const finalAppId = appId || '1509853364110343';
+    const finalConfigId = configId || '1468906758584325';
+    console.log('[launchWhatsAppSignup] Resolved parameters -> App ID:', finalAppId, '| Config ID:', finalConfigId);
+
+    try {
+      console.log('[launchWhatsAppSignup] Initializing FB SDK for this session with App ID:', finalAppId);
+      FB.init({
+        appId: finalAppId,
+        autoLogAppEvents: true,
+        xfbml: true,
+        version: 'v25.0'
+      });
+      console.log('[launchWhatsAppSignup] FB.init executed successfully.');
+    } catch (e) {
+      console.warn("[launchWhatsAppSignup] FB.init encountered an error (continuing onboarding attempt):", e);
+    }
+
     return new Promise((resolve) => {
-      const signupUrl =
-        'https://business.facebook.com/messaging/whatsapp/onboard/' +
-        '?app_id=1509853364110343' +
-        '&config_id=1468906758584325' +
-        '&extras=%7B%22sessionInfoVersion%22%3A%223%22%2C%22version%22%3A%22v4%22%7D';
-
-      const width = 600;
-      const height = 700;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-
-      const popup = window.open(
-        signupUrl,
-        'WhatsAppSignup',
-        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
-      );
-
-      if (!popup) {
-        resolve({ status: 'cancelled' });
-        return;
-      }
-
-      // Listen for postMessage from Meta with the auth code + WABA/phone IDs
+      // Local message event listener to capture live postMessage notifications from the FB frame/popup
       function onMessage(event) {
-        if (!allowedOrigins.includes(event.origin)) return;
+        console.log('[launchWhatsAppSignup-LocalMessage] Message received from origin:', event.origin);
+        if (!allowedOrigins.includes(event.origin)) {
+          console.warn('[launchWhatsAppSignup-LocalMessage] Ignored message from unauthorized origin:', event.origin);
+          return;
+        }
         try {
-          const data = JSON.parse(event.data);
-
-          if (data.type === 'WA_EMBEDDED_SIGNUP') {
+          const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+          console.log('[launchWhatsAppSignup-LocalMessage] Parsed message payload:', JSON.stringify(data, null, 2));
+          if (data && data.type === 'WA_EMBEDDED_SIGNUP') {
+            console.log('[launchWhatsAppSignup-LocalMessage] Processing WA_EMBEDDED_SIGNUP message action.');
             if (data.data) {
               window._metaSignupData = window._metaSignupData || {};
-              if (data.data.waba_id) window._metaSignupData.wabaId = data.data.waba_id;
-              if (data.data.phone_number_id) window._metaSignupData.phoneNumberId = data.data.phone_number_id;
-              if (data.data.code) window._metaSignupData.code = data.data.code;
+              if (data.data.waba_id) {
+                window._metaSignupData.wabaId = data.data.waba_id;
+                console.log('[launchWhatsAppSignup-LocalMessage] -> Stored WABA ID:', data.data.waba_id);
+              }
+              if (data.data.phone_number_id) {
+                window._metaSignupData.phoneNumberId = data.data.phone_number_id;
+                console.log('[launchWhatsAppSignup-LocalMessage] -> Stored Phone Number ID:', data.data.phone_number_id);
+              }
+              if (data.data.code) {
+                window._metaSignupData.code = data.data.code;
+                console.log('[launchWhatsAppSignup-LocalMessage] -> Stored Auth Code:', data.data.code);
+              }
+              if (data.data.business_portfolio_id) {
+                window._metaSignupData.businessPortfolioId = data.data.business_portfolio_id;
+                console.log('[launchWhatsAppSignup-LocalMessage] -> Stored Business Portfolio ID:', data.data.business_portfolio_id);
+              }
+              const sessionId = data.data.session_id || data.data.sessionId || '';
+              if (sessionId) {
+                window._metaSignupData.sessionId = sessionId;
+                console.log('[launchWhatsAppSignup-LocalMessage] -> Stored Session ID:', sessionId);
+              }
             }
           }
-
-          // Meta sends the auth code via postMessage when signup completes
-          if (data.type === 'WA_EMBEDDED_SIGNUP' && data.event === 'FINISH') {
-            window.removeEventListener('message', onMessage);
-            clearInterval(pollClosed);
-            if (popup && !popup.closed) popup.close();
-            const code = (data.data && data.data.code)
-              ? data.data.code
-              : (window._metaSignupData && window._metaSignupData.code ? window._metaSignupData.code : '');
-            resolve({
-              status: 'success',
-              code: code,
-              wabaId: window._metaSignupData ? window._metaSignupData.wabaId : null,
-              phoneNumberId: window._metaSignupData ? window._metaSignupData.phoneNumberId : null,
-            });
-          }
-        } catch (e) { }
+        } catch (e) {
+          console.error('[launchWhatsAppSignup-LocalMessage] Error parsing message event data:', e);
+        }
       }
 
+      console.log('[launchWhatsAppSignup] Registering local message listener.');
       window.addEventListener('message', onMessage);
 
-      // Poll for popup close (user dismissed without completing)
-      const pollClosed = setInterval(() => {
-        if (popup.closed) {
-          clearInterval(pollClosed);
+      console.log('[launchWhatsAppSignup] Opening Meta signup popup via FB.login with Config ID:', finalConfigId);
+      FB.login(
+        function (response) {
+          console.log('[launchWhatsAppSignup] FB.login callback fired.');
+          console.log('[launchWhatsAppSignup] Removing local message listener.');
           window.removeEventListener('message', onMessage);
-          // If we got signup data but no FINISH event, still try to resolve
-          if (window._metaSignupData && (window._metaSignupData.wabaId || window._metaSignupData.phoneNumberId)) {
-            resolve({
+          
+          console.log('[launchWhatsAppSignup] FB.login Raw Response:', JSON.stringify(response, null, 2));
+
+          if (response.status === 'connected' && response.authResponse) {
+            const code = response.authResponse.code;
+            console.log('[launchWhatsAppSignup] FB.login flow completed successfully. Auth code obtained:', code);
+            
+            const resolvedResult = {
               status: 'success',
-              code: window._metaSignupData.code || '',
-              wabaId: window._metaSignupData.wabaId,
-              phoneNumberId: window._metaSignupData.phoneNumberId,
-            });
+              code: code || (window._metaSignupData && window._metaSignupData.code ? window._metaSignupData.code : ''),
+              wabaId: window._metaSignupData ? window._metaSignupData.wabaId : null,
+              phoneNumberId: window._metaSignupData ? window._metaSignupData.phoneNumberId : null,
+              businessPortfolioId: window._metaSignupData ? window._metaSignupData.businessPortfolioId : null,
+              sessionId: window._metaSignupData ? (window._metaSignupData.sessionId || '') : '',
+              sessionInfoResponse: window._metaSignupData ? JSON.stringify(window._metaSignupData) : '',
+            };
+            
+            console.log('[launchWhatsAppSignup] Resolving promise as SUCCESS with data:', JSON.stringify(resolvedResult, null, 2));
+            resolve(resolvedResult);
           } else {
-            resolve({ status: 'cancelled' });
+            console.warn('[launchWhatsAppSignup] FB.login did not return a successful connected status. Status:', response.status);
+            
+            // Fallback: If we captured valid WABA/phone IDs via postMessage, proceed as success
+            if (window._metaSignupData && (window._metaSignupData.wabaId || window._metaSignupData.phoneNumberId)) {
+              console.log('[launchWhatsAppSignup] Fallback triggered: Captured valid WABA/Phone ID from postMessage popup events.');
+              const resolvedResult = {
+                status: 'success',
+                code: window._metaSignupData.code || '',
+                wabaId: window._metaSignupData.wabaId,
+                phoneNumberId: window._metaSignupData.phoneNumberId,
+                businessPortfolioId: window._metaSignupData.businessPortfolioId || null,
+                sessionId: window._metaSignupData.sessionId || '',
+                sessionInfoResponse: JSON.stringify(window._metaSignupData),
+              };
+              console.log('[launchWhatsAppSignup] Resolving promise as SUCCESS (fallback) with data:', JSON.stringify(resolvedResult, null, 2));
+              resolve(resolvedResult);
+            } else {
+              console.warn('[launchWhatsAppSignup] No valid onboarding metadata captured. Resolving promise as CANCELLED.');
+              resolve({ status: 'cancelled' });
+            }
           }
+        },
+        {
+          config_id: finalConfigId,
+          response_type: 'code',
+          override_default_response_type: true,
+          extras: {
+            setup: {},
+            featureType: '',
+            sessionInfoVersion: '3',
+          },
         }
-      }, 500);
+      );
     });
   }
 </script>

@@ -758,6 +758,9 @@ class WhatsAppRepository {
     required String appId,
     String? wabaId,
     String? phoneNumberId,
+    String? sessionId,
+    String? sessionInfoResponse,
+    String? businessPortfolioId, // Step 3 — Business Portfolio ID for official token exchange
   }) async {
     try {
       final response = await _dio.post(
@@ -767,16 +770,36 @@ class WhatsAppRepository {
           'appId': appId,
           if (wabaId != null) 'wabaId': wabaId,
           if (phoneNumberId != null) 'phoneNumberId': phoneNumberId,
+          if (sessionId != null) 'sessionId': sessionId,
+          if (sessionInfoResponse != null) 'sessionInfoResponse': sessionInfoResponse,
+          if (businessPortfolioId != null) 'businessPortfolioId': businessPortfolioId,
         },
       );
       if (response.statusCode == 200) {
-        // Returns { success, config: { wabaId, phoneNumberId, verified } }
+        // Returns { success, config: { wabaId, phoneNumberId, displayPhone, verifiedName, qualityRating, throughputLevel, verified } }
         return response.data as Map<String, dynamic>;
       }
       return null;
     } catch (e) {
       return null;
     }
+  }
+
+  Future<void> logSignupEvent({
+    required String eventName,
+    String? sessionId,
+    Map<String, dynamic>? data,
+  }) async {
+    try {
+      await _dio.post(
+        '/log-signup-event',
+        data: {
+          'eventName': eventName,
+          if (sessionId != null) 'sessionId': sessionId,
+          if (data != null) 'data': data,
+        },
+      );
+    } catch (_) {}
   }
 
   Future<Map<String, dynamic>> getProfile() async {

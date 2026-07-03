@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/auth/presentation/widgets/api_config_dialog.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +13,7 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'dart:js_interop';
 
 // JS interop types for the signup result
@@ -21,10 +22,13 @@ extension type _SignupResult._(JSObject _) implements JSObject {
   external String? get code;
   external String? get wabaId;
   external String? get phoneNumberId;
+  external String? get sessionId;
+  external String? get sessionInfoResponse;
+  external String? get businessPortfolioId; // Step 3 — Business Portfolio ID
 }
 
 @JS()
-external JSPromise<_SignupResult> launchWhatsAppSignup();
+external JSPromise<_SignupResult> launchWhatsAppSignup(String appId, String configId);
 
 class SettingsPage extends StatefulWidget {
   final VoidCallback? onRenewPlan;
@@ -858,7 +862,13 @@ class _SettingsPageState extends State<SettingsPage> {
             ElevatedButton.icon(
               onPressed: () async {
                 try {
-                  final result = await launchWhatsAppSignup().toDart;
+                  // Log start event to backend server.log
+                  await getIt<WhatsAppRepository>().logSignupEvent(eventName: 'START');
+
+                  final result = await launchWhatsAppSignup(
+                    AppConstants.metaAppId,
+                    AppConstants.metaConfigId,
+                  ).toDart;
 
                   if (result.status == 'success') {
                     setState(() => _isConnecting = true);
@@ -866,6 +876,20 @@ class _SettingsPageState extends State<SettingsPage> {
                     final wabaId = result.wabaId;
                     final phoneNumberId = result.phoneNumberId;
                     final code = result.code;
+                    final sessionId = result.sessionId;
+                    final sessionInfoResponse = result.sessionInfoResponse;
+
+                    // Log success at the frontend popup stage
+                    await getIt<WhatsAppRepository>().logSignupEvent(
+                      eventName: 'SUCCESS_FRONTEND',
+                      sessionId: sessionId,
+                      data: {
+                        'wabaId': wabaId,
+                        'phoneNumberId': phoneNumberId,
+                        'code': code,
+                        'sessionInfoResponse': sessionInfoResponse,
+                      },
+                    );
 
                     // If we have no code but have WABA/phone IDs, skip token exchange and go manual config
                     if ((code == null || code.isEmpty) && (wabaId != null || phoneNumberId != null)) {
@@ -878,9 +902,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
                     final response = await getIt<WhatsAppRepository>().facebookEmbeddedSignup(
                       code: code ?? '',
-                      appId: '1509853364110343',
+                      appId: AppConstants.metaAppId,
                       wabaId: wabaId,
                       phoneNumberId: phoneNumberId,
+                      sessionId: sessionId,
+                      sessionInfoResponse: sessionInfoResponse,
+                      businessPortfolioId: result.businessPortfolioId, // Step 3
                     );
 
                     setState(() => _isConnecting = false);
@@ -899,7 +926,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           const SnackBar(content: Text('Meta Account Connected Successfully!')),
                         );
                       } else {
-                        // Token saved but IDs missing â€” open config dialog pre-filled
+                        // Token saved but IDs missing — open config dialog pre-filled
                         _showManualConfig(
                           context,
                           wabaId: serverWabaId ?? wabaId,
@@ -910,12 +937,63 @@ class _SettingsPageState extends State<SettingsPage> {
                       _showManualConfig(context, wabaId: wabaId, phoneNumberId: phoneNumberId);
                     }
                   } else if (result.status == 'cancelled') {
-                    // User cancelled â€” do nothing
+                    // User cancelled — do nothing
+                    await getIt<WhatsAppRepository>().logSignupEvent(
+                      eventName: 'CANCELLED_FRONTEND',
+                      sessionId: result.sessionId,
+                    );
+                  } else if (result.status == 'error_sdk_not_loaded') {
+                    await getIt<WhatsAppRepository>().logSignupEvent(
+                      eventName: 'ERROR_SDK_NOT_LOADED_FRONTEND',
+                      data: {'error': result.sessionInfoResponse ?? 'SDK Blocked'},
+                    );
+                    setState(() => _isConnecting = false);
+                    if (mounted) {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Row(
+                            children: [
+                              Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                              SizedBox(width: 8),
+                              Text('Connection Blocked'),
+                            ],
+                          ),
+                          content: const Text(
+                            'The Meta/Facebook SDK script was blocked from loading. '
+                            'This is usually caused by an ad-blocker, privacy extension, or firewall. '
+                            'Please disable your ad-blocker for this site and try again, or configure manually.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _showManualConfig(context);
+                              },
+                              child: const Text('Configure Manually'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
                   } else {
+                    await getIt<WhatsAppRepository>().logSignupEvent(
+                      eventName: 'ERROR_FRONTEND',
+                      sessionId: result.sessionId,
+                      data: {'status': result.status},
+                    );
                     if (mounted) _showManualConfig(context);
                   }
                 } catch (e) {
                   setState(() => _isConnecting = false);
+                  await getIt<WhatsAppRepository>().logSignupEvent(
+                    eventName: 'FATAL_ERROR_FRONTEND',
+                    data: {'error': e.toString()},
+                  );
                   if (mounted) _showManualConfig(context);
                 }
               },
@@ -977,6 +1055,22 @@ class _SettingsPageState extends State<SettingsPage> {
             _buildDetailRow('WABA ID', config['businessAccountId'] ?? 'N/A'),
             const Divider(height: 32),
             _buildDetailRow('Access Token', '••••••••••••••••' + (config['accessToken']?.toString().substring((config['accessToken']?.toString().length ?? 4) - 4) ?? '')),
+            if ((config['displayPhone'] as String?)?.isNotEmpty == true) ...[
+              const Divider(height: 32),
+              _buildDetailRow('Display Phone', config['displayPhone'] ?? ''),
+            ],
+            if ((config['verifiedName'] as String?)?.isNotEmpty == true) ...[
+              const Divider(height: 32),
+              _buildDetailRow('Verified Name', config['verifiedName'] ?? ''),
+            ],
+            if ((config['qualityRating'] as String?)?.isNotEmpty == true) ...[
+              const Divider(height: 32),
+              _buildQualityRow('Quality Rating', config['qualityRating'] ?? ''),
+            ],
+            if ((config['throughputLevel'] as String?)?.isNotEmpty == true) ...[
+              const Divider(height: 32),
+              _buildDetailRow('Throughput', config['throughputLevel'] ?? ''),
+            ],
             const SizedBox(height: 25),
             // OutlinedButton.icon(
             //   onPressed: () => _showManualConfig(context),
@@ -999,6 +1093,46 @@ class _SettingsPageState extends State<SettingsPage> {
       children: [
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 16)),
         Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+      ],
+    );
+  }
+
+  /// Renders quality rating with a color-coded badge (GREEN/YELLOW/RED → colors).
+  Widget _buildQualityRow(String label, String value) {
+    Color badgeColor;
+    switch (value.toUpperCase()) {
+      case 'GREEN':
+        badgeColor = Colors.green;
+        break;
+      case 'YELLOW':
+        badgeColor = Colors.orange;
+        break;
+      case 'RED':
+        badgeColor = Colors.red;
+        break;
+      default:
+        badgeColor = Colors.grey;
+    }
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 16)),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: badgeColor.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
+          ),
+          child: Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: badgeColor,
+            ),
+          ),
+        ),
       ],
     );
   }
