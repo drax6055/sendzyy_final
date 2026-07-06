@@ -17,9 +17,11 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
   late String _subType;
   late TextEditingController _tagController;
   late TextEditingController _languageController;
+  late TextEditingController _mediaUrlController;
+  List<TextEditingController> _variableControllers = [];
 
   // Template dropdown state
-  List<Map<String, String>> _templates = [];
+  List<Map<String, dynamic>> _templates = [];
   String? _selectedTemplateName;
   bool _loadingTemplates = false;
 
@@ -31,6 +33,8 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
     _subType = widget.node.data['subType'] ?? 'assign_tag';
     _tagController = TextEditingController(text: widget.node.data['tag'] ?? '');
     _languageController = TextEditingController(text: widget.node.data['language'] ?? '');
+    _mediaUrlController = TextEditingController(
+        text: widget.node.data['mediaUrl'] ?? widget.node.data['mediaId'] ?? '');
     _selectedTemplateName = widget.node.data['templateName']?.toString().isNotEmpty == true
         ? widget.node.data['templateName']
         : null;
@@ -44,11 +48,52 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
       _subType = widget.node.data['subType'] ?? 'assign_tag';
       _tagController.text = widget.node.data['tag'] ?? '';
       _languageController.text = widget.node.data['language'] ?? '';
+      _mediaUrlController.text = widget.node.data['mediaUrl'] ?? widget.node.data['mediaId'] ?? '';
       _selectedTemplateName = widget.node.data['templateName']?.toString().isNotEmpty == true
           ? widget.node.data['templateName']
           : null;
-      if (_subType == 'send_template' && _templates.isEmpty) _fetchTemplates();
+      if (_subType == 'send_template') {
+        if (_templates.isEmpty) {
+          _fetchTemplates();
+        } else {
+          final match = _templates.firstWhere((t) => t['name'] == _selectedTemplateName, orElse: () => {});
+          _onTemplateSelected(match);
+        }
+      }
     }
+  }
+
+  void _initializeVariableControllers(int count) {
+    // Dispose previous ones
+    for (var c in _variableControllers) {
+      c.dispose();
+    }
+    
+    // Load existing variable list
+    final existingVars = widget.node.data['variables'] as List<dynamic>? ?? [];
+    
+    _variableControllers = List.generate(count, (index) {
+      final val = index < existingVars.length ? existingVars[index]?.toString() ?? '' : '';
+      return TextEditingController(text: val);
+    });
+  }
+
+  void _onTemplateSelected(Map<String, dynamic> template) {
+    if (template.isEmpty) return;
+    final components = template['components'] as List<dynamic>? ?? [];
+    int bodyVariablesCount = 0;
+
+    for (var comp in components) {
+      if (comp['type'] == 'BODY') {
+        final bodyText = comp['text']?.toString() ?? '';
+        final regExp = RegExp(r'\{\{(\d+)\}\}');
+        final matches = regExp.allMatches(bodyText);
+        final uniqueIndices = matches.map((m) => m.group(1)).toSet();
+        bodyVariablesCount = uniqueIndices.length;
+      }
+    }
+
+    _initializeVariableControllers(bodyVariablesCount);
   }
 
   Future<void> _fetchTemplates() async {
@@ -61,11 +106,8 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
         final approved = list
             .where((t) => (t['status'] as String? ?? '').toUpperCase() == 'APPROVED')
             .where((t) => (t['category'] as String? ?? '').toUpperCase() != 'AUTHENTICATION')
-            .map<Map<String, String>>((t) => {
-                  'name': t['name']?.toString() ?? '',
-                  'language': t['language']?.toString() ?? 'en_US',
-                })
-            .where((t) => t['name']!.isNotEmpty)
+            .map<Map<String, dynamic>>((t) => Map<String, dynamic>.from(t))
+            .where((t) => (t['name']?.toString() ?? '').isNotEmpty)
             .toList();
         if (mounted) {
           setState(() {
@@ -75,6 +117,9 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
             if (_selectedTemplateName != null &&
                 !_templates.any((t) => t['name'] == _selectedTemplateName)) {
               _selectedTemplateName = null;
+            } else if (_selectedTemplateName != null) {
+              final match = _templates.firstWhere((t) => t['name'] == _selectedTemplateName, orElse: () => {});
+              _onTemplateSelected(match);
             }
           });
         }
@@ -85,12 +130,33 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
   }
 
   void _notify() {
+    final varsList = _variableControllers.map((c) => c.text).toList();
+    
+    // Find selected template's header format to pass mediaType
+    final selectedTemplate = _templates.firstWhere(
+      (t) => t['name'] == _selectedTemplateName,
+      orElse: () => {},
+    );
+    final components = selectedTemplate['components'] as List<dynamic>? ?? [];
+    String? headerFormat;
+    for (var comp in components) {
+      if (comp['type'] == 'HEADER') {
+        final format = comp['format']?.toString().toUpperCase();
+        if (['IMAGE', 'VIDEO', 'DOCUMENT'].contains(format)) {
+          headerFormat = format;
+        }
+      }
+    }
+
     widget.onChanged({
       ...widget.node.data,
       'subType': _subType,
       'tag': _tagController.text,
       'templateName': _selectedTemplateName ?? '',
       'language': _languageController.text,
+      'mediaUrl': _mediaUrlController.text,
+      'mediaType': headerFormat?.toLowerCase() ?? '',
+      'variables': varsList,
     });
   }
 
@@ -98,11 +164,39 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
   void dispose() {
     _tagController.dispose();
     _languageController.dispose();
+    _mediaUrlController.dispose();
+    for (var c in _variableControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Determine selected template parameters dynamically
+    final selectedTemplate = _templates.firstWhere(
+      (t) => t['name'] == _selectedTemplateName,
+      orElse: () => {},
+    );
+    final components = selectedTemplate['components'] as List<dynamic>? ?? [];
+    String? headerFormat;
+    int bodyVariablesCount = 0;
+
+    for (var comp in components) {
+      if (comp['type'] == 'HEADER') {
+        final format = comp['format']?.toString().toUpperCase();
+        if (['IMAGE', 'VIDEO', 'DOCUMENT'].contains(format)) {
+          headerFormat = format;
+        }
+      } else if (comp['type'] == 'BODY') {
+        final bodyText = comp['text']?.toString() ?? '';
+        final regExp = RegExp(r'\{\{(\d+)\}\}');
+        final matches = regExp.allMatches(bodyText);
+        final uniqueIndices = matches.map((m) => m.group(1)).toSet();
+        bodyVariablesCount = uniqueIndices.length;
+      }
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -158,6 +252,7 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
                           _languageController.text = match['language']!;
                         }
                       });
+                      _onTemplateSelected(match);
                       _notify();
                     }
                   },
@@ -174,6 +269,54 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
             ),
             onChanged: (_) => _notify(),
           ),
+          
+          // Header Media Field (if template has IMAGE/VIDEO/DOCUMENT header format)
+          if (headerFormat != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Header Media ($headerFormat)',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _mediaUrlController,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                hintText: 'Enter $headerFormat URL or Meta Media ID',
+                isDense: true,
+              ),
+              onChanged: (_) => _notify(),
+            ),
+          ],
+
+          // Body Variables Fields
+          if (bodyVariablesCount > 0) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Template Variables',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            ...List.generate(bodyVariablesCount, (index) {
+              // Ensure dynamic controller bounds mapping safety
+              if (index >= _variableControllers.length) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: TextField(
+                  controller: _variableControllers[index],
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: 'Variable {{${index + 1}}}',
+                    hintText: 'Enter value for placeholder {{${index + 1}}}',
+                    isDense: true,
+                  ),
+                  onChanged: (_) => _notify(),
+                ),
+              );
+            }),
+          ],
         ],
         if (_subType == 'end_session')
           Container(
