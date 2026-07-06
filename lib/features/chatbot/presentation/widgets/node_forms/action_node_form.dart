@@ -241,7 +241,10 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
                   hint: const Text('Select a template'),
                   isExpanded: true,
                   items: _templates
-                      .map((t) => DropdownMenuItem(value: t['name'], child: Text(t['name']!)))
+                      .map<DropdownMenuItem<String>>((t) => DropdownMenuItem<String>(
+                            value: t['name'] as String,
+                            child: Text(t['name'] as String),
+                          ))
                       .toList(),
                   onChanged: (v) {
                     if (v != null) {
