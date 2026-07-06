@@ -3,6 +3,11 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 
 class SocketService {
   IO.Socket? _socket;
+  final _systemUpdateController = StreamController<String>.broadcast();
+  final _templateUpdateController = StreamController<Map<String, dynamic>>.broadcast();
+
+  Stream<String> get systemUpdateStream => _systemUpdateController.stream;
+  Stream<Map<String, dynamic>> get templateUpdateStream => _templateUpdateController.stream;
 
   void connect(String tenantId, String token, String serverUrl) {
     _socket = IO.io(serverUrl, {
@@ -13,6 +18,18 @@ class SocketService {
 
     _socket!.onConnect((_) {
       _socket!.emit('join', tenantId);
+    });
+
+    _socket!.on('system_update', (data) {
+      if (data is Map && data.containsKey('message')) {
+        _systemUpdateController.add(data['message'].toString());
+      }
+    });
+
+    _socket!.on('template_status_update', (data) {
+      if (data is Map) {
+        _templateUpdateController.add(Map<String, dynamic>.from(data));
+      }
     });
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
@@ -5,6 +6,9 @@ import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/templates/presentation/widgets/whatsapp_preview.dart';
 import 'package:iFloraBuzz/features/templates/presentation/pages/create_template_page.dart';
 import 'package:iFloraBuzz/features/templates/presentation/pages/test_template_page.dart' show TestTemplateDialog;
+import 'package:iFloraBuzz/core/di/injection.dart';
+import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
+import 'package:dio/dio.dart';
 
 class TemplateListPage extends StatefulWidget {
   const TemplateListPage({super.key});
@@ -15,11 +19,39 @@ class TemplateListPage extends StatefulWidget {
 
 class _TemplateListPageState extends State<TemplateListPage> {
   final TextEditingController _searchController = TextEditingController();
+  StreamSubscription<Map<String, dynamic>>? _templateSubscription;
 
   static const _categories = ['ALL', 'MARKETING', 'UTILITY', 'AUTHENTICATION'];
 
   @override
+  void initState() {
+    super.initState();
+    _templateSubscription = getIt<SocketService>().templateUpdateStream.listen((data) {
+      if (mounted) {
+        final name = data['name'];
+        final status = data['status'];
+        final reason = data['reason'];
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              status == 'APPROVED'
+                  ? '🎉 Template "$name" was APPROVED!'
+                  : '❌ Template "$name" was REJECTED${reason != null ? ": $reason" : ""}',
+            ),
+            backgroundColor: status == 'APPROVED' ? Colors.green : Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        
+        context.read<TemplateBloc>().add(FetchTemplates());
+      }
+    });
+  }
+
+  @override
   void dispose() {
+    _templateSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -326,6 +358,21 @@ class _TemplateListPageState extends State<TemplateListPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                if (status == 'REJECTED') ...[
+                  TextButton.icon(
+                    onPressed: () => showDialog(
+                      context: context,
+                      builder: (_) => RejectionDetailsDialog(templateName: name),
+                    ),
+                    icon: const Icon(Icons.error_outline, size: 16),
+                    label: const Text('Fix Help', style: TextStyle(fontSize: 12)),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 if (isAuth && status == 'APPROVED') ...[
                   TextButton.icon(
                     onPressed: () => showDialog(
@@ -459,6 +506,147 @@ class _TemplateListPageState extends State<TemplateListPage> {
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class RejectionDetailsDialog extends StatefulWidget {
+  final String templateName;
+  const RejectionDetailsDialog({super.key, required this.templateName});
+
+  @override
+  State<RejectionDetailsDialog> createState() => _RejectionDetailsDialogState();
+}
+
+class _RejectionDetailsDialogState extends State<RejectionDetailsDialog> {
+  String? _reason;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchReason();
+  }
+
+  Future<void> _fetchReason() async {
+    try {
+      final dio = getIt<Dio>();
+      final resp = await dio.get('/template-rejection-reason/${widget.templateName}');
+      if (mounted) {
+        setState(() {
+          _reason = resp.data['reason'];
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+          const SizedBox(width: 8),
+          Expanded(child: Text('Template Rejected: ${widget.templateName}')),
+        ],
+      ),
+      content: SizedBox(
+        width: 500,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_loading)
+                const Center(child: CircularProgressIndicator())
+              else ...[
+                if (_reason != null && _reason!.isNotEmpty) ...[
+                  const Text(
+                    'Meta Rejection Reason:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade100),
+                    ),
+                    child: Text(
+                      _reason!,
+                      style: TextStyle(color: Colors.red.shade900, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ] else ...[
+                  const Text(
+                    'No specific rejection reason returned by Meta. This usually happens for older template requests or automated reviews.',
+                    style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                const Text(
+                  'Common Rejection Causes:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                _buildTipRow('Incorrect Category: Submitting promotional/marketing text under "Utility" or "Authentication".'),
+                _buildTipRow('Variable Formatting: Placeholders must look like {{1}}, {{2}} in order and cannot contain special characters/letters inside braces.'),
+                _buildTipRow('Quality & Policy: Templates must follow Meta\'s Commerce and Business Policies (no drug sales, gambling, abusive content).'),
+                _buildTipRow('Placeholder/Test Text: Submitting random strings like "dhhddh" or "Shendjdndjndn" is auto-rejected.'),
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 8),
+                const Text(
+                  'What should you do?',
+                  style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.secondaryColor),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  '1. Delete this template using the Delete button on the card.\n'
+                  '2. Create a new template with high-quality English/native language content.\n'
+                  '3. Or appeal the decision directly in your Meta Business Suite.',
+                  style: TextStyle(fontSize: 13, height: 1.5),
+                ),
+              ]
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('CLOSE'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTipRow(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.check_circle_outline, size: 16, color: Colors.grey),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12, color: Colors.black87),
+            ),
           ),
         ],
       ),

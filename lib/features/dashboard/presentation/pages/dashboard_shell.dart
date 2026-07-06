@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/pages/login_page.dart';
 import 'package:iFloraBuzz/features/auth/presentation/widgets/api_config_dialog.dart';
+import 'package:dio/dio.dart';
 import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/messages/presentation/pages/bulk_send_page.dart';
@@ -34,6 +35,8 @@ class DashboardShell extends StatefulWidget {
 class _DashboardShellState extends State<DashboardShell> {
   int _selectedIndex = 0;
   late final RenewalReminderService _reminderService;
+  bool _onboardingIncomplete = false;
+  bool _checkingOnboarding = true;
 
   static const _selectedIndexKey = 'dashboard_selected_index';
 
@@ -42,6 +45,32 @@ class _DashboardShellState extends State<DashboardShell> {
     super.initState();
     _restoreSelectedIndex();
     _initReminderService();
+    _checkOnboardingStatus();
+  }
+
+  Future<void> _checkOnboardingStatus() async {
+    try {
+      final dio = getIt<Dio>();
+      final resp = await dio.get('/onboarding-status');
+      final data = resp.data;
+      final connected = data['whatsappConnected'] ?? false;
+      final phone = data['phoneVerified'] ?? false;
+      final bizVerified = data['metaBusinessVerified'] == 'VERIFIED';
+      final template = data['hasApprovedTemplate'] ?? false;
+
+      if (mounted) {
+        setState(() {
+          _onboardingIncomplete = !(connected && phone && bizVerified && template);
+          _checkingOnboarding = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _checkingOnboarding = false;
+        });
+      }
+    }
   }
 
   Future<void> _restoreSelectedIndex() async {
@@ -256,6 +285,8 @@ class _DashboardShellState extends State<DashboardShell> {
                   children: [
                     // Header
                     _buildHeader(),
+                    if (!_checkingOnboarding && _onboardingIncomplete)
+                      _buildOnboardingWarningBanner(),
                     // Page Content
                     Expanded(child: _pages[_selectedIndex]),
                   ],
@@ -516,6 +547,52 @@ class _DashboardShellState extends State<DashboardShell> {
                 ),
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOnboardingWarningBanner() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        border: Border(
+          bottom: BorderSide(color: Colors.orange.shade100),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Your WhatsApp Onboarding is incomplete. Complete it to avoid message limits and start campaigns.',
+              style: TextStyle(
+                color: Colors.orange.shade900,
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          TextButton(
+            onPressed: () {
+              _setSelectedIndex(9);
+            },
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.orange.shade800,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            child: const Text(
+              'Complete Setup',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

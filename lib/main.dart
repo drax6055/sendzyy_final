@@ -11,6 +11,9 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/package_selection_page.dart';
 import 'features/dashboard/presentation/pages/dashboard_shell.dart';
+import 'dart:html' as html;
+import 'features/chat/data/services/socket_service.dart';
+import 'package:iFloraBuzz/features/admin/presentation/pages/update_message_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +32,8 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   Timer? _expiryTimer;
   late final AuthBloc _authBloc;
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  StreamSubscription<String>? _systemUpdateSubscription;
 
   @override
   void initState() {
@@ -39,11 +44,16 @@ class _MyAppState extends State<MyApp> {
     _expiryTimer = Timer.periodic(const Duration(minutes: 5), (_) {
       _authBloc.add(SubscriptionExpiryCheckRequested());
     });
+
+    _systemUpdateSubscription = di.getIt<SocketService>().systemUpdateStream.listen((message) {
+      _showUpdateAlertDialog(message);
+    });
   }
 
   @override
   void dispose() {
     _expiryTimer?.cancel();
+    _systemUpdateSubscription?.cancel();
     super.dispose();
   }
 
@@ -62,9 +72,19 @@ class _MyAppState extends State<MyApp> {
         ),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
         title: 'Sendzyy',
         theme: AppTheme.lightTheme,
+        onGenerateRoute: (settings) {
+          if (settings.name == '/update_message' || settings.name == 'update_message') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const UpdateMessagePage(),
+            );
+          }
+          return null;
+        },
         home: BlocConsumer<AuthBloc, AuthState>(
           listener: (context, state) {
             if (state is AuthAuthenticated) {
@@ -224,6 +244,201 @@ class _MyAppState extends State<MyApp> {
           ),
         ],
       ),
+    );
+  }
+
+  void _showUpdateAlertDialog(String message) {
+    final context = navigatorKey.currentContext;
+    if (context == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      builder: (dialogCtx) {
+        return TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0.8, end: 1.0),
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutBack,
+          builder: (context, value, child) {
+            return Transform.scale(
+              scale: value,
+              child: child,
+            );
+          },
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            child: Container(
+              width: 500,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 30,
+                    offset: const Offset(0, 15),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Color(0xFF25D366),
+                            Color(0xFF128C7E),
+                          ],
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(32, 32, 32, 24),
+                      child: Column(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF25D366).withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.security_update_good_rounded,
+                              color: Color(0xFF128C7E),
+                              size: 40,
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          const Text(
+                            'System Update Required',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF1A1D1E),
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            message,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF4A4D4F),
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0F2F5),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFFE4E6EB),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.info_outline_rounded,
+                                  color: Color(0xFF075E54),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'Your session will be cleared and the app will reload to ensure a smooth transition.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: const Color(0xFF075E54).withValues(alpha: 0.8),
+                                      fontWeight: FontWeight.w500,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                // 1. Dispatch LogoutRequested to auth bloc to clear session
+                                _authBloc.add(LogoutRequested());
+
+                                // 2. Clear browser caches forcefully
+                                try {
+                                  html.window.localStorage.clear();
+                                  html.window.sessionStorage.clear();
+
+                                  // Unregister service workers
+                                  final serviceWorker = html.window.navigator.serviceWorker;
+                                  if (serviceWorker != null) {
+                                    serviceWorker.getRegistrations().then((registrations) {
+                                      for (var reg in registrations) {
+                                        if (reg is html.ServiceWorkerRegistration) {
+                                          reg.unregister();
+                                        }
+                                      }
+                                    });
+                                  }
+
+                                  // Clear Cache Storage
+                                  html.window.caches?.keys().then((keys) {
+                                    for (var key in keys) {
+                                      html.window.caches?.delete(key);
+                                    }
+                                  });
+                                } catch (e) {
+                                  debugPrint("Error clearing browser storage: $e");
+                                }
+
+                                // Close the dialog
+                                Navigator.of(dialogCtx).pop();
+
+                                // 3. Force hard reload after a short delay
+                                Future.delayed(const Duration(milliseconds: 500), () {
+                                  html.window.location.reload();
+                                });
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF25D366),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text(
+                                'OK, Refresh Now',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

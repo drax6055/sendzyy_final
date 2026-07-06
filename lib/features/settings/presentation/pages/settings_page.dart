@@ -15,6 +15,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'dart:js_interop';
+import 'package:iFloraBuzz/features/settings/presentation/widgets/onboarding_checklist_widget.dart';
+import 'package:iFloraBuzz/features/templates/presentation/pages/create_template_page.dart';
 
 // JS interop types for the signup result
 extension type _SignupResult._(JSObject _) implements JSObject {
@@ -166,6 +168,28 @@ class _SettingsPageState extends State<SettingsPage> {
                 isConnected
                     ? _buildConnectedDetailsCard(context, state.tenant['whatsappConfig'])
                     : _buildConnectMetaCard(context),
+
+                const SizedBox(height: 32),
+
+                OnboardingChecklistWidget(
+                  onSetupWhatsApp: () {
+                    if (isConnected) {
+                      _showManualConfig(
+                        context,
+                        wabaId: state.tenant['whatsappConfig']['businessAccountId']?.toString(),
+                        phoneNumberId: state.tenant['whatsappConfig']['phoneNumberId']?.toString(),
+                      );
+                    } else {
+                      _connectMeta();
+                    }
+                  },
+                  onCreateTemplate: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const CreateTemplatePage()),
+                    );
+                  },
+                ),
 
                 const SizedBox(height: 32),
 
@@ -860,143 +884,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: () async {
-                try {
-                  // Log start event to backend server.log
-                  await getIt<WhatsAppRepository>().logSignupEvent(eventName: 'START');
-
-                  final result = await launchWhatsAppSignup(
-                    AppConstants.metaAppId,
-                    AppConstants.metaConfigId,
-                  ).toDart;
-
-                  if (result.status == 'success') {
-                    setState(() => _isConnecting = true);
-
-                    final wabaId = result.wabaId;
-                    final phoneNumberId = result.phoneNumberId;
-                    final code = result.code;
-                    final sessionId = result.sessionId;
-                    final sessionInfoResponse = result.sessionInfoResponse;
-
-                    // Log success at the frontend popup stage
-                    await getIt<WhatsAppRepository>().logSignupEvent(
-                      eventName: 'SUCCESS_FRONTEND',
-                      sessionId: sessionId,
-                      data: {
-                        'wabaId': wabaId,
-                        'phoneNumberId': phoneNumberId,
-                        'code': code,
-                        'sessionInfoResponse': sessionInfoResponse,
-                      },
-                    );
-
-                    // If we have no code but have WABA/phone IDs, skip token exchange and go manual config
-                    if ((code == null || code.isEmpty) && (wabaId != null || phoneNumberId != null)) {
-                      setState(() => _isConnecting = false);
-                      if (mounted) {
-                        _showManualConfig(context, wabaId: wabaId, phoneNumberId: phoneNumberId);
-                      }
-                      return;
-                    }
-
-                    final response = await getIt<WhatsAppRepository>().facebookEmbeddedSignup(
-                      code: code ?? '',
-                      appId: AppConstants.metaAppId,
-                      wabaId: wabaId,
-                      phoneNumberId: phoneNumberId,
-                      sessionId: sessionId,
-                      sessionInfoResponse: sessionInfoResponse,
-                      businessPortfolioId: result.businessPortfolioId, // Step 3
-                    );
-
-                    setState(() => _isConnecting = false);
-
-                    if (response != null && mounted) {
-                      final config = response['config'] as Map<String, dynamic>?;
-                      final serverWabaId = config?['wabaId']?.toString();
-                      final serverPhoneId = config?['phoneNumberId']?.toString();
-
-                      // If server resolved the IDs, refresh auth state
-                      if ((serverWabaId != null && serverWabaId.isNotEmpty) &&
-                          (serverPhoneId != null && serverPhoneId.isNotEmpty)) {
-                        context.read<AuthBloc>().add(AuthCheckRequested());
-                        context.read<TemplateBloc>().add(FetchTemplates());
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Meta Account Connected Successfully!')),
-                        );
-                      } else {
-                        // Token saved but IDs missing — open config dialog pre-filled
-                        _showManualConfig(
-                          context,
-                          wabaId: serverWabaId ?? wabaId,
-                          phoneNumberId: serverPhoneId ?? phoneNumberId,
-                        );
-                      }
-                    } else if (mounted) {
-                      _showManualConfig(context, wabaId: wabaId, phoneNumberId: phoneNumberId);
-                    }
-                  } else if (result.status == 'cancelled') {
-                    // User cancelled — do nothing
-                    await getIt<WhatsAppRepository>().logSignupEvent(
-                      eventName: 'CANCELLED_FRONTEND',
-                      sessionId: result.sessionId,
-                    );
-                  } else if (result.status == 'error_sdk_not_loaded') {
-                    await getIt<WhatsAppRepository>().logSignupEvent(
-                      eventName: 'ERROR_SDK_NOT_LOADED_FRONTEND',
-                      data: {'error': result.sessionInfoResponse ?? 'SDK Blocked'},
-                    );
-                    setState(() => _isConnecting = false);
-                    if (mounted) {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Row(
-                            children: [
-                              Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                              SizedBox(width: 8),
-                              Text('Connection Blocked'),
-                            ],
-                          ),
-                          content: const Text(
-                            'The Meta/Facebook SDK script was blocked from loading. '
-                            'This is usually caused by an ad-blocker, privacy extension, or firewall. '
-                            'Please disable your ad-blocker for this site and try again, or configure manually.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                _showManualConfig(context);
-                              },
-                              child: const Text('Configure Manually'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('OK'),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                  } else {
-                    await getIt<WhatsAppRepository>().logSignupEvent(
-                      eventName: 'ERROR_FRONTEND',
-                      sessionId: result.sessionId,
-                      data: {'status': result.status},
-                    );
-                    if (mounted) _showManualConfig(context);
-                  }
-                } catch (e) {
-                  setState(() => _isConnecting = false);
-                  await getIt<WhatsAppRepository>().logSignupEvent(
-                    eventName: 'FATAL_ERROR_FRONTEND',
-                    data: {'error': e.toString()},
-                  );
-                  if (mounted) _showManualConfig(context);
-                }
-              },
+              onPressed: _connectMeta,
               icon: _isConnecting 
                 ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                 : const Icon(Icons.facebook, size: 24),
@@ -1020,6 +908,144 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _connectMeta() async {
+    try {
+      // Log start event to backend server.log
+      await getIt<WhatsAppRepository>().logSignupEvent(eventName: 'START');
+
+      final result = await launchWhatsAppSignup(
+        AppConstants.metaAppId,
+        AppConstants.metaConfigId,
+      ).toDart;
+
+      if (result.status == 'success') {
+        setState(() => _isConnecting = true);
+
+        final wabaId = result.wabaId;
+        final phoneNumberId = result.phoneNumberId;
+        final code = result.code;
+        final sessionId = result.sessionId;
+        final sessionInfoResponse = result.sessionInfoResponse;
+
+        // Log success at the frontend popup stage
+        await getIt<WhatsAppRepository>().logSignupEvent(
+          eventName: 'SUCCESS_FRONTEND',
+          sessionId: sessionId,
+          data: {
+            'wabaId': wabaId,
+            'phoneNumberId': phoneNumberId,
+            'code': code,
+            'sessionInfoResponse': sessionInfoResponse,
+          },
+        );
+
+        // If we have no code but have WABA/phone IDs, skip token exchange and go manual config
+        if ((code == null || code.isEmpty) && (wabaId != null || phoneNumberId != null)) {
+          setState(() => _isConnecting = false);
+          if (mounted) {
+            _showManualConfig(context, wabaId: wabaId, phoneNumberId: phoneNumberId);
+          }
+          return;
+        }
+
+        final response = await getIt<WhatsAppRepository>().facebookEmbeddedSignup(
+          code: code ?? '',
+          appId: AppConstants.metaAppId,
+          wabaId: wabaId,
+          phoneNumberId: phoneNumberId,
+          sessionId: sessionId,
+          sessionInfoResponse: sessionInfoResponse,
+          businessPortfolioId: result.businessPortfolioId, // Step 3
+        );
+
+        setState(() => _isConnecting = false);
+
+        if (response != null && mounted) {
+          final config = response['config'] as Map<String, dynamic>?;
+          final serverWabaId = config?['wabaId']?.toString();
+          final serverPhoneId = config?['phoneNumberId']?.toString();
+
+          // If server resolved the IDs, refresh auth state
+          if ((serverWabaId != null && serverWabaId.isNotEmpty) &&
+              (serverPhoneId != null && serverPhoneId.isNotEmpty)) {
+            context.read<AuthBloc>().add(AuthCheckRequested());
+            context.read<TemplateBloc>().add(FetchTemplates());
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Meta Account Connected Successfully!')),
+            );
+          } else {
+            // Token saved but IDs missing — open config dialog pre-filled
+            _showManualConfig(
+              context,
+              wabaId: serverWabaId ?? wabaId,
+              phoneNumberId: serverPhoneId ?? phoneNumberId,
+            );
+          }
+        } else if (mounted) {
+          _showManualConfig(context, wabaId: wabaId, phoneNumberId: phoneNumberId);
+        }
+      } else if (result.status == 'cancelled') {
+        // User cancelled — do nothing
+        await getIt<WhatsAppRepository>().logSignupEvent(
+          eventName: 'CANCELLED_FRONTEND',
+          sessionId: result.sessionId,
+        );
+      } else if (result.status == 'error_sdk_not_loaded') {
+        await getIt<WhatsAppRepository>().logSignupEvent(
+          eventName: 'ERROR_SDK_NOT_LOADED_FRONTEND',
+          data: {'error': result.sessionInfoResponse ?? 'SDK Blocked'},
+        );
+        setState(() => _isConnecting = false);
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Connection Blocked'),
+                ],
+              ),
+              content: const Text(
+                'The Meta/Facebook SDK script was blocked from loading. '
+                'This is usually caused by an ad-blocker, privacy extension, or firewall. '
+                'Please disable your ad-blocker for this site and try again, or configure manually.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    _showManualConfig(context);
+                  },
+                  child: const Text('Configure Manually'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        await getIt<WhatsAppRepository>().logSignupEvent(
+          eventName: 'ERROR_FRONTEND',
+          sessionId: result.sessionId,
+          data: {'status': result.status},
+        );
+        if (mounted) _showManualConfig(context);
+      }
+    } catch (e) {
+      setState(() => _isConnecting = false);
+      await getIt<WhatsAppRepository>().logSignupEvent(
+        eventName: 'FATAL_ERROR_FRONTEND',
+        data: {'error': e.toString()},
+      );
+      if (mounted) _showManualConfig(context);
+    }
   }
 
   Widget _buildConnectedDetailsCard(BuildContext context, Map<String, dynamic> config) {
