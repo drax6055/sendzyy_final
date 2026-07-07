@@ -8,6 +8,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/chat/presentation/bloc/chat_bloc.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -143,11 +145,7 @@ class _ChatPageState extends State<ChatPage> {
                           setState(() => _searchQuery = '');
                         },
                       )
-                    : Icon(
-                        Icons.search,
-                        color: Colors.grey.shade400,
-                        size: 20,
-                      ),
+                    : Icon(Icons.search, color: Colors.grey.shade400, size: 20),
               ),
             ),
           ),
@@ -156,81 +154,93 @@ class _ChatPageState extends State<ChatPage> {
                 ? Center(
                     child: Text(
                       'No conversations found',
-                      style: TextStyle(color: Colors.grey.shade400, fontSize: 13),
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 13,
+                      ),
                     ),
                   )
                 : ListView.builder(
-              itemCount: filtered.length,
-              itemBuilder: (context, index) {
-                final conv = filtered[index];
-                final bool isSelected = state.selectedContactId == conv['id'];
-                final DateTime lastActive = conv['lastActive'] is DateTime
-                    ? (conv['lastActive'] as DateTime).toLocal()
-                    : (DateTime.tryParse(conv['lastActive']?.toString() ?? '') ?? DateTime.now()).toLocal();
-                final bool isWithin24h =
-                    DateTime.now().difference(lastActive).inHours < 24;
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      final conv = filtered[index];
+                      final bool isSelected =
+                          state.selectedContactId == conv['id'];
+                      final DateTime lastActive = conv['lastActive'] is DateTime
+                          ? (conv['lastActive'] as DateTime).toLocal()
+                          : (DateTime.tryParse(
+                                      conv['lastActive']?.toString() ?? '',
+                                    ) ??
+                                    DateTime.now())
+                                .toLocal();
+                      final bool isWithin24h =
+                          DateTime.now().difference(lastActive).inHours < 24;
 
-                return ListTile(
-                  onTap: () => context.read<ChatBloc>().add(
-                    SelectConversation(conv['id']),
-                  ),
-                  selected: isSelected,
-                  selectedTileColor: AppTheme.primaryColor.withOpacity(0.05),
-                  leading: CircleAvatar(
-                    backgroundColor: AppTheme.secondaryColor,
-                    child: Text(
-                      (conv['name'] as String?)?.isNotEmpty == true
-                          ? conv['name'][0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          conv['name'] ?? 'Unknown',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
+                      return ListTile(
+                        onTap: () => context.read<ChatBloc>().add(
+                          SelectConversation(conv['id']),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _formatDate(lastActive),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
+                        selected: isSelected,
+                        selectedTileColor: AppTheme.primaryColor.withOpacity(
+                          0.05,
                         ),
-                      ),
-                    ],
+                        leading: CircleAvatar(
+                          backgroundColor: AppTheme.secondaryColor,
+                          child: Text(
+                            (conv['name'] as String?)?.isNotEmpty == true
+                                ? conv['name'][0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        title: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                conv['name'] ?? 'Unknown',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _formatDate(lastActive),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                        subtitle: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                conv['lastMessage'] ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // 24h Indicator
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isWithin24h
+                                    ? Colors.green
+                                    : Colors.grey.shade300,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
-                  subtitle: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          conv['lastMessage'] ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      // 24h Indicator
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isWithin24h
-                              ? Colors.green
-                              : Colors.grey.shade300,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -259,7 +269,9 @@ class _ChatPageState extends State<ChatPage> {
     );
     final DateTime lastActive = contact['lastActive'] is DateTime
         ? (contact['lastActive'] as DateTime).toLocal()
-        : (DateTime.tryParse(contact['lastActive']?.toString() ?? '') ?? DateTime.now()).toLocal();
+        : (DateTime.tryParse(contact['lastActive']?.toString() ?? '') ??
+                  DateTime.now())
+              .toLocal();
     final bool isWithin24h = DateTime.now().difference(lastActive).inHours < 24;
 
     return SelectionArea(
@@ -299,7 +311,10 @@ class _ChatPageState extends State<ChatPage> {
                         const SizedBox(width: 10),
                         Text(
                           contact['id'] ?? '',
-                          style: TextStyle(fontSize: 16, color: const Color.fromARGB(255, 99, 99, 99)),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: const Color.fromARGB(255, 99, 99, 99),
+                          ),
                         ),
                       ],
                     ),
@@ -377,6 +392,11 @@ class _ChatPageState extends State<ChatPage> {
       child: isWithin24h
           ? Row(
               children: [
+                IconButton(
+                  icon: Icon(Icons.attach_file, color: Colors.grey.shade600),
+                  onPressed: () => _showAttachmentMenu(context, contactId),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _messageController,
@@ -439,20 +459,253 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  void _showAttachmentMenu(BuildContext context, String contactId) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Send Attachment',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _attachmentOption(
+                      icon: Icons.image,
+                      color: Colors.purple,
+                      label: 'Image\n(Max 5MB)',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickAndSendAttachment(
+                          contactId: contactId,
+                          type: 'image',
+                          extensions: ['jpg', 'jpeg', 'png'],
+                          maxSize: 5 * 1024 * 1024,
+                        );
+                      },
+                    ),
+                    _attachmentOption(
+                      icon: Icons.videocam,
+                      color: Colors.pink,
+                      label: 'Video\n(Max 16MB)',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickAndSendAttachment(
+                          contactId: contactId,
+                          type: 'video',
+                          extensions: ['mp4', '3gp'],
+                          maxSize: 16 * 1024 * 1024,
+                        );
+                      },
+                    ),
+                    _attachmentOption(
+                      icon: Icons.audiotrack,
+                      color: Colors.orange,
+                      label: 'Audio\n(Max 16MB)',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickAndSendAttachment(
+                          contactId: contactId,
+                          type: 'audio',
+                          extensions: ['aac', 'mp3', 'amr', 'ogg'],
+                          maxSize: 16 * 1024 * 1024,
+                        );
+                      },
+                    ),
+                    _attachmentOption(
+                      icon: Icons.insert_drive_file,
+                      color: Colors.blue,
+                      label: 'Document\n(Max 100MB)',
+                      onTap: () {
+                        Navigator.pop(context);
+                        _pickAndSendAttachment(
+                          contactId: contactId,
+                          type: 'document',
+                          extensions: [], // Allow all extensions
+                          maxSize: 100 * 1024 * 1024,
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _attachmentOption({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: color.withOpacity(0.1),
+              child: Icon(icon, color: color, size: 28),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndSendAttachment({
+    required String contactId,
+    required String type,
+    required List<String> extensions,
+    required int maxSize,
+  }) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: extensions.isEmpty ? FileType.any : FileType.custom,
+        allowedExtensions: extensions.isEmpty ? null : extensions,
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+
+      // Validate size
+      if (file.size > maxSize) {
+        final mbLimit = (maxSize / (1024 * 1024)).toStringAsFixed(0);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'File exceeds the max size limit of $mbLimit MB for ${type}s.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      bool isDialogShowing = false;
+      if (mounted) {
+        isDialogShowing = true;
+        _showSendingOverlay(context, file.name);
+      }
+
+      final chatBloc = context.read<ChatBloc>();
+      final mediaId = await chatBloc.uploadMedia(file);
+
+      if (isDialogShowing && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      if (mediaId.isNotEmpty) {
+        chatBloc.add(
+          SendMediaMessage(
+            contactId: contactId,
+            mediaId: mediaId,
+            type: type,
+            filename: type == 'document' ? file.name : null,
+          ),
+        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '${type[0].toUpperCase()}${type.substring(1)} sent successfully.',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw Exception('Failed to upload media to server.');
+      }
+    } catch (e) {
+      if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+        // Safe check to close dialog if still open on exception
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send attachment: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showSendingOverlay(BuildContext context, String fileName) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            content: Row(
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Text(
+                    'Sending "$fileName"...',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   // Converts any DateTime to IST (UTC+5:30) and returns HH:mm
   String _formatDate(DateTime date) {
     final ist = date.toUtc().add(const Duration(hours: 5, minutes: 30));
     return "${ist.hour.toString().padLeft(2, '0')}:${ist.minute.toString().padLeft(2, '0')}";
   }
 
-  // Resolves message time from msg['time'] (ISO string) or msg['timestamp'] (Firestore)
+  // Resolves message time from msg['time'] (ISO/formatted string) or msg['timestamp'] (ISO string)
   String _formatMessageTime(Map<String, dynamic> msg) {
     if (msg['time'] != null) {
-      final parsed = DateTime.tryParse(msg['time'].toString());
+      final timeStr = msg['time'].toString();
+      final parsed = DateTime.tryParse(timeStr);
       if (parsed != null) return _formatDate(parsed);
+      // If it's already a formatted time string (e.g., "19:21"), return it directly
+      return timeStr;
     }
     if (msg['timestamp'] != null) {
-      return _formatDate((msg['timestamp'] as dynamic).toDate());
+      final parsed = DateTime.tryParse(msg['timestamp'].toString());
+      if (parsed != null) return _formatDate(parsed);
     }
     return '';
   }
@@ -464,8 +717,10 @@ class MessageRenderer extends StatelessWidget {
   final Map<String, dynamic> msg;
   final double maxWidth;
   final String Function(Map<String, dynamic>) formatTime;
+
   /// Base URL of the backend server (used to construct media proxy URLs).
   final String? baseUrl;
+
   /// JWT auth token for authenticated media requests.
   final String? authToken;
 
@@ -515,12 +770,23 @@ class MessageRenderer extends StatelessWidget {
                   child: _buildContent(isMe, messageType),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  formatTime(msg),
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: isMe ? Colors.white.withValues(alpha: 0.7) : Colors.grey,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      formatTime(msg),
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: isMe
+                            ? Colors.white.withValues(alpha: 0.7)
+                            : Colors.grey,
+                      ),
+                    ),
+                    if (isMe) ...[
+                      const SizedBox(width: 4),
+                      _buildStatusIcon(context),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -530,9 +796,66 @@ class MessageRenderer extends StatelessWidget {
     );
   }
 
+  Widget _buildStatusIcon(BuildContext context) {
+    final status = msg['status'] as String? ?? 'sent';
+    final errorDetails = msg['errorDetails'] as String?;
+
+    if (status == 'failed') {
+      return GestureDetector(
+        onTap: () {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Message Delivery Failed'),
+                ],
+              ),
+              content: Text(
+                errorDetails ??
+                    'Meta processing error. Please choose a different file or check your configuration.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        },
+        child: Tooltip(
+          message: 'Delivery Failed. Tap for details.',
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            padding: const EdgeInsets.all(1.5),
+            child: Icon(Icons.error, color: Colors.red.shade600, size: 14),
+          ),
+        ),
+      );
+    } else if (status == 'read') {
+      return const Icon(
+        Icons.done_all,
+        color: Color.fromARGB(255, 28, 85, 31),
+        size: 16,
+      );
+    } else if (status == 'delivered') {
+      return const Icon(Icons.done_all, color: Colors.white, size: 16);
+    } else {
+      return const Icon(Icons.done, color: Colors.white, size: 16);
+    }
+  }
+
   Widget _buildContent(bool isMe, String? messageType) {
     final textColor = isMe ? Colors.white : AppTheme.secondaryColor;
-    final mutedColor = isMe ? Colors.white.withValues(alpha: 0.7) : Colors.grey.shade500;
+    final mutedColor = isMe
+        ? Colors.white.withValues(alpha: 0.7)
+        : Colors.grey.shade500;
 
     switch (messageType) {
       case 'template':
@@ -546,12 +869,18 @@ class MessageRenderer extends StatelessWidget {
               children: [
                 Icon(Icons.description_outlined, size: 14, color: mutedColor),
                 const SizedBox(width: 4),
-                Text('Template', style: TextStyle(fontSize: 11, color: mutedColor)),
+                Text(
+                  'Template',
+                  style: TextStyle(fontSize: 11, color: mutedColor),
+                ),
               ],
             ),
             const SizedBox(height: 4),
             Text(
-              templateBody ?? (templateName != null ? '📋 Template: $templateName' : '📋 Template'),
+              templateBody ??
+                  (templateName != null
+                      ? '📋 Template: $templateName'
+                      : '📋 Template'),
               style: TextStyle(color: textColor),
             ),
           ],
@@ -567,7 +896,12 @@ class MessageRenderer extends StatelessWidget {
             authToken: authToken,
           );
         }
-        return _iconLabel(Icons.image_outlined, '📷 Image', textColor, mutedColor);
+        return _iconLabel(
+          Icons.image_outlined,
+          '📷 Image',
+          textColor,
+          mutedColor,
+        );
 
       case 'video':
         final videoMediaId = msg['mediaUrl'] as String?;
@@ -579,7 +913,12 @@ class MessageRenderer extends StatelessWidget {
             authToken: authToken!,
           );
         }
-        return _iconLabel(Icons.play_circle_outline, '🎥 Video', textColor, mutedColor);
+        return _iconLabel(
+          Icons.play_circle_outline,
+          '🎥 Video',
+          textColor,
+          mutedColor,
+        );
 
       case 'audio':
       case 'voice':
@@ -592,7 +931,12 @@ class MessageRenderer extends StatelessWidget {
             authToken: authToken!,
           );
         }
-        return _iconLabel(Icons.graphic_eq, '🎵 Audio message', textColor, mutedColor);
+        return _iconLabel(
+          Icons.graphic_eq,
+          '🎵 Audio message',
+          textColor,
+          mutedColor,
+        );
 
       case 'document':
         final docText = msg['text'] as String?;
@@ -604,7 +948,10 @@ class MessageRenderer extends StatelessWidget {
         );
 
       case 'sticker':
-        return Text('😊 Sticker', style: TextStyle(color: textColor, fontSize: 24));
+        return Text(
+          '😊 Sticker',
+          style: TextStyle(color: textColor, fontSize: 24),
+        );
 
       case 'location':
         final locText = msg['text'] as String?;
@@ -626,7 +973,10 @@ class MessageRenderer extends StatelessWidget {
               children: [
                 Icon(Icons.reply, size: 14, color: mutedColor),
                 const SizedBox(width: 4),
-                Text('Reply', style: TextStyle(fontSize: 11, color: mutedColor)),
+                Text(
+                  'Reply',
+                  style: TextStyle(fontSize: 11, color: mutedColor),
+                ),
               ],
             ),
             const SizedBox(height: 4),
@@ -644,7 +994,10 @@ class MessageRenderer extends StatelessWidget {
               children: [
                 Icon(Icons.reply, size: 14, color: mutedColor),
                 const SizedBox(width: 4),
-                Text('Button Reply', style: TextStyle(fontSize: 11, color: mutedColor)),
+                Text(
+                  'Button Reply',
+                  style: TextStyle(fontSize: 11, color: mutedColor),
+                ),
               ],
             ),
             const SizedBox(height: 4),
@@ -678,7 +1031,12 @@ class MessageRenderer extends StatelessWidget {
     }
   }
 
-  Widget _iconLabel(IconData icon, String label, Color textColor, Color iconColor) {
+  Widget _iconLabel(
+    IconData icon,
+    String label,
+    Color textColor,
+    Color iconColor,
+  ) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -709,7 +1067,9 @@ class _ImageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textColor = isMe ? Colors.white : AppTheme.secondaryColor;
-    final iconColor = isMe ? Colors.white.withValues(alpha: 0.7) : Colors.grey.shade500;
+    final iconColor = isMe
+        ? Colors.white.withValues(alpha: 0.7)
+        : Colors.grey.shade500;
 
     if (baseUrl == null || authToken == null) {
       return _fallback(textColor, iconColor);
@@ -733,7 +1093,8 @@ class _ImageBubble extends StatelessWidget {
             child: child,
           );
         },
-        errorBuilder: (context, error, stackTrace) => _fallback(textColor, iconColor),
+        errorBuilder: (context, error, stackTrace) =>
+            _fallback(textColor, iconColor),
       ),
     );
   }
@@ -754,8 +1115,10 @@ class _ImageBubble extends StatelessWidget {
                 headers: {'Authorization': 'Bearer $authToken'},
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) => const Center(
-                  child: Text('Failed to load image',
-                      style: TextStyle(color: Colors.white)),
+                  child: Text(
+                    'Failed to load image',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ),
             ),
@@ -863,7 +1226,8 @@ class _VideoBubbleState extends State<_VideoBubble> {
   @override
   void initState() {
     super.initState();
-    _videoUrl = '${widget.baseUrl}/media/${widget.mediaId}?token=${widget.authToken}';
+    _videoUrl =
+        '${widget.baseUrl}/media/${widget.mediaId}?token=${widget.authToken}';
     _viewId = 'video-thumb-${widget.mediaId}';
     _registerVideoElement();
   }
@@ -920,7 +1284,11 @@ class _VideoBubbleState extends State<_VideoBubble> {
                   color: Colors.black.withValues(alpha: 0.55),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.play_arrow_rounded, color: iconColor, size: 32),
+                child: Icon(
+                  Icons.play_arrow_rounded,
+                  color: iconColor,
+                  size: 32,
+                ),
               ),
             ),
           ],

@@ -3,6 +3,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
 import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
+import 'package:file_picker/file_picker.dart';
 
 // Events
 abstract class ChatEvent extends Equatable {
@@ -39,6 +40,23 @@ class SendMessage extends ChatEvent {
   SendMessage(this.contactId, this.text);
   @override
   List<Object?> get props => [contactId, text];
+}
+
+class SendMediaMessage extends ChatEvent {
+  final String contactId;
+  final String mediaId;
+  final String type;
+  final String? filename;
+
+  SendMediaMessage({
+    required this.contactId,
+    required this.mediaId,
+    required this.type,
+    this.filename,
+  });
+
+  @override
+  List<Object?> get props => [contactId, mediaId, type, filename];
 }
 
 // States
@@ -158,6 +176,17 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         );
       } catch (_) {}
     });
+
+    on<SendMediaMessage>((event, emit) async {
+      try {
+        await _repository.sendDirectMediaMessage(
+          to: event.contactId,
+          mediaId: event.mediaId,
+          type: event.type,
+          filename: event.filename,
+        );
+      } catch (_) {}
+    });
   }
 
   @override
@@ -172,4 +201,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
 
   /// Returns the full proxy URL for a WhatsApp media file by its mediaId.
   String? getMediaUrl(String mediaId) => _repository.getMediaUrl(mediaId);
+
+  /// Uploads media to Meta via the repository proxy.
+  Future<String> uploadMedia(PlatformFile file) => _repository.uploadMedia(file);
 }

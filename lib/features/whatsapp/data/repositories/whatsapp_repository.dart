@@ -162,6 +162,29 @@ class WhatsAppRepository {
     }
   }
 
+  Future<bool> sendDirectMediaMessage({
+    required String to,
+    required String mediaId,
+    required String type, // 'image' | 'video' | 'audio' | 'document'
+    String? filename,     // optional filename for document
+  }) async {
+    try {
+      final response = await _dio.post(
+        '/send-message',
+        data: {
+          'to': to,
+          'type': type,
+          'mediaId': mediaId,
+          if (filename != null) 'text': filename,
+        },
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('SEND DIRECT MEDIA MESSAGE ERROR: $e');
+      return false;
+    }
+  }
+
   /// Sends a test OTP via an AUTHENTICATION template.
   /// Returns true on success, false on failure.
   Future<bool> sendOtp({
@@ -422,9 +445,9 @@ class WhatsAppRepository {
       final authToken = _prefs.getString('auth_token');
       final proxyUrl = '${AppConstants.baseUrl}/media-upload';
 
-      final List<int> fileData;
+      final dynamic fileData;
       if (file.bytes != null) {
-        fileData = file.bytes!;
+        fileData = file.bytes;
       } else if (!kIsWeb && file.path != null) {
         fileData = await File(file.path!).readAsBytes();
       } else {
@@ -466,7 +489,16 @@ class WhatsAppRepository {
           if (data is Map) {
             final errorData = data['error'];
             if (errorData is Map) {
-              message = errorData['message'];
+              final details = errorData['details'];
+              if (details != null) {
+                if (details is Map && details['error'] != null && details['error']['message'] != null) {
+                  message = details['error']['message'].toString();
+                } else {
+                  message = details.toString();
+                }
+              } else {
+                message = errorData['message']?.toString();
+              }
             } else if (errorData is String) {
               message = errorData;
             }
@@ -497,9 +529,9 @@ class WhatsAppRepository {
       if (kIsWeb) {
         final proxyUrl = '${AppConstants.baseUrl}/upload-media';
 
-        final List<int> fileData;
+        final dynamic fileData;
         if (file.bytes != null) {
-          fileData = file.bytes!;
+          fileData = file.bytes;
         } else {
           throw Exception(
             'File data is unavailable. Please ensure withData: true is set in the file picker.',
@@ -598,13 +630,21 @@ class WhatsAppRepository {
   }
 
   String _getMimeType(PlatformFile file) {
-    final ext = file.extension?.toLowerCase();
+    String? ext = file.extension?.toLowerCase();
+    if (ext == null || ext.isEmpty) {
+      final parts = file.name.split('.');
+      if (parts.length > 1) {
+        ext = parts.last.toLowerCase();
+      }
+    }
     switch (ext) {
       case 'jpg':
       case 'jpeg':
         return 'image/jpeg';
       case 'png':
         return 'image/png';
+      case 'webp':
+        return 'image/webp';
       case 'mp4':
         return 'video/mp4';
       case 'mov':
@@ -621,8 +661,30 @@ class WhatsAppRepository {
         return 'application/vnd.ms-excel';
       case 'xlsx':
         return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'csv':
+        return 'text/csv';
       case 'txt':
         return 'text/plain';
+      case 'rtf':
+        return 'application/rtf';
+      case 'zip':
+        return 'application/zip';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'aac':
+        return 'audio/aac';
+      case 'amr':
+        return 'audio/amr';
+      case 'ogg':
+        return 'audio/ogg';
+      case 'wav':
+        return 'audio/wav';
+      case 'm4a':
+        return 'audio/mp4';
       default:
         return 'application/octet-stream';
     }
