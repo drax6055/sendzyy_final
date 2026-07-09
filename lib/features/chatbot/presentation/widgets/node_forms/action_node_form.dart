@@ -405,44 +405,51 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: _mediaUrlController,
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      hintText: 'Upload $headerFormat or enter Meta Media ID / URL',
-                      isDense: true,
-                      suffixIcon: _mediaUrlController.text.isNotEmpty
-                          ? IconButton(
-                              icon: const Icon(Icons.clear),
-                              onPressed: () {
-                                setState(() {
-                                  _mediaUrlController.clear();
-                                  _uploadedFileName = null;
-                                });
-                                _notify();
-                              },
-                            )
-                          : null,
-                    ),
-                    onChanged: (_) => _notify(),
+                TextField(
+                  controller: _mediaUrlController,
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    hintText: 'Enter Meta Media ID or URL',
+                    isDense: true,
+                    suffixIcon: _mediaUrlController.text.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear, size: 18),
+                            onPressed: () {
+                              setState(() {
+                                _mediaUrlController.clear();
+                                _uploadedFileName = null;
+                              });
+                              _notify();
+                            },
+                          )
+                        : null,
                   ),
+                  onChanged: (_) => _notify(),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(height: 8),
                 _isUploading
-                    ? const SizedBox(
-                        height: 36,
-                        width: 36,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8.0),
+                          child: SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
                       )
-                    : ElevatedButton.icon(
-                        onPressed: () => _pickAndUploadMedia(headerFormat!),
-                        icon: const Icon(Icons.upload_file),
-                        label: const Text('Select File'),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    : SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _pickAndUploadMedia(headerFormat!),
+                          icon: const Icon(Icons.upload_file, size: 16),
+                          label: const Text('Select & Upload File'),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
                         ),
                       ),
               ],
