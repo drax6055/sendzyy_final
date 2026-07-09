@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/features/chatbot/data/models/flow_graph.dart';
+import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
 
 class ActionNodeForm extends StatefulWidget {
   final FlowNode node;
@@ -24,6 +26,8 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
   List<Map<String, dynamic>> _templates = [];
   String? _selectedTemplateName;
   bool _loadingTemplates = false;
+  bool _isUploading = false;
+  String? _uploadedFileName;
 
   static const _subTypes = ['assign_tag', 'send_template', 'end_session'];
 
@@ -160,6 +164,126 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
     });
   }
 
+  Future<void> _pickAndUploadMedia(String format) async {
+    FileType type = FileType.any;
+    if (format == 'IMAGE') type = FileType.image;
+    if (format == 'VIDEO') type = FileType.video;
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: type,
+        withData: true,
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final file = result.files.first;
+      
+      // Perform client-side validation
+      final validationError = _validateFile(file, format);
+      if (validationError != null) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Validation Error'),
+                ],
+              ),
+              content: Text(validationError),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('OK'),
+                ),
+              ],
+            ),
+          );
+        }
+        return;
+      }
+
+      setState(() => _isUploading = true);
+
+      final repo = getIt<WhatsAppRepository>();
+      final mediaId = await repo.uploadMedia(file);
+
+      if (mounted) {
+        setState(() {
+          _mediaUrlController.text = mediaId;
+          _uploadedFileName = file.name;
+          _isUploading = false;
+        });
+        _notify();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Uploaded "${file.name}" successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploading = false);
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red),
+                SizedBox(width: 8),
+                Text('Upload Failed'),
+              ],
+            ),
+            content: Text(e.toString().replaceAll('Exception:', '').trim()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Close'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  String? _validateFile(PlatformFile file, String format) {
+    final ext = file.extension?.toLowerCase() ?? '';
+    final sizeInBytes = file.size;
+
+    if (format == 'IMAGE') {
+      const allowed = ['jpg', 'jpeg', 'png', 'webp'];
+      if (!allowed.contains(ext)) {
+        return 'Unsupported image format ($ext). Allowed: JPG, JPEG, PNG, WEBP';
+      }
+      if (sizeInBytes > 5 * 1024 * 1024) {
+        return 'Image size must be less than 5 MB (Selected: ${(sizeInBytes / (1024 * 1024)).toStringAsFixed(2)} MB)';
+      }
+    } else if (format == 'VIDEO') {
+      const allowed = ['mp4', '3gp'];
+      if (!allowed.contains(ext)) {
+        return 'Unsupported video format ($ext). Allowed: MP4, 3GP';
+      }
+      if (sizeInBytes > 16 * 1024 * 1024) {
+        return 'Video size must be less than 16 MB (Selected: ${(sizeInBytes / (1024 * 1024)).toStringAsFixed(2)} MB)';
+      }
+    } else if (format == 'DOCUMENT') {
+      const allowed = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt'];
+      if (!allowed.contains(ext)) {
+        return 'Unsupported document format ($ext). Allowed: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT';
+      }
+      if (sizeInBytes > 100 * 1024 * 1024) {
+        return 'Document size must be less than 100 MB (Selected: ${(sizeInBytes / (1024 * 1024)).toStringAsFixed(2)} MB)';
+      }
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     _tagController.dispose();
@@ -281,15 +405,55 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            TextField(
-              controller: _mediaUrlController,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                hintText: 'Enter $headerFormat URL or Meta Media ID',
-                isDense: true,
-              ),
-              onChanged: (_) => _notify(),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _mediaUrlController,
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      hintText: 'Upload $headerFormat or enter Meta Media ID / URL',
+                      isDense: true,
+                      suffixIcon: _mediaUrlController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                setState(() {
+                                  _mediaUrlController.clear();
+                                  _uploadedFileName = null;
+                                });
+                                _notify();
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (_) => _notify(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _isUploading
+                    ? const SizedBox(
+                        height: 36,
+                        width: 36,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : ElevatedButton.icon(
+                        onPressed: () => _pickAndUploadMedia(headerFormat!),
+                        icon: const Icon(Icons.upload_file),
+                        label: const Text('Select File'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        ),
+                      ),
+              ],
             ),
+            if (_uploadedFileName != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Uploaded File: $_uploadedFileName',
+                style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
+              ),
+            ],
           ],
 
           // Body Variables Fields
