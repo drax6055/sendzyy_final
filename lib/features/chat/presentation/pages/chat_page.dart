@@ -10,6 +10,7 @@ import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/chat/presentation/bloc/chat_bloc.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -767,7 +768,7 @@ class MessageRenderer extends StatelessWidget {
               children: [
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: _buildContent(isMe, messageType),
+                  child: _buildContent(context, isMe, messageType),
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -851,7 +852,7 @@ class MessageRenderer extends StatelessWidget {
     }
   }
 
-  Widget _buildContent(bool isMe, String? messageType) {
+  Widget _buildContent(BuildContext context, bool isMe, String? messageType) {
     final textColor = isMe ? Colors.white : AppTheme.secondaryColor;
     final mutedColor = isMe
         ? Colors.white.withValues(alpha: 0.7)
@@ -1014,6 +1015,112 @@ class MessageRenderer extends StatelessWidget {
             const SizedBox(width: 6),
             Text('Reaction', style: TextStyle(fontSize: 12, color: mutedColor)),
           ],
+        );
+
+      case 'contacts':
+        final contactText = msg['text'] as String? ?? '';
+        final parts = contactText.split('|');
+        final name = parts[0].isNotEmpty ? parts[0] : 'Contact';
+        final phone = parts.length > 1 ? parts[1] : '';
+
+        return Container(
+          width: 220,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: isMe ? Colors.teal.shade800.withOpacity(0.3) : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isMe ? Colors.teal.shade700.withOpacity(0.5) : Colors.grey.shade300,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 18,
+                    backgroundColor: AppTheme.primaryColor.withOpacity(0.15),
+                    child: Icon(
+                      Icons.person,
+                      color: AppTheme.primaryColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (phone.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            phone,
+                            style: TextStyle(
+                              color: mutedColor,
+                              fontSize: 11,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (phone.isNotEmpty) ...[
+                const Divider(height: 16),
+                Align(
+                  alignment: Alignment.center,
+                  child: InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: phone));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Copied contact number "$phone" to clipboard.'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.copy,
+                            size: 12,
+                            color: isMe ? Colors.white : AppTheme.primaryColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Copy Phone',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isMe ? Colors.white : AppTheme.primaryColor,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
         );
 
       case 'unsupported':
