@@ -738,59 +738,98 @@ class MessageRenderer extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isMe = msg['isMe'] == true;
     final String? messageType = msg['messageType'] as String?;
+    final String? source = msg['source'] as String?;
+    final bool isChatbotMsg = source != null;
+    // Bot messages = isMe true from chatbot; Customer chatbot replies = isMe false with source set
+    final bool isBotSent = isChatbotMsg && isMe;
+
+    // Chatbot bot-sent messages use a distinct teal background to differentiate from tenant messages
+    final Color bubbleColor = isBotSent
+        ? const Color(0xFF00897B) // teal-700 for bot messages
+        : (isMe ? AppTheme.primaryColor : Colors.white);
+
+    Widget bubble = Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: bubbleColor,
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(16),
+          topRight: const Radius.circular(16),
+          bottomLeft: Radius.circular(isMe ? 16 : 0),
+          bottomRight: Radius.circular(isMe ? 0 : 16),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _buildContent(context, isMe, messageType, isBotSent: isBotSent),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                formatTime(msg),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isMe
+                      ? Colors.white.withValues(alpha: 0.7)
+                      : Colors.grey,
+                ),
+              ),
+              if (isMe) ...[
+                const SizedBox(width: 4),
+                _buildStatusIcon(context),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: IntrinsicWidth(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isMe ? AppTheme.primaryColor : Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(isMe ? 16 : 0),
-                bottomRight: Radius.circular(isMe ? 0 : 16),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: _buildContent(context, isMe, messageType),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      formatTime(msg),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isMe
-                            ? Colors.white.withValues(alpha: 0.7)
-                            : Colors.grey,
+          child: Column(
+            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              // 🤖 Bot label above chatbot messages
+              if (isChatbotMsg)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('🤖', style: TextStyle(fontSize: 11)),
+                      const SizedBox(width: 3),
+                      Text(
+                        isBotSent ? 'Chatbot' : 'Chatbot Reply',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isBotSent
+                              ? const Color(0xFF00897B)
+                              : Colors.deepPurple.shade400,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    if (isMe) ...[
-                      const SizedBox(width: 4),
-                      _buildStatusIcon(context),
                     ],
-                  ],
+                  ),
                 ),
-              ],
-            ),
+              bubble,
+              const SizedBox(height: 8),
+            ],
           ),
         ),
       ),
@@ -852,7 +891,7 @@ class MessageRenderer extends StatelessWidget {
     }
   }
 
-  Widget _buildContent(BuildContext context, bool isMe, String? messageType) {
+  Widget _buildContent(BuildContext context, bool isMe, String? messageType, {bool isBotSent = false}) {
     final textColor = isMe ? Colors.white : AppTheme.secondaryColor;
     final mutedColor = isMe
         ? Colors.white.withValues(alpha: 0.7)
@@ -965,23 +1004,39 @@ class MessageRenderer extends StatelessWidget {
 
       case 'interactive':
         final payload = msg['interactivePayload'] as Map<String, dynamic>?;
-        final title = payload?['title'] as String? ?? '';
+        final interactiveType = payload?['type'] as String? ?? '';
+
+        // Bot-sent interactive: outbound quick-reply buttons or list message from chatbot
+        if (isBotSent && payload != null) {
+          if (interactiveType == 'button') {
+            return _buildBotButtonOptions(payload, textColor, mutedColor);
+          } else if (interactiveType == 'list') {
+            return _buildBotListOptions(payload, textColor, mutedColor);
+          }
+        }
+
+        // Customer interactive reply (button_reply / list_reply)
+        final replyTitle = payload?['title'] as String? ?? '';
+        final replyIcon = interactiveType == 'list_reply'
+            ? Icons.list_alt_outlined
+            : Icons.touch_app_outlined;
+        final replyLabel = interactiveType == 'list_reply' ? 'List Reply' : 'Button Reply';
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.reply, size: 14, color: mutedColor),
+                Icon(replyIcon, size: 14, color: mutedColor),
                 const SizedBox(width: 4),
                 Text(
-                  'Reply',
+                  replyLabel,
                   style: TextStyle(fontSize: 11, color: mutedColor),
                 ),
               ],
             ),
             const SizedBox(height: 4),
-            Text(title, style: TextStyle(color: textColor)),
+            Text(replyTitle, style: TextStyle(color: textColor)),
           ],
         );
 
@@ -1153,7 +1208,151 @@ class MessageRenderer extends StatelessWidget {
       ],
     );
   }
-}
+
+  /// Renders a bot-sent quick-reply message: shows the question text + button option pills.
+  Widget _buildBotButtonOptions(
+    Map<String, dynamic> payload,
+    Color textColor,
+    Color mutedColor,
+  ) {
+    final questionText = payload['title'] as String? ?? '';
+    final buttons =
+        (payload['buttons'] as List<dynamic>? ?? []).map((b) {
+      return (b as Map<String, dynamic>)['label'] as String? ?? '';
+    }).where((l) => l.isNotEmpty).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (questionText.isNotEmpty) ...[
+          Text(questionText, style: TextStyle(color: textColor)),
+          const SizedBox(height: 8),
+        ],
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: buttons.map((label) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  /// Renders a bot-sent list message: shows the question text + list item rows.
+  Widget _buildBotListOptions(
+    Map<String, dynamic> payload,
+    Color textColor,
+    Color mutedColor,
+  ) {
+    final questionText = payload['title'] as String? ?? '';
+    final buttonLabel = payload['buttonLabel'] as String? ?? 'View Options';
+    final items = (payload['items'] as List<dynamic>? ?? []).map((item) {
+      final m = item as Map<String, dynamic>;
+      return {'title': m['title'] as String? ?? '', 'description': m['description'] as String? ?? ''};
+    }).where((i) => (i['title'] as String).isNotEmpty).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (questionText.isNotEmpty) ...[
+          Text(questionText, style: TextStyle(color: textColor)),
+          const SizedBox(height: 8),
+        ],
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.list_alt, size: 13, color: Colors.white70),
+                    const SizedBox(width: 4),
+                    Text(
+                      buttonLabel,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Colors.white24),
+              ...items.asMap().entries.map((entry) {
+                final i = entry.key;
+                final item = entry.value;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['title']!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if ((item['description'] as String).isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              item['description']!,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (i < items.length - 1)
+                      const Divider(height: 1, color: Colors.white12),
+                  ],
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+} // end MessageRenderer
 
 /// Loads a customer-sent image via the backend media proxy.
 /// Tapping opens a full-screen preview dialog.
