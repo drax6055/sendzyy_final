@@ -30,6 +30,40 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
   late final ScrollController _scrollController;
   Timer? _searchDebounce;
 
+  // Selection states
+  bool _allTotalSelected = false;
+  bool _isSelectingAll = false;
+
+  Future<void> _selectAllTotalClients() async {
+    setState(() {
+      _isSelectingAll = true;
+    });
+    try {
+      final repo = getIt<ClientRepository>();
+      final paginatedResult = await repo.getClients(
+        page: 1,
+        limit: _totalClients,
+        search: _searchController.text.trim(),
+      );
+      setState(() {
+        for (final c in paginatedResult.clients) {
+          if (!widget.existingNumbers.contains(c.mobileNumber)) {
+            _selectedClients[c.mobileNumber] = c;
+          }
+        }
+        _allTotalSelected = true;
+        _isSelectingAll = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isSelectingAll = false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error selecting all clients: $e')),
+        );
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -74,6 +108,7 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
       setState(() {
         if (page == 1) {
           _clients.clear();
+          _allTotalSelected = false;
         }
         _clients.addAll(paginatedResult.clients);
         _currentPage = paginatedResult.currentPage;
@@ -231,13 +266,16 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                       _selectedClients.containsKey(c.mobileNumber) ||
                                       widget.existingNumbers.contains(c.mobileNumber));
                                   if (allSelected) {
-                                    for (final c in _clients) {
-                                      _selectedClients.remove(c.mobileNumber);
-                                    }
+                                    _selectedClients.clear();
+                                    _allTotalSelected = false;
                                   } else {
-                                    for (final c in _clients) {
-                                      if (!widget.existingNumbers.contains(c.mobileNumber)) {
-                                        _selectedClients[c.mobileNumber] = c;
+                                    if (_totalClients > _clients.length) {
+                                      _selectAllTotalClients();
+                                    } else {
+                                      for (final c in _clients) {
+                                        if (!widget.existingNumbers.contains(c.mobileNumber)) {
+                                          _selectedClients[c.mobileNumber] = c;
+                                        }
                                       }
                                     }
                                   }
@@ -282,10 +320,21 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              '$_totalClients results',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                            ),
+                            if (_isSelectingAll) ...[
+                              const SizedBox(
+                                width: 12,
+                                height: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                                ),
+                              ),
+                            ] else ...[
+                              Text(
+                                '$_totalClients results',
+                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -326,6 +375,7 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                           _selectedClients[client.mobileNumber] = client;
                                         } else {
                                           _selectedClients.remove(client.mobileNumber);
+                                          _allTotalSelected = false;
                                         }
                                       });
                                     },

@@ -400,66 +400,92 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
           // Header Media Field (if template has IMAGE/VIDEO/DOCUMENT header format)
           if (headerFormat != null) ...[
             const SizedBox(height: 12),
-            Text(
-              'Header Media ($headerFormat)',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextField(
-                  controller: _mediaUrlController,
-                  decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    hintText: 'Enter Meta Media ID or URL',
-                    isDense: true,
-                    suffixIcon: _mediaUrlController.text.isNotEmpty
-                        ? IconButton(
-                            icon: const Icon(Icons.clear, size: 18),
-                            onPressed: () {
-                              setState(() {
-                                _mediaUrlController.clear();
-                                _uploadedFileName = null;
-                              });
-                              _notify();
-                            },
-                          )
-                        : null,
-                  ),
-                  onChanged: (_) => _notify(),
+            if (headerFormat == 'VIDEO') ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  border: Border.all(color: Colors.red.shade200),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(height: 8),
-                _isUploading
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8.0),
-                          child: SizedBox(
-                            height: 24,
-                            width: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      )
-                    : SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () => _pickAndUploadMedia(headerFormat!),
-                          icon: const Icon(Icons.upload_file, size: 16),
-                          label: const Text('Select & Upload File'),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline, color: Colors.red.shade700),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Video templates are not supported in Chatbot. Please choose an Image or Document template.',
+                        style: TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold),
                       ),
-              ],
-            ),
-            if (_uploadedFileName != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Uploaded File: $_uploadedFileName',
-                style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
               ),
+            ] else ...[
+              Text(
+                'Header Media ($headerFormat)',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _mediaUrlController,
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      hintText: 'Media ID will be filled automatically',
+                      fillColor: Colors.grey.shade100,
+                      filled: true,
+                      isDense: true,
+                      suffixIcon: _mediaUrlController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18),
+                              onPressed: () {
+                                setState(() {
+                                  _mediaUrlController.clear();
+                                  _uploadedFileName = null;
+                                });
+                                _notify();
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (_) => _notify(),
+                  ),
+                  const SizedBox(height: 8),
+                  _isUploading
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
+                            child: SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        )
+                      : SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => _pickAndUploadMedia(headerFormat!),
+                            icon: const Icon(Icons.upload_file, size: 16),
+                            label: const Text('Select & Upload File'),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                            ),
+                          ),
+                        ),
+                ],
+              ),
+              if (_uploadedFileName != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Uploaded File: $_uploadedFileName',
+                  style: const TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold),
+                ),
+              ],
             ],
           ],
 

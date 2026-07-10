@@ -42,6 +42,37 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
   String? _clientsLoadError;
   late final ScrollController _clientScrollController;
   Timer? _searchDebounce;
+  bool _isSelectingAll = false;
+
+  Future<void> _selectAllTotalClients() async {
+    setState(() {
+      _isSelectingAll = true;
+    });
+    try {
+      final repo = getIt<ClientRepository>();
+      final paginatedResult = await repo.getClients(
+        page: 1,
+        limit: _totalClients,
+        search: _searchQuery.trim(),
+      );
+      setState(() {
+        for (final c in paginatedResult.clients) {
+          _selectedClientIds.add(c.id);
+        }
+        _isSelectingAll = false;
+        if (_clientsError != null && _selectedClientIds.isNotEmpty) {
+          _clientsError = null;
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isSelectingAll = false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error selecting all clients: $e')),
+        );
+      });
+    }
+  }
 
   bool get _isEditMode => widget.group != null;
 
@@ -367,7 +398,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                       color: AppTheme.secondaryColor,
                     ),
                   ),
-                  if (_isResolving) ...[
+                  if (_isResolving || _isSelectingAll) ...[
                     const SizedBox(width: 8),
                     const SizedBox(
                       width: 12,
@@ -475,22 +506,26 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
         CheckboxListTile(
           dense: true,
           value: allFilteredSelected,
-          onChanged: (checked) {
-            setState(() {
-              if (checked == true) {
-                for (final client in _clients) {
-                  _selectedClientIds.add(client.id);
-                }
-              } else {
-                for (final client in _clients) {
-                  _selectedClientIds.remove(client.id);
-                }
-              }
-              if (_clientsError != null && _selectedClientIds.isNotEmpty) {
-                _clientsError = null;
-              }
-            });
-          },
+          onChanged: _isSelectingAll
+              ? null
+              : (checked) {
+                  setState(() {
+                    if (checked == true) {
+                      if (_totalClients > _clients.length) {
+                        _selectAllTotalClients();
+                      } else {
+                        for (final client in _clients) {
+                          _selectedClientIds.add(client.id);
+                        }
+                      }
+                    } else {
+                      _selectedClientIds.clear();
+                    }
+                    if (_clientsError != null && _selectedClientIds.isNotEmpty) {
+                      _clientsError = null;
+                    }
+                  });
+                },
           title: const Text(
             'Select All',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
