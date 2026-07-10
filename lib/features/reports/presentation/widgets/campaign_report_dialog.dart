@@ -98,6 +98,31 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
     }
   }
 
+  Future<void> _downloadPhaseExcel() async {
+    if (_currentPhaseReport == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please wait for report to load')),
+      );
+      return;
+    }
+
+    setState(() => _isDownloadingPhaseReport = true);
+    try {
+      await PdfUtils.generatePhaseReportExcel(
+        campaignTemplate: widget.campaign['template'] as String? ?? '-',
+        report: _currentPhaseReport!,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to generate Excel: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloadingPhaseReport = false);
+    }
+  }
+
   Color _recipientStatusColor(String status) {
     switch (status) {
       case 'read':
@@ -232,16 +257,45 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
                   )
-                : IconButton(
+                : PopupMenuButton<String>(
                     icon: const Icon(Icons.download_outlined, size: 20),
-                    tooltip: 'Download PDF',
-                    onPressed: _downloadPhasePdf,
+                    tooltip: 'Export Options',
+                    onSelected: (value) async {
+                      if (value == 'pdf') {
+                        _downloadPhasePdf();
+                      } else if (value == 'excel') {
+                        _downloadPhaseExcel();
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'pdf',
+                        child: Row(
+                          children: [
+                            Icon(Icons.picture_as_pdf, color: Colors.red, size: 18),
+                            SizedBox(width: 8),
+                            Text('Download PDF'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'excel',
+                        child: Row(
+                          children: [
+                            Icon(Icons.table_view, color: Colors.green, size: 18),
+                            SizedBox(width: 8),
+                            Text('Download Excel (CSV)'),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
           ] else ...[
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _recipientsFuture,
               builder: (context, snapshot) {
                 final recipients = snapshot.data ?? [];
+                final isLoaded = snapshot.connectionState == ConnectionState.done;
                 return _isDownloadingCampaignReport
                     ? const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 14),
@@ -251,33 +305,56 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                           child: CircularProgressIndicator(strokeWidth: 2),
                         ),
                       )
-                    : IconButton(
-                        tooltip: 'Download Excel',
-                        icon: const Icon(Icons.download_outlined),
-                        onPressed:
-                            snapshot.connectionState == ConnectionState.done
-                                ? () async {
-                                    setState(
-                                      () =>
-                                          _isDownloadingCampaignReport = true,
+                    : PopupMenuButton<String>(
+                        icon: const Icon(Icons.download_outlined, size: 20),
+                        tooltip: 'Export Options',
+                        onSelected: isLoaded
+                            ? (value) async {
+                                if (value == 'pdf') {
+                                  setState(() => _isDownloadingCampaignReport = true);
+                                  try {
+                                    await PdfUtils.generateCampaignDetailReport(
+                                      campaign: widget.campaign,
+                                      recipients: recipients,
                                     );
-                                    try {
-                                      await PdfUtils
-                                          .generateCampaignDetailExcel(
-                                        campaign: widget.campaign,
-                                        recipients: recipients,
-                                      );
-                                    } finally {
-                                      if (mounted) {
-                                        setState(
-                                          () =>
-                                              _isDownloadingCampaignReport =
-                                                  false,
-                                        );
-                                      }
-                                    }
+                                  } finally {
+                                    if (mounted) setState(() => _isDownloadingCampaignReport = false);
                                   }
-                                : null,
+                                } else if (value == 'excel') {
+                                  setState(() => _isDownloadingCampaignReport = true);
+                                  try {
+                                    await PdfUtils.generateCampaignDetailExcel(
+                                      campaign: widget.campaign,
+                                      recipients: recipients,
+                                    );
+                                  } finally {
+                                    if (mounted) setState(() => _isDownloadingCampaignReport = false);
+                                  }
+                                }
+                              }
+                            : null,
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(
+                            value: 'pdf',
+                            child: Row(
+                              children: [
+                                Icon(Icons.picture_as_pdf, color: Colors.red, size: 18),
+                                SizedBox(width: 8),
+                                Text('Download PDF'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem(
+                            value: 'excel',
+                            child: Row(
+                              children: [
+                                Icon(Icons.table_view, color: Colors.green, size: 18),
+                                SizedBox(width: 8),
+                                Text('Download Excel (CSV)'),
+                              ],
+                            ),
+                          ),
+                        ],
                       );
               },
             ),

@@ -486,6 +486,74 @@ class PdfUtils {
     );
   }
 
+  static Future<void> generatePhaseReportExcel({
+    required String campaignTemplate,
+    required Map<String, dynamic> report,
+  }) async {
+    final totalRecipients = (report['totalRecipients'] as num?)?.toInt() ?? 0;
+    final cumulativeSuccess = (report['cumulativeSuccess'] as num?)?.toInt() ?? 0;
+    final overallRate = (report['overallSuccessRate'] as num?)?.toDouble() ?? 0.0;
+    final campaignStatus = report['status'] as String? ?? 'initial';
+    final phases = List<Map<String, dynamic>>.from(report['phases'] ?? []);
+
+    final List<List<dynamic>> rows = [];
+    rows.add(['Phase Report - $campaignTemplate']);
+    rows.add(['Delivery breakdown by retry phase']);
+    rows.add([]); // Blank line
+
+    rows.add(['Summary']);
+    rows.add(['Metric', 'Value']);
+    rows.add(['Total', totalRecipients]);
+    rows.add(['Delivered', cumulativeSuccess]);
+    rows.add(['Success Rate', '${overallRate.toStringAsFixed(1)}%']);
+    rows.add(['Status', campaignStatus[0].toUpperCase() + campaignStatus.substring(1)]);
+    rows.add([]); // Blank line
+
+    rows.add(['Phase Breakdown']);
+    rows.add(['Phase', 'Status', 'Sent', 'Delivered', 'Failed', 'Success Rate', 'Executed At']);
+
+    for (final phase in phases) {
+      final phaseNum = (phase['phaseNumber'] as num?)?.toInt() ?? 0;
+      final status = phase['status'] as String? ?? 'completed';
+      final successCount = (phase['successCount'] as num?)?.toInt() ?? 0;
+      final failureCount = (phase['failureCount'] as num?)?.toInt() ?? 0;
+      final successRate = (phase['successRate'] as num?)?.toDouble() ?? 0.0;
+      final executedAt = phase['executedAt'] as String?;
+
+      String fmt(String? iso) {
+        if (iso == null) return '-';
+        try {
+          final dt = DateTime.parse(iso).toLocal();
+          return DateFormat('yyyy-MM-dd HH:mm:ss').format(dt);
+        } catch (_) {
+          return iso;
+        }
+      }
+
+      rows.add([
+        phaseNum == 1 ? 'Initial Send' : 'Retry Phase $phaseNum',
+        status[0].toUpperCase() + status.substring(1),
+        successCount,
+        successCount,
+        failureCount,
+        '${successRate.toStringAsFixed(1)}%',
+        fmt(executedAt),
+      ]);
+    }
+
+    final csvString = const ListToCsvConverter().convert(rows);
+    final bytes = utf8.encode(csvString);
+    final blob = html.Blob([bytes], 'text/csv');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+
+    final fileName = 'phase_report_${campaignTemplate}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
+
+    html.AnchorElement(href: url)
+      ..setAttribute('download', fileName)
+      ..click();
+    html.Url.revokeObjectUrl(url);
+  }
+
   static pw.Widget _buildPhaseSection(Map<String, dynamic> phase) {
     final phaseNum = (phase['phaseNumber'] as num?)?.toInt() ?? 0;
     final status = phase['status'] as String? ?? 'completed';
