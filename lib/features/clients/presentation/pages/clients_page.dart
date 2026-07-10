@@ -113,6 +113,7 @@ class _ClientsView extends StatefulWidget {
 class _ClientsViewState extends State<_ClientsView> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
+  final Set<String> _selectedClientIds = {};
 
   @override
   void dispose() {
@@ -122,6 +123,9 @@ class _ClientsViewState extends State<_ClientsView> {
   }
 
   void _changePage(BuildContext context, ClientsLoaded state, int targetPage, {int? newLimit}) {
+    setState(() {
+      _selectedClientIds.clear();
+    });
     final limit = newLimit ?? state.limit;
     if (state.searchQuery.isNotEmpty) {
       context.read<ClientsBloc>().add(SearchClients(state.searchQuery, page: targetPage, limit: limit));
@@ -179,7 +183,9 @@ class _ClientsViewState extends State<_ClientsView> {
                         _searchDebounce = Timer(const Duration(milliseconds: 500), () {
                           context.read<ClientsBloc>().add(SearchClients(val, page: 1, limit: 50));
                         });
-                        setState(() {});
+                        setState(() {
+                          _selectedClientIds.clear();
+                        });
                       },
 
                       decoration: InputDecoration(
@@ -203,7 +209,9 @@ class _ClientsViewState extends State<_ClientsView> {
                                   context.read<ClientsBloc>().add(
                                     SearchClients(''),
                                   );
-                                  setState(() {});
+                                  setState(() {
+                                    _selectedClientIds.clear();
+                                  });
                                 },
                               )
                             : Icon(
@@ -215,6 +223,33 @@ class _ClientsViewState extends State<_ClientsView> {
                     ),
                   ),
                 ),
+                if (_selectedClientIds.isNotEmpty) ...[
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      final bloc = context.read<ClientsBloc>();
+                      showDialog(
+                        context: context,
+                        builder: (_) => _DeleteSelectedClientsDialog(
+                          selectedCount: _selectedClientIds.length,
+                          onConfirm: () {
+                            bloc.add(DeleteClients(_selectedClientIds.toList()));
+                            setState(() {
+                              _selectedClientIds.clear();
+                            });
+                          },
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.delete_outline, color: Colors.white),
+                    label: Text('Delete Selected (${_selectedClientIds.length})'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(150, 45),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
                ElevatedButton.icon(
                         onPressed: () {
                            showDialog(
@@ -323,28 +358,67 @@ class _ClientsViewState extends State<_ClientsView> {
                                         headingRowColor: WidgetStateProperty.all(
                                           AppTheme.primaryColor.withValues(alpha: 0.05),
                                         ),
-                                        columns: const [
-                                          DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Company', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Venue', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Remark', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Added On', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
+                                        columns: [
+                                          DataColumn(
+                                            label: SizedBox(
+                                              width: 24,
+                                              child: Checkbox(
+                                                value: clients.isNotEmpty && clients.every((c) => _selectedClientIds.contains(c.id)),
+                                                onChanged: (val) {
+                                                  setState(() {
+                                                    if (val == true) {
+                                                      _selectedClientIds.addAll(clients.map((c) => c.id));
+                                                    } else {
+                                                      for (var c in clients) {
+                                                        _selectedClientIds.remove(c.id);
+                                                      }
+                                                    }
+                                                  });
+                                                },
+                                              ),
+                                            ),
+                                          ),
+                                          const DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('Company', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('Email', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('Venue', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('Remark', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('Added On', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          const DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
                                         ],
                                         rows: clients.map((client) {
-                                          return DataRow(cells: [
-                                            DataCell(Row(children: [
-                                              CircleAvatar(
-                                                radius: 16,
-                                                backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.1),
-                                                child: Text(client.name[0].toUpperCase(),
-                                                    style: const TextStyle(color: AppTheme.secondaryColor, fontSize: 12)),
+                                          final isSelected = _selectedClientIds.contains(client.id);
+                                          return DataRow(
+                                            selected: isSelected,
+                                            cells: [
+                                              DataCell(
+                                                SizedBox(
+                                                  width: 24,
+                                                  child: Checkbox(
+                                                    value: isSelected,
+                                                    onChanged: (val) {
+                                                      setState(() {
+                                                        if (val == true) {
+                                                          _selectedClientIds.add(client.id);
+                                                        } else {
+                                                          _selectedClientIds.remove(client.id);
+                                                        }
+                                                      });
+                                                    },
+                                                  ),
+                                                ),
                                               ),
-                                              const SizedBox(width: 12),
-                                              Text(client.name),
-                                            ])),
+                                              DataCell(Row(children: [
+                                                CircleAvatar(
+                                                  radius: 16,
+                                                  backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.1),
+                                                  child: Text(client.name[0].toUpperCase(),
+                                                      style: const TextStyle(color: AppTheme.secondaryColor, fontSize: 12)),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Text(client.name),
+                                              ])),
                                             DataCell(Text(client.mobileNumber)),
                                             DataCell(Text(client.companyName ?? '-')),
                                             DataCell(Text(client.emailId ?? '-')),
@@ -610,6 +684,97 @@ class _DeleteClientDialog extends StatelessWidget {
                     ),
                   ),
                 ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      onConfirm();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text('Delete'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DeleteSelectedClientsDialog extends StatelessWidget {
+  final int selectedCount;
+  final VoidCallback onConfirm;
+
+  const _DeleteSelectedClientsDialog({
+    required this.selectedCount,
+    required this.onConfirm,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 400,
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Delete Selected Clients',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.redAccent,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Are you sure you want to delete $selectedCount selected clients?',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'This action cannot be undone and will permanently delete all selected clients.',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+            ),
+            const SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close, size: 16),
+                    label: const Text('Cancel'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor,
+                      side: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.5)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
