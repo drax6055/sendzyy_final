@@ -319,7 +319,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
           campaignName: 'Campaign ${DateTime.now().millisecondsSinceEpoch}',
           template: _selectedTemplate!,
           language: _selectedTemplateData?['language'] ?? 'en_US',
-          recipients: finalRecipients.map((r) => {'mobileNumber': r.mobileNumber, 'variables': r.variables}).toList(),
+          recipients: finalRecipients.map((r) => {'mobileNumber': r.mobileNumber, 'variables': r.variables.map((k, v) => MapEntry(k.toString(), v))}).toList(),
           scheduledAt: _scheduledAt!,
           mediaId: mediaId,
           mediaType: mediaType,
