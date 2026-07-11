@@ -774,8 +774,6 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
   }
 
   Widget _buildCampaignReportTab() {
-    final sent = widget.campaign['successCount'] as int? ?? 0;
-
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _recipientsFuture,
       builder: (context, snapshot) {
@@ -789,12 +787,29 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
 
         final all = snapshot.data ?? [];
 
-        int delivered = 0, read = 0, failed = 0;
-        for (final r in all) {
-          final s = r['status'] as String? ?? 'sent';
-          if (s == 'delivered') delivered++;
-          if (s == 'read') read++;
-          if (s == 'failed') failed++;
+        // Compute counts directly from the recipients list so chips
+        // always match the actual rows displayed below.
+        // Fall back to campaign-doc totals only when recipient data is absent.
+        final int sentCount;
+        final int deliveredCount;
+        final int readCount;
+        final int failedCount;
+
+        if (all.isEmpty) {
+          // No recipient documents yet — fall back to campaign-level fields
+          sentCount     = (widget.campaign['totalCount'] as num? ?? 0).toInt();
+          deliveredCount = ((widget.campaign['deliveredCount'] as num? ?? 0).toInt()).clamp(0, 9999999);
+          readCount     = (widget.campaign['readCount'] as num? ?? 0).toInt();
+          failedCount   = (widget.campaign['failureCount'] as num? ?? 0).toInt();
+        } else {
+          // Count directly from the loaded recipient documents
+          sentCount     = all.length;
+          deliveredCount = all.where((r) {
+            final s = r['status'] as String? ?? '';
+            return s == 'delivered' || s == 'read';
+          }).length;
+          readCount     = all.where((r) => (r['status'] as String? ?? '') == 'read').length;
+          failedCount   = all.where((r) => (r['status'] as String? ?? '') == 'failed').length;
         }
 
         return Column(
@@ -804,13 +819,13 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
               child: Row(
                 children: [
-                  _statChip('Sent', sent, Colors.blue),
+                  _statChip('Sent', sentCount, Colors.blue),
                   const SizedBox(width: 8),
-                  _statChip('Delivered', delivered, Colors.green),
+                  _statChip('Delivered', deliveredCount, Colors.green),
                   const SizedBox(width: 8),
-                  _statChip('Read', read, Colors.orange),
+                  _statChip('Read', readCount, Colors.orange),
                   const SizedBox(width: 8),
-                  _statChip('Failed', failed, Colors.red),
+                  _statChip('Failed', failedCount, Colors.red),
                 ],
               ),
             ),

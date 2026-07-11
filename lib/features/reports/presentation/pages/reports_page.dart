@@ -170,7 +170,7 @@ class _ReportsPageState extends State<ReportsPage> {
     // Compute stats from filtered campaigns
     int sent = 0, delivered = 0, read = 0, failed = 0;
     for (final c in campaigns) {
-      sent += (c['successCount'] as num? ?? 0).toInt();
+      sent += (c['totalCount'] as num? ?? 0).toInt();
       delivered += (c['deliveredCount'] as num? ?? 0).toInt();
       read += (c['readCount'] as num? ?? 0).toInt();
       failed += (c['failureCount'] as num? ?? 0).toInt();
@@ -276,13 +276,13 @@ class _ReportsPageState extends State<ReportsPage> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildMiniStat('Sent', '${campaign['successCount'] ?? 0}', Colors.blue),
+                _buildMiniStat('Sent', '${campaign['totalCount'] ?? 0}', Colors.blue),
                 const SizedBox(width: 12),
-                _buildMiniStat('Delivered', '${campaign['deliveredCount'] ?? 0}', Colors.green),
+                _buildMiniStat('Delivered', '${((campaign['deliveredCount'] as num? ?? 0).toInt()).clamp(0, 9999999)}', Colors.green),
                 const SizedBox(width: 12),
                 _buildMiniStat('Read', '${campaign['readCount'] ?? 0}', Colors.orange),
                 const SizedBox(width: 12),
-                _buildMiniStat('Failed', '${campaign['failureCount']}', Colors.red),
+                _buildMiniStat('Failed', '${campaign['failureCount'] ?? 0}', Colors.red),
                 const SizedBox(width: 12),
                 IconButton(
                   tooltip: 'View Report',

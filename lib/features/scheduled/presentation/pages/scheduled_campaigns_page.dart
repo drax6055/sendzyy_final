@@ -297,7 +297,9 @@ class _CampaignCard extends StatelessWidget {
                     if (scheduledAt != null)
                       _InfoChip(icon: Icons.calendar_today_outlined, label: _formatDate(scheduledAt)),
                     if (status == 'completed') ...[
-                      _InfoChip(icon: Icons.check_circle_outline, label: '${data['successCount'] ?? 0} sent', color: Colors.green),
+                      _InfoChip(icon: Icons.send, label: '${data['totalCount'] ?? recipientCount} sent', color: Colors.blue),
+                      _InfoChip(icon: Icons.done_all, label: '${data['deliveredCount'] ?? 0} delivered', color: Colors.green),
+                      _InfoChip(icon: Icons.remove_red_eye, label: '${data['readCount'] ?? 0} read', color: Colors.orange),
                       _InfoChip(icon: Icons.cancel_outlined, label: '${data['failureCount'] ?? 0} failed', color: Colors.red),
                     ],
                   ],

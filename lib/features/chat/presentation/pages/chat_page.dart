@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/chat/presentation/bloc/chat_bloc.dart';
@@ -25,6 +27,53 @@ class _ChatPageState extends State<ChatPage> {
   final ScrollController _messagesScrollController = ScrollController();
   String _searchQuery = '';
 
+  /// 'all' or 'unread'
+  String _selectedFilter = 'all';
+
+  /// Mapping of contactId -> ISO8601 string of when it was last read
+  final Map<String, String> _readContactTimestamps = {};
+  SharedPreferences? _prefs;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReadContactTimestamps();
+  }
+
+  Future<void> _loadReadContactTimestamps() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _prefs = prefs;
+      final tenantId = prefs.getString('tenant_id') ?? 'default';
+      final String? jsonStr = prefs.getString('read_contacts_timestamps_$tenantId');
+      if (jsonStr != null) {
+        final Map<String, dynamic> decoded = jsonDecode(jsonStr);
+        setState(() {
+          decoded.forEach((key, value) {
+            _readContactTimestamps[key] = value.toString();
+          });
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading read contact timestamps: $e');
+    }
+  }
+
+  Future<void> _saveReadContactTimestamps() async {
+    try {
+      if (_prefs == null) {
+        _prefs = await SharedPreferences.getInstance();
+      }
+      final tenantId = _prefs!.getString('tenant_id') ?? 'default';
+      await _prefs!.setString(
+        'read_contacts_timestamps_$tenantId',
+        jsonEncode(_readContactTimestamps),
+      );
+    } catch (e) {
+      debugPrint('Error saving read contact timestamps: $e');
+    }
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_messagesScrollController.hasClients) {
@@ -35,6 +84,17 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     });
+  }
+
+  /// Mark a conversation as read (called when tapped or loaded active).
+  void _markAsRead(String contactId) {
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+    if (_readContactTimestamps[contactId] != nowIso) {
+      setState(() {
+        _readContactTimestamps[contactId] = nowIso;
+      });
+      _saveReadContactTimestamps();
+    }
   }
 
   @override
@@ -51,6 +111,9 @@ class _ChatPageState extends State<ChatPage> {
       listener: (context, state) {
         if (state is ChatLoaded) {
           _scrollToBottom();
+          if (state.selectedContactId != null) {
+            _markAsRead(state.selectedContactId!);
+          }
         }
       },
       builder: (context, state) {
@@ -85,7 +148,8 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildConversationSidebar(ChatLoaded state) {
-    final filtered = _searchQuery.isEmpty
+    // Step 1: apply search filter
+    final searchFiltered = _searchQuery.isEmpty
         ? state.conversations
         : state.conversations.where((c) {
             final name = (c['name'] as String? ?? '').toLowerCase();
@@ -93,6 +157,55 @@ class _ChatPageState extends State<ChatPage> {
             final q = _searchQuery.toLowerCase();
             return name.contains(q) || number.contains(q);
           }).toList();
+
+    // Step 2: apply All / Unread chip filter
+    final filtered = _selectedFilter == 'unread'
+        ? searchFiltered.where((c) {
+            final contactId = c['id'] as String? ?? '';
+            
+            // Get last active time of the conversation
+            final lastActive = c['lastActive'] is DateTime
+                ? (c['lastActive'] as DateTime).toLocal()
+                : (DateTime.tryParse(c['lastActive']?.toString() ?? '') ??
+                        DateTime.now())
+                    .toLocal();
+
+            // Check if it was read after the last activity
+            final lastReadStr = _readContactTimestamps[contactId];
+            if (lastReadStr != null) {
+              final lastRead = DateTime.tryParse(lastReadStr)?.toLocal();
+              if (lastRead != null && !lastRead.isBefore(lastActive)) {
+                return false;
+              }
+            }
+
+            // 24h window must still be open
+            return DateTime.now().difference(lastActive).inHours < 24;
+          }).toList()
+        : searchFiltered;
+
+    // Count for badge on Unread chip
+    final unreadCount = state.conversations.where((c) {
+      final contactId = c['id'] as String? ?? '';
+      
+      // Get last active time of the conversation
+      final lastActive = c['lastActive'] is DateTime
+          ? (c['lastActive'] as DateTime).toLocal()
+          : (DateTime.tryParse(c['lastActive']?.toString() ?? '') ??
+                  DateTime.now())
+              .toLocal();
+
+      // Check if it was read after the last activity
+      final lastReadStr = _readContactTimestamps[contactId];
+      if (lastReadStr != null) {
+        final lastRead = DateTime.tryParse(lastReadStr)?.toLocal();
+        if (lastRead != null && !lastRead.isBefore(lastActive)) {
+          return false;
+        }
+      }
+
+      return DateTime.now().difference(lastActive).inHours < 24;
+    }).length;
 
     return Container(
       width: 350,
@@ -150,15 +263,51 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
           ),
+          // ── All / Unread Chip Filters ─────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Row(
+              children: [
+                _buildFilterChip(
+                  label: 'All',
+                  isSelected: _selectedFilter == 'all',
+                  badgeCount: null,
+                  onTap: () => setState(() => _selectedFilter = 'all'),
+                ),
+                const SizedBox(width: 8),
+                _buildFilterChip(
+                  label: 'Unread',
+                  isSelected: _selectedFilter == 'unread',
+                  badgeCount: unreadCount,
+                  onTap: () => setState(() => _selectedFilter = 'unread'),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: filtered.isEmpty
                 ? Center(
-                    child: Text(
-                      'No conversations found',
-                      style: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 13,
-                      ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _selectedFilter == 'unread'
+                              ? Icons.mark_chat_read_outlined
+                              : Icons.search_off,
+                          size: 40,
+                          color: Colors.grey.shade300,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _selectedFilter == 'unread'
+                              ? 'All caught up!'
+                              : 'No conversations found',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
                   )
                 : ListView.builder(
@@ -178,9 +327,12 @@ class _ChatPageState extends State<ChatPage> {
                           DateTime.now().difference(lastActive).inHours < 24;
 
                       return ListTile(
-                        onTap: () => context.read<ChatBloc>().add(
-                          SelectConversation(conv['id']),
-                        ),
+                        onTap: () {
+                          _markAsRead(conv['id'] as String);
+                          context.read<ChatBloc>().add(
+                            SelectConversation(conv['id']),
+                          );
+                        },
                         selected: isSelected,
                         selectedTileColor: AppTheme.primaryColor.withOpacity(
                           0.05,
@@ -260,6 +412,63 @@ class _ChatPageState extends State<ChatPage> {
             style: TextStyle(color: Colors.grey.shade400, fontSize: 18),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required int? badgeCount,
+    required VoidCallback onTap,
+  }) {
+    final color = AppTheme.primaryColor;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.shade300,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+              ),
+            ),
+            if (badgeCount != null && badgeCount > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withOpacity(0.3)
+                      : color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$badgeCount',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.white : color,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
