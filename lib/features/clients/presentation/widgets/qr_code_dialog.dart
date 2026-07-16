@@ -188,7 +188,7 @@ class _QrCodeDialogState extends State<QrCodeDialog> {
                     color: AppTheme.primaryColor.withOpacity(0.5), width: 1),
               ),
               child: const Text(
-                'Powered by iFloraBuzz',
+                'Powered by Sendzyy',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 10,

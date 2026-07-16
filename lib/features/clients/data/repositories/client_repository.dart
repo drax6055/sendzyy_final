@@ -50,6 +50,40 @@ class ClientRepository {
     }
   }
 
+  Future<void> deleteClients(List<String> ids) async {
+    try {
+      final response = await _dio.post(
+        '/api/clients/bulk-delete',
+        data: {'ids': ids},
+      );
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        throw Exception('Failed to delete clients');
+      }
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        try {
+          await Future.wait(ids.map((id) => deleteClient(id)));
+          return;
+        } catch (err) {
+          throw Exception('Failed to delete some clients: $err');
+        }
+      }
+      if (e.response != null && e.response?.data != null) {
+        final errorData = e.response?.data;
+        if (errorData is Map<String, dynamic> && errorData.containsKey('error')) {
+          throw Exception(errorData['error']);
+        }
+      }
+      throw Exception(e.message ?? 'Failed to delete clients');
+    } catch (e) {
+      try {
+        await Future.wait(ids.map((id) => deleteClient(id)));
+      } catch (err) {
+        throw Exception(e.toString());
+      }
+    }
+  }
+
   Future<ClientModel> createClient(ClientModel client) async {    try {
       final response = await _dio.post(
         '/api/clients',

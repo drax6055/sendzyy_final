@@ -29,6 +29,11 @@ class DeleteClient extends ClientsEvent {
   DeleteClient(this.id);
 }
 
+class DeleteClients extends ClientsEvent {
+  final List<String> ids;
+  DeleteClients(this.ids);
+}
+
 class BulkImportClients extends ClientsEvent {
   final List<ClientModel> clients;
   BulkImportClients(this.clients);
@@ -73,6 +78,7 @@ class ClientsBloc extends Bloc<ClientsEvent, ClientsState> {
     on<SearchClients>(_onSearchClients);
     on<CreateClient>(_onCreateClient);
     on<DeleteClient>(_onDeleteClient);
+    on<DeleteClients>(_onDeleteClients);
     on<BulkImportClients>(_onBulkImportClients);
   }
 
@@ -128,6 +134,23 @@ class ClientsBloc extends Bloc<ClientsEvent, ClientsState> {
     final prev = state is ClientsLoaded ? state as ClientsLoaded : null;
     try {
       await _repository.deleteClient(event.id);
+      await _loadAll(
+        emit,
+        page: prev?.currentPage ?? 1,
+        limit: prev?.limit ?? 50,
+        search: prev?.searchQuery ?? '',
+      );
+    } catch (e) {
+      emit(ClientsError(e.toString().replaceAll('Exception: ', '')));
+      if (prev != null) emit(prev);
+    }
+  }
+
+  Future<void> _onDeleteClients(DeleteClients event, Emitter<ClientsState> emit) async {
+    final prev = state is ClientsLoaded ? state as ClientsLoaded : null;
+    emit(ClientsLoading());
+    try {
+      await _repository.deleteClients(event.ids);
       await _loadAll(
         emit,
         page: prev?.currentPage ?? 1,

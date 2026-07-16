@@ -4,8 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/core/widgets/compact_date_range_picker.dart';
 import 'package:iFloraBuzz/features/reports/presentation/bloc/report_bloc.dart';
-import 'package:iFloraBuzz/features/reports/presentation/widgets/campaign_detail_dialog.dart';
-import 'package:iFloraBuzz/features/reports/presentation/widgets/phase_report_dialog.dart';
+import 'package:iFloraBuzz/features/reports/presentation/widgets/campaign_report_dialog.dart';
 import 'package:iFloraBuzz/features/reports/presentation/widgets/report_download_dialog.dart';
 
 class ReportsPage extends StatefulWidget {
@@ -285,31 +284,16 @@ class _ReportsPageState extends State<ReportsPage> {
                 const SizedBox(width: 12),
                 _buildMiniStat('Failed', '${campaign['failureCount']}', Colors.red),
                 const SizedBox(width: 12),
-                if (_hasRetryPhases(campaign))
-                  IconButton(
-                    tooltip: 'Phase Report',
-                    icon: const Icon(Icons.analytics_outlined,
-                        color: AppTheme.primaryColor),
-                    onPressed: () {
-                      showDialog(
-                        context: pageContext,
-                        builder: (_) => PhaseReportDialog(
-                          campaignId: campaign['id'] as String? ?? '',
-                          campaignTemplate:
-                              campaign['template'] as String? ?? '-',
-                        ),
-                      );
-                    },
-                  ),
-                const SizedBox(width: 4),
                 IconButton(
+                  tooltip: 'View Report',
+                  icon: const Icon(Icons.analytics_outlined,
+                      color: AppTheme.primaryColor),
                   onPressed: () {
                     showDialog(
                       context: pageContext,
-                      builder: (_) => CampaignDetailDialog(campaign: campaign),
+                      builder: (_) => CampaignReportDialog(campaign: campaign),
                     );
                   },
-                  icon: const Icon(Icons.info_outline),
                 ),
               ],
             ),
@@ -328,11 +312,6 @@ class _ReportsPageState extends State<ReportsPage> {
         Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
       ],
     );
-  }
-
-  bool _hasRetryPhases(Map<String, dynamic> campaign) {
-    final phases = campaign['retryConfig']?['phases'] as List?;
-    return phases != null && phases.isNotEmpty;
   }
 
   Widget _buildRetryStatusBadge(String? status, {bool hasPendingRetry = false}) {

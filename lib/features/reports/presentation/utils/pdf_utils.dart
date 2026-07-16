@@ -3,6 +3,10 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
+// ignore: avoid_web_libraries_in_flutter
+import 'dart:html' as html;
+import 'package:csv/csv.dart';
 
 class PdfUtils {
   static Future<void> generateCampaignReport({
@@ -311,6 +315,82 @@ class PdfUtils {
       onLayout: (_) async => pdf.save(),
       name: 'campaign_${template}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.pdf',
     );
+  }
+
+  static Future<void> generateCampaignDetailExcel({
+    required Map<String, dynamic> campaign,
+    required List<Map<String, dynamic>> recipients,
+  }) async {
+    final template = campaign['template'] ?? 'N/A';
+    final timestamp = campaign['timestamp'];
+    final dateStr = timestamp is String
+        ? DateFormat('yyyy-MM-dd HH:mm').format(DateTime.parse(timestamp).toLocal())
+        : 'N/A';
+
+    int sent = 0, delivered = 0, read = 0, failed = 0;
+    for (final r in recipients) {
+      final s = r['status'] as String? ?? 'sent';
+      if (s == 'delivered') delivered++;
+      else if (s == 'read') read++;
+      else if (s == 'failed') failed++;
+      else sent++;
+    } 
+
+    final List<List<dynamic>> rows = [];
+    
+    // Header information
+    rows.add(['Campaign Detail Report']);
+    rows.add(['Campaign Name', template]);
+    rows.add(['Sent Date', dateStr]);
+    rows.add([]); // Blank line
+    
+    // Summary table
+    rows.add(['Summary']);
+    rows.add(['Status', 'Count']);
+    rows.add(['Sent', sent]);
+    rows.add(['Delivered', delivered]);
+    rows.add(['Read', read]);
+    rows.add(['Failed', failed]);
+    rows.add([]); // Blank line
+
+    // Details header
+    rows.add(['Recipient Details']);
+    rows.add(['Phone Number', 'Status', 'Sent At', 'Delivered At', 'Read At', 'Failed At']);
+    
+    String fmt(String? iso) {
+      if (iso == null) return '-';
+      try {
+        final dt = DateTime.parse(iso).toLocal();
+        return DateFormat('yyyy-MM-dd HH:mm:ss').format(dt);
+      } catch (_) {
+        return iso;
+      }
+    }
+
+    // Add recipient details rows
+    for (final r in recipients) {
+      final status = r['status'] as String? ?? 'sent';
+      rows.add([
+        r['to'] ?? '-',
+        status[0].toUpperCase() + status.substring(1),
+        fmt(r['sentAt'] as String?),
+        fmt(r['deliveredAt'] as String?),
+        fmt(r['readAt'] as String?),
+        fmt(r['failedAt'] as String?),
+      ]);
+    }
+
+    final csvString = const ListToCsvConverter().convert(rows);
+    final bytes = utf8.encode(csvString);
+    final blob = html.Blob([bytes], 'text/csv');
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    
+    final fileName = 'campaign_${template}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
+    
+    html.AnchorElement(href: url)
+      ..setAttribute('download', fileName)
+      ..click();
+    html.Url.revokeObjectUrl(url);
   }
 
   static Future<void> generatePhaseReport({
