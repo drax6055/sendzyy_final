@@ -11,6 +11,7 @@ import 'package:iFloraBuzz/features/clients/presentation/widgets/create_client_d
 import 'package:iFloraBuzz/features/clients/presentation/widgets/create_group_dialog.dart';
 import 'package:iFloraBuzz/features/clients/presentation/widgets/groups_tab.dart';
 import 'package:iFloraBuzz/features/clients/presentation/widgets/qr_code_dialog.dart';
+import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
 
 class ClientsPage extends StatefulWidget {
   const ClientsPage({super.key});
@@ -114,6 +115,34 @@ class _ClientsViewState extends State<_ClientsView> {
   final TextEditingController _searchController = TextEditingController();
   Timer? _searchDebounce;
   final Set<String> _selectedClientIds = {};
+  bool _isSelectingAll = false;
+
+  Future<void> _selectAllTotalClients(ClientsLoaded state) async {
+    setState(() {
+      _isSelectingAll = true;
+    });
+    try {
+      final repo = getIt<ClientRepository>();
+      final paginatedResult = await repo.getClients(
+        page: 1,
+        limit: state.totalClients,
+        search: state.searchQuery,
+      );
+      setState(() {
+        _selectedClientIds.addAll(paginatedResult.clients.map((c) => c.id));
+        _isSelectingAll = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isSelectingAll = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to select all clients: $e')),
+        );
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -166,12 +195,25 @@ class _ClientsViewState extends State<_ClientsView> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Clients',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.secondaryColor,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Clients',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.secondaryColor,
+                      ),
+                    ),
+                    if (_isSelectingAll) ...[
+                      const SizedBox(width: 12),
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ],
+                  ],
                 ),
                 Expanded(
                   child: Padding(
@@ -363,17 +405,15 @@ class _ClientsViewState extends State<_ClientsView> {
                                             label: SizedBox(
                                               width: 24,
                                               child: Checkbox(
-                                                value: clients.isNotEmpty && clients.every((c) => _selectedClientIds.contains(c.id)),
-                                                onChanged: (val) {
-                                                  setState(() {
-                                                    if (val == true) {
-                                                      _selectedClientIds.addAll(clients.map((c) => c.id));
-                                                    } else {
-                                                      for (var c in clients) {
-                                                        _selectedClientIds.remove(c.id);
-                                                      }
-                                                    }
-                                                  });
+                                                value: clients.isNotEmpty && _selectedClientIds.length == state.totalClients,
+                                                onChanged: _isSelectingAll ? null : (val) {
+                                                  if (val == true) {
+                                                    _selectAllTotalClients(state);
+                                                  } else {
+                                                    setState(() {
+                                                      _selectedClientIds.clear();
+                                                    });
+                                                  }
                                                 },
                                               ),
                                             ),

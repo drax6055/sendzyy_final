@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:ui_web' as ui_web;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/chat/presentation/bloc/chat_bloc.dart';
@@ -25,6 +27,53 @@ class _ChatPageState extends State<ChatPage> {
   final ScrollController _messagesScrollController = ScrollController();
   String _searchQuery = '';
 
+  /// 'all' or 'unread'
+  String _selectedFilter = 'all';
+
+  /// Mapping of contactId -> ISO8601 string of when it was last read
+  final Map<String, String> _readContactTimestamps = {};
+  SharedPreferences? _prefs;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReadContactTimestamps();
+  }
+
+  Future<void> _loadReadContactTimestamps() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _prefs = prefs;
+      final tenantId = prefs.getString('tenant_id') ?? 'default';
+      final String? jsonStr = prefs.getString('read_contacts_timestamps_$tenantId');
+      if (jsonStr != null) {
+        final Map<String, dynamic> decoded = jsonDecode(jsonStr);
+        setState(() {
+          decoded.forEach((key, value) {
+            _readContactTimestamps[key] = value.toString();
+          });
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading read contact timestamps: $e');
+    }
+  }
+
+  Future<void> _saveReadContactTimestamps() async {
+    try {
+      if (_prefs == null) {
+        _prefs = await SharedPreferences.getInstance();
+      }
+      final tenantId = _prefs!.getString('tenant_id') ?? 'default';
+      await _prefs!.setString(
+        'read_contacts_timestamps_$tenantId',
+        jsonEncode(_readContactTimestamps),
+      );
+    } catch (e) {
+      debugPrint('Error saving read contact timestamps: $e');
+    }
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_messagesScrollController.hasClients) {
@@ -35,6 +84,17 @@ class _ChatPageState extends State<ChatPage> {
         );
       }
     });
+  }
+
+  /// Mark a conversation as read (called when tapped or loaded active).
+  void _markAsRead(String contactId) {
+    final nowIso = DateTime.now().toUtc().toIso8601String();
+    if (_readContactTimestamps[contactId] != nowIso) {
+      setState(() {
+        _readContactTimestamps[contactId] = nowIso;
+      });
+      _saveReadContactTimestamps();
+    }
   }
 
   @override
@@ -51,6 +111,9 @@ class _ChatPageState extends State<ChatPage> {
       listener: (context, state) {
         if (state is ChatLoaded) {
           _scrollToBottom();
+          if (state.selectedContactId != null) {
+            _markAsRead(state.selectedContactId!);
+          }
         }
       },
       builder: (context, state) {
@@ -85,7 +148,8 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildConversationSidebar(ChatLoaded state) {
-    final filtered = _searchQuery.isEmpty
+    // Step 1: apply search filter
+    final searchFiltered = _searchQuery.isEmpty
         ? state.conversations
         : state.conversations.where((c) {
             final name = (c['name'] as String? ?? '').toLowerCase();
@@ -93,6 +157,55 @@ class _ChatPageState extends State<ChatPage> {
             final q = _searchQuery.toLowerCase();
             return name.contains(q) || number.contains(q);
           }).toList();
+
+    // Step 2: apply All / Unread chip filter
+    final filtered = _selectedFilter == 'unread'
+        ? searchFiltered.where((c) {
+            final contactId = c['id'] as String? ?? '';
+            
+            // Get last active time of the conversation
+            final lastActive = c['lastActive'] is DateTime
+                ? (c['lastActive'] as DateTime).toLocal()
+                : (DateTime.tryParse(c['lastActive']?.toString() ?? '') ??
+                        DateTime.now())
+                    .toLocal();
+
+            // Check if it was read after the last activity
+            final lastReadStr = _readContactTimestamps[contactId];
+            if (lastReadStr != null) {
+              final lastRead = DateTime.tryParse(lastReadStr)?.toLocal();
+              if (lastRead != null && !lastRead.isBefore(lastActive)) {
+                return false;
+              }
+            }
+
+            // 24h window must still be open
+            return DateTime.now().difference(lastActive).inHours < 24;
+          }).toList()
+        : searchFiltered;
+
+    // Count for badge on Unread chip
+    final unreadCount = state.conversations.where((c) {
+      final contactId = c['id'] as String? ?? '';
+      
+      // Get last active time of the conversation
+      final lastActive = c['lastActive'] is DateTime
+          ? (c['lastActive'] as DateTime).toLocal()
+          : (DateTime.tryParse(c['lastActive']?.toString() ?? '') ??
+                  DateTime.now())
+              .toLocal();
+
+      // Check if it was read after the last activity
+      final lastReadStr = _readContactTimestamps[contactId];
+      if (lastReadStr != null) {
+        final lastRead = DateTime.tryParse(lastReadStr)?.toLocal();
+        if (lastRead != null && !lastRead.isBefore(lastActive)) {
+          return false;
+        }
+      }
+
+      return DateTime.now().difference(lastActive).inHours < 24;
+    }).length;
 
     return Container(
       width: 350,
@@ -150,15 +263,51 @@ class _ChatPageState extends State<ChatPage> {
               ),
             ),
           ),
+          // ── All / Unread Chip Filters ─────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            child: Row(
+              children: [
+                _buildFilterChip(
+                  label: 'All',
+                  isSelected: _selectedFilter == 'all',
+                  badgeCount: null,
+                  onTap: () => setState(() => _selectedFilter = 'all'),
+                ),
+                const SizedBox(width: 8),
+                _buildFilterChip(
+                  label: 'Unread',
+                  isSelected: _selectedFilter == 'unread',
+                  badgeCount: unreadCount,
+                  onTap: () => setState(() => _selectedFilter = 'unread'),
+                ),
+              ],
+            ),
+          ),
           Expanded(
             child: filtered.isEmpty
                 ? Center(
-                    child: Text(
-                      'No conversations found',
-                      style: TextStyle(
-                        color: Colors.grey.shade400,
-                        fontSize: 13,
-                      ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _selectedFilter == 'unread'
+                              ? Icons.mark_chat_read_outlined
+                              : Icons.search_off,
+                          size: 40,
+                          color: Colors.grey.shade300,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _selectedFilter == 'unread'
+                              ? 'All caught up!'
+                              : 'No conversations found',
+                          style: TextStyle(
+                            color: Colors.grey.shade400,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
                   )
                 : ListView.builder(
@@ -178,9 +327,12 @@ class _ChatPageState extends State<ChatPage> {
                           DateTime.now().difference(lastActive).inHours < 24;
 
                       return ListTile(
-                        onTap: () => context.read<ChatBloc>().add(
-                          SelectConversation(conv['id']),
-                        ),
+                        onTap: () {
+                          _markAsRead(conv['id'] as String);
+                          context.read<ChatBloc>().add(
+                            SelectConversation(conv['id']),
+                          );
+                        },
                         selected: isSelected,
                         selectedTileColor: AppTheme.primaryColor.withOpacity(
                           0.05,
@@ -260,6 +412,63 @@ class _ChatPageState extends State<ChatPage> {
             style: TextStyle(color: Colors.grey.shade400, fontSize: 18),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool isSelected,
+    required int? badgeCount,
+    required VoidCallback onTap,
+  }) {
+    final color = AppTheme.primaryColor;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        decoration: BoxDecoration(
+          color: isSelected ? color : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? color : Colors.grey.shade300,
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+              ),
+            ),
+            if (badgeCount != null && badgeCount > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? Colors.white.withOpacity(0.3)
+                      : color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$badgeCount',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? Colors.white : color,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -738,59 +947,98 @@ class MessageRenderer extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isMe = msg['isMe'] == true;
     final String? messageType = msg['messageType'] as String?;
+    final String? source = msg['source'] as String?;
+    final bool isChatbotMsg = source != null;
+    // Bot messages = isMe true from chatbot; Customer chatbot replies = isMe false with source set
+    final bool isBotSent = isChatbotMsg && isMe;
+
+    // Chatbot bot-sent messages use a distinct teal background to differentiate from tenant messages
+    final Color bubbleColor = isBotSent
+        ? const Color(0xFF00897B) // teal-700 for bot messages
+        : (isMe ? AppTheme.primaryColor : Colors.white);
+
+    Widget bubble = Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: bubbleColor,
+        borderRadius: BorderRadius.only(
+          topLeft: const Radius.circular(16),
+          topRight: const Radius.circular(16),
+          bottomLeft: Radius.circular(isMe ? 16 : 0),
+          bottomRight: Radius.circular(isMe ? 0 : 16),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _buildContent(context, isMe, messageType, isBotSent: isBotSent),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                formatTime(msg),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: isMe
+                      ? Colors.white.withValues(alpha: 0.7)
+                      : Colors.grey,
+                ),
+              ),
+              if (isMe) ...[
+                const SizedBox(width: 4),
+                _buildStatusIcon(context),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: IntrinsicWidth(
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isMe ? AppTheme.primaryColor : Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(isMe ? 16 : 0),
-                bottomRight: Radius.circular(isMe ? 0 : 16),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: _buildContent(context, isMe, messageType),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      formatTime(msg),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: isMe
-                            ? Colors.white.withValues(alpha: 0.7)
-                            : Colors.grey,
+          child: Column(
+            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+              // 🤖 Bot label above chatbot messages
+              if (isChatbotMsg)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 3),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('🤖', style: TextStyle(fontSize: 11)),
+                      const SizedBox(width: 3),
+                      Text(
+                        isBotSent ? 'Chatbot' : 'Chatbot Reply',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isBotSent
+                              ? const Color(0xFF00897B)
+                              : Colors.deepPurple.shade400,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    if (isMe) ...[
-                      const SizedBox(width: 4),
-                      _buildStatusIcon(context),
                     ],
-                  ],
+                  ),
                 ),
-              ],
-            ),
+              bubble,
+              const SizedBox(height: 8),
+            ],
           ),
         ),
       ),
@@ -852,7 +1100,7 @@ class MessageRenderer extends StatelessWidget {
     }
   }
 
-  Widget _buildContent(BuildContext context, bool isMe, String? messageType) {
+  Widget _buildContent(BuildContext context, bool isMe, String? messageType, {bool isBotSent = false}) {
     final textColor = isMe ? Colors.white : AppTheme.secondaryColor;
     final mutedColor = isMe
         ? Colors.white.withValues(alpha: 0.7)
@@ -965,23 +1213,39 @@ class MessageRenderer extends StatelessWidget {
 
       case 'interactive':
         final payload = msg['interactivePayload'] as Map<String, dynamic>?;
-        final title = payload?['title'] as String? ?? '';
+        final interactiveType = payload?['type'] as String? ?? '';
+
+        // Bot-sent interactive: outbound quick-reply buttons or list message from chatbot
+        if (isBotSent && payload != null) {
+          if (interactiveType == 'button') {
+            return _buildBotButtonOptions(payload, textColor, mutedColor);
+          } else if (interactiveType == 'list') {
+            return _buildBotListOptions(payload, textColor, mutedColor);
+          }
+        }
+
+        // Customer interactive reply (button_reply / list_reply)
+        final replyTitle = payload?['title'] as String? ?? '';
+        final replyIcon = interactiveType == 'list_reply'
+            ? Icons.list_alt_outlined
+            : Icons.touch_app_outlined;
+        final replyLabel = interactiveType == 'list_reply' ? 'List Reply' : 'Button Reply';
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.reply, size: 14, color: mutedColor),
+                Icon(replyIcon, size: 14, color: mutedColor),
                 const SizedBox(width: 4),
                 Text(
-                  'Reply',
+                  replyLabel,
                   style: TextStyle(fontSize: 11, color: mutedColor),
                 ),
               ],
             ),
             const SizedBox(height: 4),
-            Text(title, style: TextStyle(color: textColor)),
+            Text(replyTitle, style: TextStyle(color: textColor)),
           ],
         );
 
@@ -1153,7 +1417,151 @@ class MessageRenderer extends StatelessWidget {
       ],
     );
   }
-}
+
+  /// Renders a bot-sent quick-reply message: shows the question text + button option pills.
+  Widget _buildBotButtonOptions(
+    Map<String, dynamic> payload,
+    Color textColor,
+    Color mutedColor,
+  ) {
+    final questionText = payload['title'] as String? ?? '';
+    final buttons =
+        (payload['buttons'] as List<dynamic>? ?? []).map((b) {
+      return (b as Map<String, dynamic>)['label'] as String? ?? '';
+    }).where((l) => l.isNotEmpty).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (questionText.isNotEmpty) ...[
+          Text(questionText, style: TextStyle(color: textColor)),
+          const SizedBox(height: 8),
+        ],
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: buttons.map((label) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  width: 1,
+                ),
+              ),
+              child: Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  /// Renders a bot-sent list message: shows the question text + list item rows.
+  Widget _buildBotListOptions(
+    Map<String, dynamic> payload,
+    Color textColor,
+    Color mutedColor,
+  ) {
+    final questionText = payload['title'] as String? ?? '';
+    final buttonLabel = payload['buttonLabel'] as String? ?? 'View Options';
+    final items = (payload['items'] as List<dynamic>? ?? []).map((item) {
+      final m = item as Map<String, dynamic>;
+      return {'title': m['title'] as String? ?? '', 'description': m['description'] as String? ?? ''};
+    }).where((i) => (i['title'] as String).isNotEmpty).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (questionText.isNotEmpty) ...[
+          Text(questionText, style: TextStyle(color: textColor)),
+          const SizedBox(height: 8),
+        ],
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.list_alt, size: 13, color: Colors.white70),
+                    const SizedBox(width: 4),
+                    Text(
+                      buttonLabel,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Colors.white24),
+              ...items.asMap().entries.map((entry) {
+                final i = entry.key;
+                final item = entry.value;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['title']!,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          if ((item['description'] as String).isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              item['description']!,
+                              style: const TextStyle(
+                                color: Colors.white70,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (i < items.length - 1)
+                      const Divider(height: 1, color: Colors.white12),
+                  ],
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+} // end MessageRenderer
 
 /// Loads a customer-sent image via the backend media proxy.
 /// Tapping opens a full-screen preview dialog.
