@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
@@ -18,7 +19,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isPasswordVisible = false;
+  final _shakeKey = GlobalKey<ShakeWidgetState>();
 
   void _showForgotPasswordDialog(BuildContext context) {
     showDialog(context: context, builder: (_) => const _ForgotPasswordDialog());
@@ -29,7 +30,17 @@ class _LoginPageState extends State<LoginPage> {
       context.read<AuthBloc>().add(
         LoginRequested(_emailController.text, _passwordController.text),
       );
+    } else {
+      // Trigger interactive card shake animation on validation error
+      _shakeKey.currentState?.shake();
     }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
   }
 
   @override
@@ -42,6 +53,7 @@ class _LoginPageState extends State<LoginPage> {
             MaterialPageRoute(builder: (context) => const DashboardShell()),
           );
         } else if (state is AuthSubscriptionExpired) {
+          _shakeKey.currentState?.shake();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
@@ -50,6 +62,8 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
         } else if (state is AuthFailure) {
+          // Trigger interactive shake animation on auth failure
+          _shakeKey.currentState?.shake();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.message), backgroundColor: Colors.red),
           );
@@ -57,118 +71,447 @@ class _LoginPageState extends State<LoginPage> {
       },
       builder: (context, state) {
         return Scaffold(
-          body: Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-      image: AssetImage('assets/images/home-bg-wp.png'),
-      fit: BoxFit.cover, // optional
-    ),
-            ),
-            child: Center(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 400),
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+          resizeToAvoidBottomInset: true,
+          body: Stack(
+            children: [
+              // Full-screen background image
+              Positioned.fill(
+                child: Image.asset(
+                  'assets/images/home-bg-wp.png',
+                  fit: BoxFit.cover,
                 ),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Image.asset('assets/images/logo.png',height: 70),
-                  ),
-                      
-                      const SizedBox(height: 32),
-                      TextFormField(
-                        controller: _emailController,
-                        decoration: const InputDecoration(
-                          hintText: 'Email Address',
-                          prefixIcon: Icon(Icons.email_outlined),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Required';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _passwordController,
-                        obscureText: !_isPasswordVisible,
-                        decoration: InputDecoration(
-                          hintText: 'Password',
-                          prefixIcon: const Icon(Icons.lock_outline),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _isPasswordVisible
-                                  ? Icons.visibility_off
-                                  : Icons.visibility,
-                            ),
-                            onPressed: () {
-                              setState(
-                                () => _isPasswordVisible = !_isPasswordVisible,
-                              );
-                            },
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) return 'Required';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: () => _showForgotPasswordDialog(context),
-                          child: const Text('Forgot Password?'),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: state is AuthLoading ? null : _handleLogin,
-                        child: state is AuthLoading
-                            ? const CircularProgressIndicator(
-                                color: Colors.white,
-                              )
-                            : const Text(
-                                'LOGIN',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const RegisterPage(),
-                            ),
+              ),
+              // Main content centered and scrollable for keyboard resize compatibility
+              SafeArea(
+                child: Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    child: ShakeWidget(
+                      key: _shakeKey,
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0.8, end: 1.0),
+                        duration: const Duration(milliseconds: 600),
+                        curve: Curves.easeOutBack,
+                        builder: (context, scale, child) {
+                          return Transform.scale(
+                            scale: scale,
+                            child: child,
                           );
                         },
-                        child: const Text("Don't have an account? Register"),
+                        child: Container(
+                          constraints: const BoxConstraints(maxWidth: 400),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 25,
+                                offset: const Offset(0, 10),
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(32),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                // Logo
+                                Center(
+                                  child: TweenAnimationBuilder<double>(
+                                    tween: Tween<double>(begin: 0.0, end: 1.0),
+                                    duration: const Duration(milliseconds: 800),
+                                    curve: Curves.easeOutBack,
+                                    builder: (context, val, child) {
+                                      return Transform.scale(
+                                        scale: val,
+                                        child: child,
+                                      );
+                                    },
+                                    child: Image.asset(
+                                      'assets/images/logo.png',
+                                      height: 65,
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 36),
+                                
+                                // Email Address Field with real-time feedback
+                                InteractiveTextField(
+                                  controller: _emailController,
+                                  hintText: 'Email Address',
+                                  prefixIcon: Icons.email_outlined,
+                                  keyboardType: TextInputType.emailAddress,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) return 'Required';
+                                    if (!value.contains('@')) return 'Enter a valid email';
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 20),
+                                
+                                // Password Field
+                                InteractiveTextField(
+                                  controller: _passwordController,
+                                  hintText: 'Password',
+                                  prefixIcon: Icons.lock_outline,
+                                  isPassword: true,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) return 'Required';
+                                    return null;
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                                
+                                // Forgot Password
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () => _showForgotPasswordDialog(context),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppTheme.primaryColor,
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: Size.zero,
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                    child: const Text(
+                                      'Forgot Password?',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 32),
+                                
+                                // Interactive Gradient Login Button
+                                InteractiveButton(
+                                  onPressed: _handleLogin,
+                                  isLoading: state is AuthLoading,
+                                  child: const Text(
+                                    'LOGIN',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                
+                                // Register Link
+                                Center(
+                                  child: TextButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => const RegisterPage(),
+                                        ),
+                                      );
+                                    },
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppTheme.primaryColor,
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    ),
+                                    child: Text.rich(
+                                      TextSpan(
+                                        text: "Don't have an account? ",
+                                        style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                                        children: const [
+                                          TextSpan(
+                                            text: 'Register',
+                                            style: TextStyle(
+                                              color: AppTheme.primaryColor,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
         );
       },
+    );
+  }
+}
+
+// Interactive custom Text Field with focus-glowing, validation feedback, and animated obscuring toggles
+class InteractiveTextField extends StatefulWidget {
+  final TextEditingController controller;
+  final String hintText;
+  final IconData prefixIcon;
+  final bool isPassword;
+  final FormFieldValidator<String>? validator;
+  final TextInputType keyboardType;
+  final ValueChanged<String>? onChanged;
+
+  const InteractiveTextField({
+    super.key,
+    required this.controller,
+    required this.hintText,
+    required this.prefixIcon,
+    this.isPassword = false,
+    this.validator,
+    this.keyboardType = TextInputType.text,
+    this.onChanged,
+  });
+
+  @override
+  State<InteractiveTextField> createState() => _InteractiveTextFieldState();
+}
+
+class _InteractiveTextFieldState extends State<InteractiveTextField> {
+  final FocusNode _focusNode = FocusNode();
+  bool _isFocused = false;
+  bool _isObscured = true;
+  bool _isValidEmail = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode.addListener(() {
+      setState(() {
+        _isFocused = _focusNode.hasFocus;
+      });
+    });
+    
+    if (!widget.isPassword) {
+      widget.controller.addListener(_checkEmailValidation);
+    }
+  }
+
+  void _checkEmailValidation() {
+    final text = widget.controller.text;
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    setState(() {
+      _isValidEmail = emailRegex.hasMatch(text);
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    if (!widget.isPassword) {
+      widget.controller.removeListener(_checkEmailValidation);
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: _isFocused
+            ? [
+                BoxShadow(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                )
+              ]
+            : [],
+      ),
+      child: TextFormField(
+        controller: widget.controller,
+        focusNode: _focusNode,
+        obscureText: widget.isPassword && _isObscured,
+        keyboardType: widget.keyboardType,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+        onChanged: widget.onChanged,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: _isFocused ? Colors.white : Colors.grey.shade50,
+          hintText: widget.hintText,
+          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 16),
+          prefixIcon: Icon(
+            widget.prefixIcon,
+            color: _isFocused ? AppTheme.primaryColor : Colors.grey.shade500,
+          ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 44),
+          suffixIcon: widget.isPassword
+              ? IconButton(
+                  icon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    transitionBuilder: (child, anim) => ScaleTransition(scale: anim, child: child),
+                    child: Icon(
+                      _isObscured ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      key: ValueKey<bool>(_isObscured),
+                      color: _isFocused ? AppTheme.primaryColor : Colors.grey.shade500,
+                    ),
+                  ),
+                  onPressed: () => setState(() => _isObscured = !_isObscured),
+                )
+              : (!widget.isPassword && _isValidEmail)
+                  ? const Icon(Icons.check_circle_rounded, color: AppTheme.primaryColor)
+                  : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey.shade200, width: 1.2),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide(color: Colors.grey.shade200, width: 1.2),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        ),
+        validator: widget.validator,
+      ),
+    );
+  }
+}
+
+// Premium button with scaling click-feedback animation
+class InteractiveButton extends StatefulWidget {
+  final VoidCallback? onPressed;
+  final Widget child;
+  final bool isLoading;
+
+  const InteractiveButton({
+    super.key,
+    required this.onPressed,
+    required this.child,
+    this.isLoading = false,
+  });
+
+  @override
+  State<InteractiveButton> createState() => _InteractiveButtonState();
+}
+
+class _InteractiveButtonState extends State<InteractiveButton> {
+  double _scale = 1.0;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _scale = 0.95),
+      onTapUp: (_) => setState(() => _scale = 1.0),
+      onTapCancel: () => setState(() => _scale = 1.0),
+      onTap: widget.isLoading ? null : widget.onPressed,
+      child: AnimatedScale(
+        scale: _scale,
+        duration: const Duration(milliseconds: 100),
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.primaryColor,
+                AppTheme.primaryColor.withValues(alpha: 0.85),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                blurRadius: 15,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: widget.isLoading
+              ? const SizedBox(
+                  height: 24,
+                  width: 24,
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 2.5,
+                  ),
+                )
+              : widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+// Physical feedback shaking container using a decaying sine wave
+class ShakeWidget extends StatefulWidget {
+  final Widget child;
+  final Duration duration;
+  final double deltaX;
+
+  const ShakeWidget({
+    super.key,
+    required this.child,
+    this.duration = const Duration(milliseconds: 500),
+    this.deltaX = 12.0,
+  });
+
+  @override
+  State<ShakeWidget> createState() => ShakeWidgetState();
+}
+
+class ShakeWidgetState extends State<ShakeWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(duration: widget.duration, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void shake() {
+    _controller.forward(from: 0.0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final progress = _controller.value;
+        if (progress == 0.0 || progress == 1.0) {
+          return child!;
+        }
+        // Decaying horizontal shake sine wave
+        final offset = widget.deltaX * math.sin(progress * math.pi * 4) * (1.0 - progress);
+        return Transform.translate(
+          offset: Offset(offset, 0),
+          child: child,
+        );
+      },
+      child: widget.child,
     );
   }
 }
@@ -211,7 +554,7 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         width: 400,
         padding: const EdgeInsets.all(28),
@@ -254,16 +597,11 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
             style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
           ),
           const SizedBox(height: 24),
-          TextFormField(
+          InteractiveTextField(
             controller: _emailCtrl,
+            hintText: 'Email Address',
+            prefixIcon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: 'Email Address',
-              prefixIcon: const Icon(Icons.email_outlined),
-              filled: true,
-              fillColor: Colors.grey.shade50,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            ),
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Required';
               if (!v.contains('@')) return 'Enter a valid email';
@@ -271,26 +609,14 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
             },
           ),
           const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _loading ? null : _submit,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
-              ),
-              child: _loading
-                  ? const SizedBox(
-                      height: 20, width: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Send New Password',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15)),
-            ),
+          InteractiveButton(
+            onPressed: _submit,
+            isLoading: _loading,
+            child: const Text('Send New Password',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15)),
           ),
         ],
       ),

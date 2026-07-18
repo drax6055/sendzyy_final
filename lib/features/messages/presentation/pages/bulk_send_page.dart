@@ -357,6 +357,8 @@ class _BulkSendPageState extends State<BulkSendPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
     return MultiBlocListener(
       listeners: [
         BlocListener<MessageBloc, MessageState>(
@@ -376,7 +378,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
         ),
       ],
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(isMobile ? 16 : 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -389,40 +391,58 @@ class _BulkSendPageState extends State<BulkSendPage> {
             ),
             const SizedBox(height: 32),
 
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 3, child: _buildRecipientCard()),
-                const SizedBox(width: 24),
-                Expanded(flex: 1, child: CsvUploader(onParsed: _onCsvParsed)),
-              ],
-            ),
+            if (isMobile) ...[
+              _buildRecipientCard(),
+              const SizedBox(height: 16),
+              CsvUploader(onParsed: _onCsvParsed),
+            ] else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: _buildRecipientCard()),
+                  const SizedBox(width: 24),
+                  Expanded(flex: 1, child: CsvUploader(onParsed: _onCsvParsed)),
+                ],
+              ),
+            ],
             const SizedBox(height: 32),
 
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      _buildTemplateSelector(),
-                      const SizedBox(height: 16),
-                      if (_selectedTemplateData != null) ...[
-                        if (_templateVariableCount > 0) _buildVariableMapping(),
-                        const SizedBox(height: 16),
-                        _buildMediaSelector(),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 32),
-                Expanded(
-                  child: _selectedTemplateData != null
-                      ? _buildTemplatePreview()
-                      : const SizedBox.shrink(),
-                ),
+            if (isMobile) ...[
+              _buildTemplateSelector(),
+              const SizedBox(height: 16),
+              if (_selectedTemplateData != null) ...[
+                if (_templateVariableCount > 0) _buildVariableMapping(),
+                const SizedBox(height: 16),
+                _buildMediaSelector(),
               ],
-            ),
+              const SizedBox(height: 16),
+              if (_selectedTemplateData != null) _buildTemplatePreview(),
+            ] else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _buildTemplateSelector(),
+                        const SizedBox(height: 16),
+                        if (_selectedTemplateData != null) ...[
+                          if (_templateVariableCount > 0) _buildVariableMapping(),
+                          const SizedBox(height: 16),
+                          _buildMediaSelector(),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 32),
+                  Expanded(
+                    child: _selectedTemplateData != null
+                        ? _buildTemplatePreview()
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 32),
 
             _buildSummaryCard(),
@@ -481,7 +501,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
               children: [
                 OutlinedButton.icon(
                   onPressed: _addFromClients,
@@ -496,7 +518,6 @@ class _BulkSendPageState extends State<BulkSendPage> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   ),
                 ),
-                const SizedBox(width: 12),
                 OutlinedButton.icon(
                   onPressed: _addFromGroup,
                   icon: const Icon(Icons.group_outlined, size: 18),
@@ -544,12 +565,11 @@ class _BulkSendPageState extends State<BulkSendPage> {
     );
   }
 
-  /// Per-recipient variable table — each row = one contact + their variable inputs
   Widget _buildVariableMapping() {
     final count = _templateVariableCount;
     _syncVariableControllers(count);
 
-    // All recipients shown in one unified table
+    final isMobile = MediaQuery.of(context).size.width < 800;
 
     return Card(
       elevation: 0,
@@ -573,109 +593,180 @@ class _BulkSendPageState extends State<BulkSendPage> {
             ),
             const SizedBox(height: 12),
 
-            // All recipients table (manual, client-added, and CSV — all editable)
             if (_recipients.isNotEmpty) ...[
               Text(
                 'Fill in variable values for each recipient:',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
               ),
               const SizedBox(height: 12),
-              // Header row
-              Row(
-                children: [
-                  const SizedBox(
-                    width: 160,
-                    child: Text('Mobile Number',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                  ),
-                  ...List.generate(count, (i) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Text('{{${i + 1}}}',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blueAccent)),
+              
+              if (isMobile) ...[
+                ...List.generate(_recipients.length, (ri) {
+                  final r = _recipients[ri];
+                  final ctrlMap = _perRecipientControllers[ri] ?? {};
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
                     ),
-                  )),
-                  const SizedBox(width: 32), // delete btn space
-                ],
-              ),
-              const Divider(height: 16),
-              ...List.generate(_recipients.length, (ri) {
-                final r = _recipients[ri];
-                final ctrlMap = _perRecipientControllers[ri] ?? {};
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 160,
-                        child: Text(
-                          r.mobileNumber,
-                          style: const TextStyle(fontSize: 13),
-                          overflow: TextOverflow.ellipsis,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              r.mobileNumber,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close, size: 18, color: Colors.redAccent),
+                              onPressed: () => _removeRecipient(ri),
+                            ),
+                          ],
                         ),
+                        const Divider(),
+                        ...List.generate(count, (vi) {
+                          final idx = vi + 1;
+                          final ctrl = ctrlMap[idx] ?? TextEditingController();
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 50,
+                                  child: Text('{{$idx}}', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blueAccent)),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextField(
+                                    controller: ctrl,
+                                    onChanged: (_) => setState(() {}),
+                                    style: const TextStyle(fontSize: 13),
+                                    decoration: InputDecoration(
+                                      hintText: _variableHint(idx),
+                                      isDense: true,
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 8),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(color: Colors.grey.shade300),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  );
+                }),
+              ] else ...[
+                Row(
+                  children: [
+                    const SizedBox(
+                      width: 160,
+                      child: Text('Mobile Number',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                    ...List.generate(count, (i) => Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text('{{${i + 1}}}',
+                            style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blueAccent)),
                       ),
-                      ...List.generate(count, (vi) {
-                        final idx = vi + 1;
-                        final ctrl = ctrlMap[idx] ?? TextEditingController();
-                        return Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 8),
-                            child: TextField(
-                              controller: ctrl,
-                              onChanged: (_) => setState(() {}),
-                              style: const TextStyle(fontSize: 13),
-                              decoration: InputDecoration(
-                                hintText: _variableHint(idx),
-                                isDense: true,
-                                filled: true,
-                                fillColor: Colors.white,
-                                contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 10),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                    )),
+                    const SizedBox(width: 32),
+                  ],
+                ),
+                const Divider(height: 16),
+                ...List.generate(_recipients.length, (ri) {
+                  final r = _recipients[ri];
+                  final ctrlMap = _perRecipientControllers[ri] ?? {};
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 160,
+                          child: Text(
+                            r.mobileNumber,
+                            style: const TextStyle(fontSize: 13),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        ...List.generate(count, (vi) {
+                          final idx = vi + 1;
+                          final ctrl = ctrlMap[idx] ?? TextEditingController();
+                          return Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.only(left: 8),
+                              child: TextField(
+                                controller: ctrl,
+                                onChanged: (_) => setState(() {}),
+                                style: const TextStyle(fontSize: 13),
+                                decoration: InputDecoration(
+                                  hintText: _variableHint(idx),
+                                  isDense: true,
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 10),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                    borderSide: BorderSide(color: Colors.grey.shade300),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        );
-                      }),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 16, color: Colors.redAccent),
-                        onPressed: () => setState(() {
-                          // Dispose controllers for this recipient
-                          _perRecipientControllers[ri]?.values.forEach((c) => c.dispose());
-                          _perRecipientControllers.remove(ri);
-                          _recipients.removeAt(ri);
-                          // Re-key the controllers map
-                          final reKeyed = <int, Map<int, TextEditingController>>{};
-                          int newIdx = 0;
-                          for (int old = 0; old < _recipients.length + 1; old++) {
-                            if (old == ri) continue;
-                            if (_perRecipientControllers.containsKey(old)) {
-                              reKeyed[newIdx] = _perRecipientControllers[old]!;
-                            }
-                            newIdx++;
-                          }
-                          _perRecipientControllers
-                            ..clear()
-                            ..addAll(reKeyed);
+                          );
                         }),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 16, color: Colors.redAccent),
+                          onPressed: () => _removeRecipient(ri),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ],
             ],
           ],
         ),
       ),
     );
+  }
+
+  void _removeRecipient(int ri) {
+    setState(() {
+      _perRecipientControllers[ri]?.values.forEach((c) => c.dispose());
+      _perRecipientControllers.remove(ri);
+      _recipients.removeAt(ri);
+      final reKeyed = <int, Map<int, TextEditingController>>{};
+      int newIdx = 0;
+      for (int old = 0; old < _recipients.length + 1; old++) {
+        if (old == ri) continue;
+        if (_perRecipientControllers.containsKey(old)) {
+          reKeyed[newIdx] = _perRecipientControllers[old]!;
+        }
+        newIdx++;
+      }
+      _perRecipientControllers
+        ..clear()
+        ..addAll(reKeyed);
+    });
   }
 
   String _formatScheduledAt(DateTime dt) {

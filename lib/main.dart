@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -72,6 +73,7 @@ class _MyAppState extends State<MyApp> {
         ),
       ],
       child: MaterialApp(
+        scrollBehavior: MyCustomScrollBehavior(),
         navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
         title: 'Sendzyy',
@@ -441,4 +443,14 @@ class _MyAppState extends State<MyApp> {
       },
     );
   }
+}
+
+class MyCustomScrollBehavior extends MaterialScrollBehavior {
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+        PointerDeviceKind.touch,
+        PointerDeviceKind.mouse,
+        PointerDeviceKind.trackpad,
+        PointerDeviceKind.stylus,
+      };
 }

@@ -218,8 +218,55 @@ class _DashboardShellState extends State<DashboardShell> {
     const RetrySystemPage(),
   ];
 
+  Widget _buildSidebar(bool isMobile) {
+    return Container(
+      width: 260,
+      color: Colors.white,
+      child: Column(
+        children: [
+          const SizedBox(height: 18),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Image.asset('assets/images/logo.png'),
+          ),
+          const SizedBox(height: 8),
+          const SizedBox(height: 18),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  _buildNavItem(0, Icons.send_rounded, 'Bulk Send', isMobile),
+                  _buildNavItem(1, Icons.forum_rounded, 'Chats', isMobile),
+                  _buildNavItem(2, Icons.copy_rounded, 'Templates', isMobile),
+                  _buildNavItem(3, Icons.people_alt_rounded, 'Clients', isMobile),
+                  _buildNavItem(4, Icons.contacts_rounded, 'Leads', isMobile),
+                  _buildNavItem(5, Icons.bar_chart_rounded, 'Reports', isMobile),
+                  _buildNavItem(6, Icons.schedule_rounded, 'Scheduled', isMobile),
+                  _buildNavItem(7, Icons.smart_toy_rounded, 'Chatbot', isMobile),
+                  _buildNavItem(8, Icons.help_outline_rounded, 'Q & A', isMobile),
+                  const SizedBox(height: 16),
+                  const Divider(
+                    color: AppTheme.secondaryColor,
+                    indent: 20,
+                    endIndent: 20,
+                  ),
+                  _buildNavItem(9, Icons.settings_rounded, 'Settings', isMobile),
+                  _buildNavItem(10, Icons.integration_instructions_rounded, 'Integrations', isMobile),
+                  _buildNavItem(11, Icons.replay_circle_filled_outlined, 'Retry System', isMobile),
+                  const SizedBox(height: 24),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
     return MultiBlocProvider(
       providers: [
         BlocProvider(
@@ -230,66 +277,31 @@ class _DashboardShellState extends State<DashboardShell> {
         ),
       ],
       child: Scaffold(
+        drawer: isMobile ? Drawer(child: SafeArea(child: _buildSidebar(true))) : null,
         body: Row(
           children: [
-            // Sidebar
-            Container(
-              width: 260,
-                color: Colors.white,
-              child: Column(
-                children: [
-                                   const SizedBox(height: 18),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Image.asset('assets/images/logo.png'),
-                  ),
-                  const SizedBox(height: 8),
-
-                  const SizedBox(height: 18),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          _buildNavItem(0, Icons.send_rounded, 'Bulk Send'),
-                          _buildNavItem(1, Icons.forum_rounded, 'Chats'),
-                          _buildNavItem(2, Icons.copy_rounded, 'Templates'),
-                          _buildNavItem(3, Icons.people_alt_rounded, 'Clients'),
-                          _buildNavItem(4, Icons.contacts_rounded, 'Leads'),
-                          _buildNavItem(5, Icons.bar_chart_rounded, 'Reports'),
-                          _buildNavItem(6, Icons.schedule_rounded, 'Scheduled'),
-                          _buildNavItem(7, Icons.smart_toy_rounded, 'Chatbot'),
-                          _buildNavItem(8, Icons.help_outline_rounded, 'Q & A'),
-                          const SizedBox(height: 16),
-                          const Divider(
-                            color: AppTheme.secondaryColor,
-                            indent: 20,
-                            endIndent: 20,
-                          ),
-                          _buildNavItem(9, Icons.settings_rounded, 'Settings'),
-                          _buildNavItem(10, Icons.integration_instructions_rounded, 'Integrations'),
-                          _buildNavItem(11, Icons.replay_circle_filled_outlined, 'Retry System'),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-             const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+            // Sidebar for desktop
+            if (!isMobile) ...[
+              _buildSidebar(false),
+              const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+            ],
             // Main Content
             Expanded(
               child: Container(
                 color: AppTheme.backgroundColor,
-                child: Column(
-                  children: [
-                    // Header
-                    _buildHeader(),
-                    if (!_checkingOnboarding && _onboardingIncomplete)
-                      _buildOnboardingWarningBanner(),
-                    // Page Content
-                    Expanded(child: _pages[_selectedIndex]),
-                  ],
+                child: SafeArea(
+                  top: true,
+                  bottom: false,
+                  child: Column(
+                    children: [
+                      // Header
+                      _buildHeader(isMobile),
+                      if (!_checkingOnboarding && _onboardingIncomplete)
+                        _buildOnboardingWarningBanner(),
+                      // Page Content
+                      Expanded(child: _pages[_selectedIndex]),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -299,10 +311,15 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
+  Widget _buildNavItem(int index, IconData icon, String label, bool isMobile) {
     bool isSelected = _selectedIndex == index;
     return InkWell(
-      onTap: () => _setSelectedIndex(index),
+      onTap: () {
+        _setSelectedIndex(index);
+        if (isMobile) {
+          Navigator.pop(context); // Close the drawer
+        }
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -336,10 +353,10 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(bool isMobile) {
     return Container(
       height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -348,6 +365,14 @@ class _DashboardShellState extends State<DashboardShell> {
       ),
       child: Row(
         children: [
+          if (isMobile)
+            Builder(
+              builder: (ctx) => IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(ctx).openDrawer(),
+              ),
+            ),
+          if (isMobile) const SizedBox(width: 8),
           // Panel expiry badge
           BlocBuilder<AuthBloc, AuthState>(
             builder: (context, authState) {
@@ -367,10 +392,10 @@ class _DashboardShellState extends State<DashboardShell> {
                       ? Colors.orange
                       : AppTheme.secondaryColor;
               final expStr =
-                  '${exp.day.toString().padLeft(2, '0')}/${exp.month.toString().padLeft(2, '0')}/${exp.year}';
+                  '${exp.day.toString().padLeft(2, '0')}/${exp.month.toString().padLeft(2, '0')}/${exp.year.toString().substring(2)}'; // Use short year format
 
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
@@ -383,21 +408,21 @@ class _DashboardShellState extends State<DashboardShell> {
                       isExpired
                           ? Icons.warning_amber_rounded
                           : Icons.calendar_today_outlined,
-                      size: 15,
+                      size: 13,
                       color: color,
                     ),
-                    const SizedBox(width: 7),
+                    const SizedBox(width: 6),
                     Text(
                       isExpired
-                          ? 'Dashboard Expired'
-                          : 'Dashboard Exp on $expStr',
+                          ? 'Expired'
+                          : (isMobile ? '$daysLeft d' : 'Dashboard Exp on $expStr'),
                       style: TextStyle(
                         color: color,
                         fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                        fontSize: 12,
                       ),
                     ),
-                    if (!isExpired) ...[
+                    if (!isExpired && !isMobile) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
@@ -458,9 +483,13 @@ class _DashboardShellState extends State<DashboardShell> {
           const SizedBox(width: 8),
           // Support button
           _SupportButton(),
-          const SizedBox(width: 8),
-          const VerticalDivider(indent: 20, endIndent: 20),
-          const SizedBox(width: 24),
+          if (!isMobile) ...[
+            const SizedBox(width: 8),
+            const VerticalDivider(indent: 20, endIndent: 20),
+            const SizedBox(width: 24),
+          ] else ...[
+            const SizedBox(width: 8),
+          ],
           BlocBuilder<AuthBloc, AuthState>(
             builder: (context, state) {
               String name = 'User';
@@ -540,9 +569,11 @@ class _DashboardShellState extends State<DashboardShell> {
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    const Icon(Icons.keyboard_arrow_down),
+                    if (!isMobile) ...[
+                      const SizedBox(width: 12),
+                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const Icon(Icons.keyboard_arrow_down),
+                    ],
                   ],
                 ),
               );

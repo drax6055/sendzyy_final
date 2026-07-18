@@ -256,7 +256,11 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8.0),
-                        child: Row(
+                        child: Wrap(
+                          alignment: WrapAlignment.spaceBetween,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
                           children: [
                             // Toggle: Select All / Clear All (applies to currently loaded items)
                             TextButton.icon(
@@ -297,44 +301,48 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                     : 'Select All',
                               ),
                             ),
-                            const Spacer(),
-                            // Add new client button
-                            TextButton.icon(
-                              onPressed: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (_) => BlocProvider.value(
-                                    value: getIt<ClientsBloc>(),
-                                    child: CreateClientDialog(
-                                      onSaved: () {
-                                        _loadClients(page: 1);
-                                      },
+                            // Add new client button & results count
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                TextButton.icon(
+                                  onPressed: () {
+                                    showDialog(
+                                      context: context,
+                                      builder: (_) => BlocProvider.value(
+                                        value: getIt<ClientsBloc>(),
+                                        child: CreateClientDialog(
+                                          onSaved: () {
+                                            _loadClients(page: 1);
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.person_add_alt_1, size: 18),
+                                  label: const Text('Add Client'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppTheme.secondaryColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                if (_isSelectingAll) ...[
+                                  const SizedBox(
+                                    width: 12,
+                                    height: 12,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 1.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                                     ),
                                   ),
-                                );
-                              },
-                              icon: const Icon(Icons.person_add_alt_1, size: 18),
-                              label: const Text('Add Client'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppTheme.secondaryColor,
-                              ),
+                                ] else ...[
+                                  Text(
+                                    '$_totalClients results',
+                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                  ),
+                                ],
+                              ],
                             ),
-                            const SizedBox(width: 8),
-                            if (_isSelectingAll) ...[
-                              const SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 1.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-                                ),
-                              ),
-                            ] else ...[
-                              Text(
-                                '$_totalClients results',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                              ),
-                            ],
                           ],
                         ),
                       ),
