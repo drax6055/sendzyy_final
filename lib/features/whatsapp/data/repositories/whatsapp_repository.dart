@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
+import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -780,6 +781,10 @@ class WhatsAppRepository {
     required String accessToken,
     required String businessAccountId,
     required String metaAppId,
+    String? displayPhone,
+    String? verifiedName,
+    String? qualityRating,
+    String? throughputLevel,
   }) async {
     try {
       final response = await _dio.post(
@@ -789,6 +794,10 @@ class WhatsAppRepository {
           'accessToken': accessToken,
           'businessAccountId': businessAccountId,
           'metaAppId': metaAppId,
+          if (displayPhone != null) 'displayPhone': displayPhone,
+          if (verifiedName != null) 'verifiedName': verifiedName,
+          if (qualityRating != null) 'qualityRating': qualityRating,
+          if (throughputLevel != null) 'throughputLevel': throughputLevel,
         },
       );
       if (response.statusCode == 200) {
@@ -804,6 +813,10 @@ class WhatsAppRepository {
           config['businessAccountId'] = businessAccountId;
           config['metaAppId'] = metaAppId;
           config['verified'] = true;
+          if (displayPhone != null) config['displayPhone'] = displayPhone;
+          if (verifiedName != null) config['verifiedName'] = verifiedName;
+          if (qualityRating != null) config['qualityRating'] = qualityRating;
+          if (throughputLevel != null) config['throughputLevel'] = throughputLevel;
           tenant['whatsappConfig'] = config;
           await _prefs.setString('tenant_data', jsonEncode(tenant));
         }
@@ -972,6 +985,170 @@ class WhatsAppRepository {
     } on DioException catch (e) {
       final msg = e.response?.data?['error'] ?? 'Failed to send reset email';
       throw Exception(msg);
+    }
+  }
+
+  Future<List<Map<String, dynamic>>?> fetchPhoneNumbers({
+    required String wabaId,
+    required String accessToken,
+  }) async {
+    try {
+      final dio = Dio(); // Use a clean Dio instance to avoid custom application headers
+      final response = await dio.get(
+        '${AppConstants.metaGraphUrl}/$wabaId/phone_numbers',
+        queryParameters: {
+          'fields': 'id,display_phone_number,verified_name,code_verification_status,quality_rating,platform_type,throughput,webhook_configuration',
+          'access_token': accessToken,
+        },
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'];
+        return data.cast<Map<String, dynamic>>();
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<Map<String, dynamic>?> fetchWhatsAppProfile({
+    required String phoneNumberId,
+    required String accessToken,
+  }) async {
+    try {
+      final dio = Dio();
+      final response = await dio.get(
+        '${AppConstants.metaGraphUrl}/$phoneNumberId/whatsapp_business_profile',
+        queryParameters: {
+          'fields': 'about,address,description,email,profile_picture_url,websites,vertical',
+          'access_token': accessToken,
+        },
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        if (data.isNotEmpty) {
+          return Map<String, dynamic>.from(data.first);
+        }
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> updateWhatsAppProfileText({
+    required String phoneNumberId,
+    required String accessToken,
+    required Map<String, dynamic> profileData,
+  }) async {
+    try {
+      final dio = Dio();
+      final response = await dio.post(
+        '${AppConstants.metaGraphUrl}/$phoneNumberId/whatsapp_business_profile',
+        queryParameters: {
+          'access_token': accessToken,
+        },
+        data: {
+          'messaging_product': 'whatsapp',
+          ...profileData,
+        },
+      );
+      return response.statusCode == 200 && response.data['success'] == true;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final errorData = data['error'];
+        if (errorData is Map && errorData['message'] != null) {
+          throw Exception(errorData['message'].toString());
+        }
+      } else if (data is String) {
+        throw Exception(data);
+      }
+      rethrow;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<String?> uploadWhatsAppProfileImage({
+    required String phoneNumberId,
+    required String accessToken,
+    required List<int> imageBytes,
+    required String fileName,
+    required String mimeType,
+    void Function(double progress)? onProgress,
+  }) async {
+    try {
+      final dio = Dio();
+      final binaryData = Uint8List.fromList(imageBytes);
+
+      // Step 1: Create Resumable Upload Session
+      final sessionResponse = await dio.post(
+        '${AppConstants.metaGraphUrl}/app/uploads',
+        queryParameters: {
+          'file_length': binaryData.length.toString(),
+          'file_type': mimeType,
+          'file_name': fileName,
+          'access_token': accessToken,
+        },
+      );
+
+      if (sessionResponse.statusCode != 200) return null;
+      final uploadId = sessionResponse.data['id']?.toString();
+      if (uploadId == null) return null;
+
+      // Step 2: Upload Binary Data to Meta
+      final uploadResponse = await dio.post(
+        '${AppConstants.metaGraphUrl}/$uploadId',
+        data: binaryData,
+        queryParameters: {
+          'access_token': accessToken,
+        },
+        options: Options(
+          headers: {
+            'file_offset': '0',
+            'Content-Type': 'application/octet-stream',
+          },
+        ),
+        onSendProgress: (sent, total) {
+          if (onProgress != null && total > 0) {
+            onProgress(sent / total);
+          }
+        },
+      );
+
+      if (uploadResponse.statusCode != 200) return null;
+      final handleId = uploadResponse.data['h']?.toString() ?? uploadId;
+
+      // Step 3: Attach profile picture handle to profile
+      final attachResponse = await dio.post(
+        '${AppConstants.metaGraphUrl}/$phoneNumberId/whatsapp_business_profile',
+        queryParameters: {
+          'access_token': accessToken,
+        },
+        data: {
+          'messaging_product': 'whatsapp',
+          'profile_picture_handle': handleId,
+        },
+      );
+
+      if (attachResponse.statusCode == 200 && attachResponse.data['success'] == true) {
+        return handleId;
+      }
+      return null;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final errorVal = data['error'];
+        if (errorVal is Map && errorVal['message'] != null) {
+          throw Exception(errorVal['message'].toString());
+        }
+      } else if (data is String) {
+        throw Exception(data);
+      }
+      rethrow;
+    } catch (e) {
+      rethrow;
     }
   }
 }

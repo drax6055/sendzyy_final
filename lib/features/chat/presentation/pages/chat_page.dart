@@ -163,6 +163,12 @@ class _ChatPageState extends State<ChatPage> {
         ? searchFiltered.where((c) {
             final contactId = c['id'] as String? ?? '';
             
+            // Check if client replied to our template or message
+            final hasReply = c['hasReply'] == true;
+            if (!hasReply) {
+              return false;
+            }
+
             // Get last active time of the conversation
             final lastActive = c['lastActive'] is DateTime
                 ? (c['lastActive'] as DateTime).toLocal()
@@ -188,6 +194,12 @@ class _ChatPageState extends State<ChatPage> {
     final unreadCount = state.conversations.where((c) {
       final contactId = c['id'] as String? ?? '';
       
+      // Check if client replied to our template or message
+      final hasReply = c['hasReply'] == true;
+      if (!hasReply) {
+        return false;
+      }
+
       // Get last active time of the conversation
       final lastActive = c['lastActive'] is DateTime
           ? (c['lastActive'] as DateTime).toLocal()
