@@ -1,11 +1,12 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class AppConstants {
-  static const String appName = 'iFloraBuzz';
+  static const String appName = 'Sendzyy';
+
+  static const String metaGraphUrl = 'https://graph.facebook.com/v25.0';
 
   // Secrets loaded from .env
-  static String get metaAccessToken =>
-      dotenv.env['META_ACCESS_TOKEN'] ?? '';
+  static String get metaAccessToken => dotenv.env['META_ACCESS_TOKEN'] ?? '';
 
   static String get metaAppId {
     final value = dotenv.env['META_APP_ID'] ?? '';
@@ -24,11 +25,8 @@ class AppConstants {
   }
 
   // Local BASEURL-----------------------------------------------------
-  
+
   static String get baseUrl => dotenv.env['BASE_URL'] ?? '';
-
-
-
 
   // Storage Keys
   static const String keyAccessToken = 'access_token';

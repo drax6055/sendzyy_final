@@ -9,6 +9,7 @@ import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/messages/presentation/pages/bulk_send_page.dart';
 import 'package:iFloraBuzz/features/templates/presentation/pages/template_list_page.dart';
 import 'package:iFloraBuzz/features/reports/presentation/pages/reports_page.dart';
+import 'package:iFloraBuzz/features/reports/presentation/pages/meta_analytics_page.dart';
 import 'package:iFloraBuzz/features/auth/presentation/pages/package_selection_page.dart';
 import 'package:iFloraBuzz/features/chat/presentation/pages/chat_page.dart';
 import 'package:iFloraBuzz/features/chat/presentation/bloc/chat_bloc.dart';
@@ -23,6 +24,7 @@ import 'package:iFloraBuzz/features/integrations/presentation/pages/integration_
 import 'package:iFloraBuzz/features/retry/presentation/pages/retry_system_page.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/services/renewal_reminder_service.dart';
+import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardShell extends StatefulWidget {
@@ -37,6 +39,9 @@ class _DashboardShellState extends State<DashboardShell> {
   late final RenewalReminderService _reminderService;
   bool _onboardingIncomplete = false;
   bool _checkingOnboarding = true;
+
+  String? _metaProfileImageUrl;
+  String? _lastFetchedPhoneId;
 
   static const _selectedIndexKey = 'dashboard_selected_index';
 
@@ -70,6 +75,46 @@ class _DashboardShellState extends State<DashboardShell> {
           _checkingOnboarding = false;
         });
       }
+    }
+  }
+
+  Future<void> _fetchMetaProfileIfNeeded(Map<String, dynamic>? config) async {
+    if (config == null) return;
+    final phoneId = config['phoneNumberId']?.toString();
+    final token = config['accessToken']?.toString();
+    
+    if (phoneId == null || token == null || phoneId.isEmpty || token.isEmpty) {
+      return;
+    }
+    
+    if (phoneId == _lastFetchedPhoneId) {
+      return;
+    }
+    
+    _lastFetchedPhoneId = phoneId;
+    
+    try {
+      final dio = Dio();
+      final response = await dio.get(
+        '${AppConstants.metaGraphUrl}/$phoneId/whatsapp_business_profile',
+        queryParameters: {
+          'fields': 'about,address,description,email,profile_picture_url,websites,vertical',
+          'access_token': token,
+        },
+      );
+      if (response.statusCode == 200) {
+        final List<dynamic> data = response.data['data'] ?? [];
+        if (data.isNotEmpty) {
+          final profile = data.first;
+          if (mounted) {
+            setState(() {
+              _metaProfileImageUrl = profile['profile_picture_url']?.toString();
+            });
+          }
+        }
+      }
+    } catch (_) {
+      // Fail silently, fallback to defaults
     }
   }
 
@@ -210,6 +255,7 @@ class _DashboardShellState extends State<DashboardShell> {
     const ClientsPage(),
     const LeadManagementPage(),
     const ReportsPage(),
+    const MetaAnalyticsPage(),
     const ScheduledCampaignsPage(),
     const ChatbotListPage(),
     const HelpPage(),
@@ -494,8 +540,19 @@ class _DashboardShellState extends State<DashboardShell> {
             builder: (context, state) {
               String name = 'User';
               if (state is AuthAuthenticated) {
-                name = state.user;
+                final config = state.tenant['whatsappConfig'];
+                if (config != null && config['verifiedName'] != null && config['verifiedName'].toString().isNotEmpty) {
+                  name = config['verifiedName'].toString();
+                } else {
+                  name = state.user;
+                }
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  _fetchMetaProfileIfNeeded(config);
+                });
               }
+              final displayName = name;
+              final firstLetter = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+
               return PopupMenuButton<String>(
                 onSelected: (val) {
                   if (val == 'logout') {
@@ -521,17 +578,20 @@ class _DashboardShellState extends State<DashboardShell> {
                           CircleAvatar(
                             radius: 20,
                             backgroundColor: AppTheme.secondaryColor,
-                            child: Text(
-                              name[0].toUpperCase(),
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                            ),
+                            backgroundImage: _metaProfileImageUrl != null ? NetworkImage(_metaProfileImageUrl!) : null,
+                            child: _metaProfileImageUrl == null
+                                ? Text(
+                                    firstLetter,
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                  )
+                                : null,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87), overflow: TextOverflow.ellipsis),
+                                Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87), overflow: TextOverflow.ellipsis),
                                 const Text('Tenant Account', style: TextStyle(fontSize: 11, color: Colors.grey)),
                               ],
                             ),
@@ -564,14 +624,17 @@ class _DashboardShellState extends State<DashboardShell> {
                   children: [
                     CircleAvatar(
                       backgroundColor: AppTheme.secondaryColor,
-                      child: Text(
-                        name[0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                      ),
+                      backgroundImage: _metaProfileImageUrl != null ? NetworkImage(_metaProfileImageUrl!) : null,
+                      child: _metaProfileImageUrl == null
+                          ? Text(
+                              firstLetter,
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                            )
+                          : null,
                     ),
                     if (!isMobile) ...[
                       const SizedBox(width: 12),
-                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
                       const Icon(Icons.keyboard_arrow_down),
                     ],
                   ],

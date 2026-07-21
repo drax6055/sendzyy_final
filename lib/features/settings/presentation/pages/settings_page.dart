@@ -17,6 +17,7 @@ import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'dart:js_interop';
 import 'package:iFloraBuzz/features/settings/presentation/widgets/onboarding_checklist_widget.dart';
 import 'package:iFloraBuzz/features/templates/presentation/pages/create_template_page.dart';
+import 'package:file_picker/file_picker.dart';
 
 // JS interop types for the signup result
 extension type _SignupResult._(JSObject _) implements JSObject {
@@ -51,6 +52,139 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _paymentHistoryLoading = false;
   String? _paymentHistoryError;
 
+  // WhatsApp Profile Form state
+  Map<String, dynamic>? _whatsappProfile;
+  bool _whatsappProfileLoading = false;
+  String? _whatsappProfileError;
+  bool _isSavingWhatsAppProfile = false;
+  double _uploadProgress = 0.0;
+  bool _isUploadingImage = false;
+
+  final _aboutController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  final _emailController = TextEditingController();
+  List<TextEditingController> _websiteControllers = [];
+  String? _selectedVertical;
+
+  final Map<String, String> _verticals = {
+    'AUTOMOTIVE': 'Automotive',
+    'BEAUTY': 'Beauty, Spa & Salon',
+    'CONVENIENCE_STORE': 'Convenience Store',
+    'DENTIST': 'Dentist',
+    'EDUCATION': 'Education',
+    'ENTERTAINMENT': 'Entertainment',
+    'FINANCE': 'Finance & Banking',
+    'HEALTH_MEDICAL': 'Health & Medical',
+    'HOTEL_LODGING': 'Hotel & Lodging',
+    'INTEGRATOR': 'Integrator',
+    'NOT_A_BUSINESS': 'Not a Business',
+    'OTHER': 'Other',
+    'PARK_GARDEN': 'Park & Garden',
+    'REST_CAFE': 'Restaurant & Cafe',
+    'RETAIL': 'Shopping & Retail',
+    'SPECIALTY_FOOD': 'Specialty Food',
+    'TRAVEL_TRANSPORT': 'Travel & Transportation',
+    'UTILITY': 'Utility',
+  };
+
+  void _initProfileFormFields() {
+    if (_whatsappProfile == null) return;
+    _aboutController.text = _whatsappProfile!['about']?.toString() ?? '';
+    _addressController.text = _whatsappProfile!['address']?.toString() ?? '';
+    _descriptionController.text = _whatsappProfile!['description']?.toString() ?? '';
+    _emailController.text = _whatsappProfile!['email']?.toString() ?? '';
+    
+    final List<dynamic> websites = _whatsappProfile!['websites'] ?? [];
+    _websiteControllers = websites.map((w) => TextEditingController(text: w.toString())).toList();
+    if (_websiteControllers.isEmpty) {
+      _websiteControllers.add(TextEditingController());
+    }
+    
+    _selectedVertical = _whatsappProfile!['vertical']?.toString();
+  }
+
+  List<Map<String, dynamic>> _phoneNumbers = [];
+  bool _loadingPhoneNumbers = false;
+  String? _phoneNumbersError;
+  String? _fetchedWabaId;
+  bool _isUpdatingPhone = false;
+
+  Future<void> _fetchPhoneNumbers(String wabaId, String accessToken) async {
+    if (_loadingPhoneNumbers) return;
+    setState(() {
+      _loadingPhoneNumbers = true;
+      _phoneNumbersError = null;
+      _fetchedWabaId = wabaId;
+    });
+    try {
+      final numbers = await getIt<WhatsAppRepository>().fetchPhoneNumbers(
+        wabaId: wabaId,
+        accessToken: accessToken,
+      );
+      if (mounted) {
+        setState(() {
+          _phoneNumbers = numbers ?? [];
+          _loadingPhoneNumbers = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _phoneNumbersError = 'Failed to load phone numbers';
+          _loadingPhoneNumbers = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _updateActivePhoneNumber(Map<String, dynamic> phone, Map<String, dynamic> config) async {
+    setState(() {
+      _isUpdatingPhone = true;
+    });
+    try {
+      final success = await getIt<WhatsAppRepository>().updateConfig(
+        phoneNumberId: phone['id']?.toString() ?? '',
+        accessToken: config['accessToken']?.toString() ?? '',
+        businessAccountId: config['businessAccountId']?.toString() ?? '',
+        metaAppId: config['metaAppId']?.toString() ?? '',
+        displayPhone: phone['display_phone_number']?.toString(),
+        verifiedName: phone['verified_name']?.toString(),
+        qualityRating: phone['quality_rating']?.toString(),
+        throughputLevel: phone['throughput']?['level']?.toString(),
+      );
+
+      if (success) {
+        if (mounted) {
+          context.read<AuthBloc>().add(AuthCheckRequested());
+          context.read<TemplateBloc>().add(FetchTemplates());
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Active phone number updated successfully!')),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to update active phone number')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating active phone number: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUpdatingPhone = false;
+        });
+      }
+    }
+  }
+
   void _showManualConfig(BuildContext context, {String? wabaId, String? phoneNumberId}) async {
     final result = await showDialog(
       context: context,
@@ -70,17 +204,73 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  @override
+  void dispose() {
+    _aboutController.dispose();
+    _addressController.dispose();
+    _descriptionController.dispose();
+    _emailController.dispose();
+    for (var c in _websiteControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
   Future<void> _toggleProfileInfo() async {
     if (_showProfileInfo) {
       setState(() => _showProfileInfo = false);
       return;
     }
-    setState(() { _showProfileInfo = true; _profileLoading = true; });
+    setState(() {
+      _showProfileInfo = true;
+      _profileLoading = true;
+      _whatsappProfileLoading = true;
+      _whatsappProfileError = null;
+    });
     try {
       final profile = await getIt<WhatsAppRepository>().getProfile();
-      if (mounted) setState(() { _profile = profile; _profileLoading = false; });
+      if (mounted) {
+        setState(() {
+          _profile = profile;
+          _profileLoading = false;
+        });
+      }
+
+      final config = profile['whatsappConfig'] ?? {};
+      final phoneId = config['phoneNumberId']?.toString();
+      final token = config['accessToken']?.toString();
+
+      if (phoneId != null && token != null && phoneId.isNotEmpty && token.isNotEmpty) {
+        final waProfile = await getIt<WhatsAppRepository>().fetchWhatsAppProfile(
+          phoneNumberId: phoneId,
+          accessToken: token,
+        );
+        if (mounted) {
+          setState(() {
+            _whatsappProfile = waProfile;
+            _whatsappProfileLoading = false;
+            if (waProfile == null) {
+              _whatsappProfileError = 'Failed to load WhatsApp Business Profile';
+            } else {
+              _initProfileFormFields();
+            }
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            _whatsappProfileLoading = false;
+          });
+        }
+      }
     } catch (e) {
-      if (mounted) setState(() => _profileLoading = false);
+      if (mounted) {
+        setState(() {
+          _profileLoading = false;
+          _whatsappProfileLoading = false;
+          _whatsappProfileError = 'Error: $e';
+        });
+      }
     }
   }
 
@@ -148,6 +338,16 @@ class _SettingsPageState extends State<SettingsPage> {
             state.tenant['whatsappConfig']['accessToken'] != null &&
             state.tenant['whatsappConfig']['accessToken'].toString().isNotEmpty;
 
+        if (isConnected) {
+          final wabaId = state.tenant['whatsappConfig']['businessAccountId']?.toString();
+          final accessToken = state.tenant['whatsappConfig']['accessToken']?.toString();
+          if (wabaId != null && accessToken != null && wabaId != _fetchedWabaId && !_loadingPhoneNumbers) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _fetchPhoneNumbers(wabaId, accessToken);
+            });
+          }
+        }
+
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 0),
           color: AppTheme.backgroundColor,
@@ -210,7 +410,11 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.person_outline,
                   isExpanded: _showProfileInfo,
                   onTap: _toggleProfileInfo,
-                  child: _buildProfileContent(),
+                  child: _buildProfileContent(
+                    context,
+                    isConnected ? (state as AuthAuthenticated).tenant['whatsappConfig'] ?? {} : {},
+                    isConnected,
+                  ),
                 ),
 
                 const SizedBox(height: 12),
@@ -415,7 +619,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildProfileContent() {
+  Widget _buildProfileContent(BuildContext context, Map<String, dynamic> config, bool isConnected) {
     if (_profileLoading) {
       return const Padding(
         padding: EdgeInsets.all(24),
@@ -442,7 +646,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const Divider(height: 1),
           const SizedBox(height: 20),
 
-          // â”€â”€ Account Info â”€â”€
+          // ── Account Info ──
           _sectionHeader(Icons.person_outline, 'Account Info'),
           const SizedBox(height: 14),
           _infoRow('Name', _profile!['name']?.toString() ?? 'N/A'),
@@ -457,12 +661,12 @@ class _SettingsPageState extends State<SettingsPage> {
             const Divider(height: 1),
             const SizedBox(height: 20),
 
-            // â”€â”€ Subscription â”€â”€
+            // ── Subscription ──
             _sectionHeader(Icons.workspace_premium, 'Subscription'),
             const SizedBox(height: 14),
             _infoRow('Plan', sub['planName']?.toString() ?? sub['packageName']?.toString() ?? 'N/A'),
             _infoRow('Billing Cycle', _capitalize(sub['billingCycle']?.toString() ?? 'N/A')),
-            _infoRow('Price', 'â‚¹${sub['price'] ?? 'N/A'}'),
+            _infoRow('Price', '₹${sub['price'] ?? 'N/A'}'),
             _infoRow('Panel Expires', _formatDate(expiresAt)),
             const SizedBox(height: 12),
 
@@ -490,9 +694,518 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 16),
             const Text('No active subscription', style: TextStyle(color: Colors.grey)),
           ],
+
+          if (isConnected) _buildWhatsAppProfileSection(config),
         ],
       ),
     );
+  }
+
+  Widget _buildWhatsAppProfileSection(Map<String, dynamic> config) {
+    if (_whatsappProfileLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24.0),
+        child: Center(
+          child: Column(
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 12),
+              Text('Fetching WhatsApp profile from Meta...', style: TextStyle(color: Colors.grey)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_whatsappProfileError != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        child: Center(
+          child: Column(
+            children: [
+              Text(_whatsappProfileError!, style: const TextStyle(color: Colors.redAccent)),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () {
+                  _toggleProfileInfo(); // close
+                  _toggleProfileInfo(); // open again
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_whatsappProfile == null) {
+      return const SizedBox.shrink();
+    }
+
+    final activePhoneId = config['phoneNumberId']?.toString();
+    String? verifiedName = config['verifiedName']?.toString();
+    
+    if (verifiedName == null || verifiedName.isEmpty) {
+      if (_phoneNumbers.isNotEmpty && activePhoneId != null) {
+        final activePhone = _phoneNumbers.firstWhere(
+          (p) => p['id']?.toString() == activePhoneId,
+          orElse: () => <String, dynamic>{},
+        );
+        if (activePhone.isNotEmpty) {
+          verifiedName = activePhone['verified_name']?.toString();
+        }
+      }
+    }
+    
+    final displayName = (verifiedName ?? _profile?['name']?.toString() ?? 'Profile Picture').toUpperCase();
+
+    final avatarUrl = _whatsappProfile!['profile_picture_url']?.toString();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        const Divider(height: 1),
+        const SizedBox(height: 20),
+        
+        _sectionHeader(Icons.chat_bubble_outline, 'WhatsApp Business Profile'),
+        const SizedBox(height: 20),
+
+        // Avatar Upload Section
+        Row(
+          children: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 50,
+                  backgroundColor: Colors.grey.shade200,
+                  backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                  child: avatarUrl == null
+                      ? Icon(Icons.person, size: 50, color: Colors.grey.shade400)
+                      : null,
+                ),
+                if (_isUploadingImage)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: CircularProgressIndicator(
+                        value: _uploadProgress > 0 ? _uploadProgress : null,
+                        color: Colors.white,
+                      ),
+                    ),
+                  )
+                else
+                  Positioned.fill(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () => _pickAndUploadProfileImage(config),
+                        customBorder: const CircleBorder(),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 28,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: 24),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    displayName,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Click image to upload a new profile picture. Meta supports square JPG or PNG files.',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 24),
+
+        // About Status Text
+        TextFormField(
+          controller: _aboutController,
+          maxLength: 139,
+          decoration: InputDecoration(
+            labelText: 'About Status Text',
+            hintText: 'Hey there! I am using WhatsApp.',
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Business Description
+        TextFormField(
+          controller: _descriptionController,
+          maxLines: 3,
+          decoration: InputDecoration(
+            labelText: 'Business Description',
+            hintText: 'Tell customers about your business vertical, services, or catalog...',
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Business Address
+        TextFormField(
+          controller: _addressController,
+          decoration: InputDecoration(
+            labelText: 'Business Address',
+            hintText: 'Ahmedabad, Gujarat 380006',
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Contact Email
+        TextFormField(
+          controller: _emailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: InputDecoration(
+            labelText: 'Contact Email',
+            hintText: 'info@yourbusiness.com',
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Industry Vertical Dropdown
+        const Text('Business Vertical Category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _selectedVertical,
+          isExpanded: true,
+          decoration: InputDecoration(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+          dropdownColor: Colors.white,
+          items: _verticals.entries.map((e) {
+            return DropdownMenuItem<String>(
+              value: e.key,
+              child: Text(e.value),
+            );
+          }).toList(),
+          onChanged: (val) {
+            setState(() {
+              _selectedVertical = val;
+            });
+          },
+        ),
+        const SizedBox(height: 24),
+
+        // Websites Editor
+        _buildWebsitesEditor(),
+        const SizedBox(height: 32),
+
+        // Save Button
+        ElevatedButton(
+          onPressed: _isSavingWhatsAppProfile ? null : () => _saveWhatsAppProfile(config),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppTheme.primaryColor,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(double.infinity, 50),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: _isSavingWhatsAppProfile
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Text('Save WhatsApp Business Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWebsitesEditor() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Websites', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        const SizedBox(height: 8),
+        ...List.generate(_websiteControllers.length, (index) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _websiteControllers[index],
+                    decoration: InputDecoration(
+                      hintText: 'https://example.com',
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.grey.shade300),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.redAccent),
+                  onPressed: () {
+                    setState(() {
+                      _websiteControllers[index].dispose();
+                      _websiteControllers.removeAt(index);
+                      if (_websiteControllers.isEmpty) {
+                        _websiteControllers.add(TextEditingController());
+                      }
+                    });
+                  },
+                ),
+              ],
+            ),
+          );
+        }),
+        TextButton.icon(
+          onPressed: () {
+            setState(() {
+              _websiteControllers.add(TextEditingController());
+            });
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('Add Another Website'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _pickAndUploadProfileImage(Map<String, dynamic> config) async {
+    final phoneId = config['phoneNumberId']?.toString();
+    final token = config['accessToken']?.toString();
+    if (phoneId == null || token == null) return;
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        allowMultiple: false,
+        withData: true,
+      );
+      
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final bytes = file.bytes;
+        if (bytes == null) return;
+        
+        setState(() {
+          _isUploadingImage = true;
+          _uploadProgress = 0.0;
+        });
+
+        final handleId = await getIt<WhatsAppRepository>().uploadWhatsAppProfileImage(
+          phoneNumberId: phoneId,
+          accessToken: token,
+          imageBytes: bytes,
+          fileName: file.name,
+          mimeType: file.extension == 'png' ? 'image/png' : 'image/jpeg',
+          onProgress: (progress) {
+            setState(() {
+              _uploadProgress = progress;
+            });
+          },
+        );
+
+        if (handleId != null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profile picture uploaded successfully!')),
+            );
+          }
+          _whatsappProfile = null;
+          _toggleProfileInfo();
+          _toggleProfileInfo();
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Failed to upload profile picture')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error uploading image: $e')),
+        );
+      }
+    } finally {
+      setState(() {
+        _isUploadingImage = false;
+      });
+    }
+  }
+
+  Future<void> _saveWhatsAppProfile(Map<String, dynamic> config) async {
+    final phoneId = config['phoneNumberId']?.toString();
+    final token = config['accessToken']?.toString();
+    if (phoneId == null || token == null) return;
+
+    setState(() {
+      _isSavingWhatsAppProfile = true;
+    });
+
+    final aboutText = _aboutController.text.trim();
+    if (aboutText.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('About Status Text is required and cannot be empty.')),
+        );
+      }
+      setState(() {
+        _isSavingWhatsAppProfile = false;
+      });
+      return;
+    }
+
+    final websites = _websiteControllers
+        .map((c) => c.text.trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+
+    for (var w in websites) {
+      if (!w.startsWith('http://') && !w.startsWith('https://')) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Invalid website: $w. Must start with http:// or https://')),
+          );
+        }
+        setState(() {
+          _isSavingWhatsAppProfile = false;
+        });
+        return;
+      }
+    }
+
+    final Map<String, dynamic> profileData = {
+      'about': aboutText,
+    };
+
+    final addressText = _addressController.text.trim();
+    if (addressText.isNotEmpty) {
+      profileData['address'] = addressText;
+    }
+    final descriptionText = _descriptionController.text.trim();
+    if (descriptionText.isNotEmpty) {
+      profileData['description'] = descriptionText;
+    }
+    final emailText = _emailController.text.trim();
+    if (emailText.isNotEmpty) {
+      profileData['email'] = emailText;
+    }
+    if (websites.isNotEmpty) {
+      profileData['websites'] = websites;
+    }
+    if (_selectedVertical != null && _selectedVertical!.isNotEmpty) {
+      profileData['vertical'] = _selectedVertical;
+    }
+
+    try {
+      final success = await getIt<WhatsAppRepository>().updateWhatsAppProfileText(
+        phoneNumberId: phoneId,
+        accessToken: token,
+        profileData: profileData,
+      );
+
+      if (success) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('WhatsApp Business Profile updated successfully!')),
+          );
+        }
+        _toggleProfileInfo();
+        _toggleProfileInfo();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to update WhatsApp Business Profile')),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        // Displays clean error from Meta if available
+        final cleanMsg = e.toString().replaceFirst('Exception: ', '');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating profile: $cleanMsg')),
+        );
+      }
+    } finally {
+      setState(() {
+        _isSavingWhatsAppProfile = false;
+      });
+    }
   }
 
   /// Replace characters outside the PDF default font's Latin-1 range.
@@ -1076,7 +1789,25 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
             const SizedBox(height: 32),
-            _buildDetailRow('Phone Number ID', config['phoneNumberId'] ?? 'N/A'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Phone Number ID',
+                  style: TextStyle(color: Colors.grey, fontSize: 16),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 340),
+                      child: _buildActivePhoneSelector(config),
+                    ),
+                  ),
+                ),
+              ],
+            ),
             const Divider(height: 32),
             _buildDetailRow('WABA ID', config['businessAccountId'] ?? 'N/A'),
             const Divider(height: 32),
@@ -1109,6 +1840,169 @@ class _SettingsPageState extends State<SettingsPage> {
             // ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildActivePhoneSelector(Map<String, dynamic> config) {
+    if (_loadingPhoneNumbers) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 8.0),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor),
+            ),
+            SizedBox(width: 12),
+            Text('Fetching phone numbers from Meta...', style: TextStyle(color: Colors.grey, fontSize: 14)),
+          ],
+        ),
+      );
+    }
+
+    if (_phoneNumbersError != null) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              _phoneNumbersError!,
+              style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+            ),
+          ),
+          TextButton.icon(
+            onPressed: () {
+              final wabaId = config['businessAccountId']?.toString();
+              final accessToken = config['accessToken']?.toString();
+              if (wabaId != null && accessToken != null) _fetchPhoneNumbers(wabaId, accessToken);
+            },
+            icon: const Icon(Icons.refresh, size: 16),
+            label: const Text('Retry'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            ),
+          ),
+        ],
+      );
+    }
+
+    final currentPhoneId = config['phoneNumberId']?.toString();
+
+    if (_phoneNumbers.isEmpty) {
+      return _buildDetailRow('Phone Number ID', currentPhoneId ?? 'N/A');
+    }
+
+    final hasCurrent = _phoneNumbers.any((p) => p['id']?.toString() == currentPhoneId);
+    final List<Map<String, dynamic>> itemsList = List.from(_phoneNumbers);
+    if (!hasCurrent && currentPhoneId != null && currentPhoneId.isNotEmpty) {
+      itemsList.insert(0, {
+        'id': currentPhoneId,
+        'display_phone_number': config['displayPhone'] ?? 'Active Number',
+        'verified_name': config['verifiedName'] ?? 'Verified Name',
+        'quality_rating': config['qualityRating'] ?? 'UNKNOWN',
+        'throughput': {'level': config['throughputLevel']},
+      });
+    }
+
+    return DropdownButtonFormField<String>(
+      value: currentPhoneId,
+      isExpanded: true,
+      isDense: false,
+      itemHeight: 56,
+      decoration: InputDecoration(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+        ),
+        filled: true,
+        fillColor: AppTheme.backgroundColor,
+      ),
+      dropdownColor: AppTheme.surfaceColor,
+      items: itemsList.map((phone) {
+        final id = phone['id']?.toString() ?? '';
+        final displayPhone = phone['display_phone_number']?.toString() ?? 'Unknown Phone';
+        final verifiedName = phone['verified_name']?.toString() ?? 'No Name';
+        final rating = phone['quality_rating']?.toString() ?? 'UNKNOWN';
+
+        return DropdownMenuItem<String>(
+          value: id,
+          child: Row(
+            children: [
+              Icon(
+                id == currentPhoneId ? Icons.check_circle : Icons.phone_android,
+                color: id == currentPhoneId ? Colors.green : Colors.blueAccent,
+                size: 16,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      displayPhone,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      verifiedName,
+                      style: const TextStyle(color: Colors.grey, fontSize: 10),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _buildQualityBadgeWidget(rating),
+            ],
+          ),
+        );
+      }).toList(),
+      onChanged: _isUpdatingPhone ? null : (selectedId) {
+        if (selectedId != null && selectedId != currentPhoneId) {
+          final selectedPhone = itemsList.firstWhere((p) => p['id']?.toString() == selectedId);
+          _updateActivePhoneNumber(selectedPhone, config);
+        }
+      },
+    );
+  }
+
+  Widget _buildQualityBadgeWidget(String value) {
+    Color badgeColor;
+    switch (value.toUpperCase()) {
+      case 'GREEN':
+        badgeColor = Colors.green;
+        break;
+      case 'YELLOW':
+        badgeColor = Colors.orange;
+        break;
+      case 'RED':
+        badgeColor = Colors.red;
+        break;
+      default:
+        badgeColor = Colors.grey;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: badgeColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: badgeColor.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        value.toUpperCase(),
+        style: TextStyle(color: badgeColor, fontSize: 9, fontWeight: FontWeight.bold),
       ),
     );
   }

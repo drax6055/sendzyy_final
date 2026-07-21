@@ -35,6 +35,8 @@ migrate.json
 /build/
 
 # Android Related
+**/android/.gradle/
+.gradle/
 **/android/local.properties
 **/android/key.properties
 **/android/app/src/main/assets/flutter_assets
@@ -42,6 +44,7 @@ migrate.json
 **/android/app/debug.keystore
 **/android/app/profile.keystore
 **/android/app/release.keystore
+test_output.txt
 
 # iOS Related
 **/ios/Pods/
