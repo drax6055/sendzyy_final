@@ -25,6 +25,9 @@ import 'package:iFloraBuzz/features/retry/presentation/pages/retry_system_page.d
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/services/renewal_reminder_service.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
+import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:iFloraBuzz/core/widgets/password_verification_dialog.dart';
+import 'package:iFloraBuzz/features/settings/presentation/widgets/whatsapp_business_profile_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardShell extends StatefulWidget {
@@ -36,12 +39,19 @@ class DashboardShell extends StatefulWidget {
 
 class _DashboardShellState extends State<DashboardShell> {
   int _selectedIndex = 0;
+  bool _isReportsExpanded = false;
+  bool _isSettingsExpanded = false;
   late final RenewalReminderService _reminderService;
   bool _onboardingIncomplete = false;
   bool _checkingOnboarding = true;
 
   String? _metaProfileImageUrl;
   String? _lastFetchedPhoneId;
+
+  List<Map<String, dynamic>> _headerPhoneNumbers = [];
+  bool _loadingHeaderPhoneNumbers = false;
+  String? _headerWabaId;
+  bool _isHeaderUpdatingPhone = false;
 
   static const _selectedIndexKey = 'dashboard_selected_index';
 
@@ -65,7 +75,8 @@ class _DashboardShellState extends State<DashboardShell> {
 
       if (mounted) {
         setState(() {
-          _onboardingIncomplete = !(connected && phone && bizVerified && template);
+          _onboardingIncomplete =
+              !(connected && phone && bizVerified && template);
           _checkingOnboarding = false;
         });
       }
@@ -82,23 +93,24 @@ class _DashboardShellState extends State<DashboardShell> {
     if (config == null) return;
     final phoneId = config['phoneNumberId']?.toString();
     final token = config['accessToken']?.toString();
-    
+
     if (phoneId == null || token == null || phoneId.isEmpty || token.isEmpty) {
       return;
     }
-    
+
     if (phoneId == _lastFetchedPhoneId) {
       return;
     }
-    
+
     _lastFetchedPhoneId = phoneId;
-    
+
     try {
       final dio = Dio();
       final response = await dio.get(
         '${AppConstants.metaGraphUrl}/$phoneId/whatsapp_business_profile',
         queryParameters: {
-          'fields': 'about,address,description,email,profile_picture_url,websites,vertical',
+          'fields':
+              'about,address,description,email,profile_picture_url,websites,vertical',
           'access_token': token,
         },
       );
@@ -121,11 +133,29 @@ class _DashboardShellState extends State<DashboardShell> {
   Future<void> _restoreSelectedIndex() async {
     final prefs = await SharedPreferences.getInstance();
     final saved = prefs.getInt(_selectedIndexKey) ?? 0;
-    if (mounted) setState(() => _selectedIndex = saved);
+    if (mounted) {
+      setState(() {
+        _selectedIndex = saved;
+        if (saved >= 5 && saved <= 7) {
+          _isReportsExpanded = true;
+        }
+        if (saved >= 10 && saved <= 12) {
+          _isSettingsExpanded = true;
+        }
+      });
+    }
   }
 
   Future<void> _setSelectedIndex(int index) async {
-    setState(() => _selectedIndex = index);
+    setState(() {
+      _selectedIndex = index;
+      if (index >= 5 && index <= 7) {
+        _isReportsExpanded = true;
+      }
+      if (index >= 10 && index <= 12) {
+        _isSettingsExpanded = true;
+      }
+    });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(_selectedIndexKey, index);
   }
@@ -149,15 +179,30 @@ class _DashboardShellState extends State<DashboardShell> {
                   color: Colors.red.shade50,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.logout_rounded, size: 36, color: Colors.red.shade500),
+                child: Icon(
+                  Icons.logout_rounded,
+                  size: 36,
+                  color: Colors.red.shade500,
+                ),
               ),
               const SizedBox(height: 20),
-              const Text('Logging out?', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87)),
+              const Text(
+                'Logging out?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
               const SizedBox(height: 10),
               Text(
                 'You\'re signed in as $name.\nAre you sure you want to log out?',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600, height: 1.5),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey.shade600,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 28),
               Row(
@@ -167,10 +212,18 @@ class _DashboardShellState extends State<DashboardShell> {
                       onPressed: () => Navigator.pop(ctx),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         side: BorderSide(color: Colors.grey.shade300),
                       ),
-                      child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black54)),
+                      child: const Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -188,10 +241,15 @@ class _DashboardShellState extends State<DashboardShell> {
                         backgroundColor: Colors.red.shade500,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
-                      child: const Text('Logout', style: TextStyle(fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Logout',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ],
@@ -215,7 +273,8 @@ class _DashboardShellState extends State<DashboardShell> {
           try {
             final authState = context.read<AuthBloc>().state;
             if (authState is AuthAuthenticated) {
-              final subscription = authState.tenant['subscription'] as Map<String, dynamic>?;
+              final subscription =
+                  authState.tenant['subscription'] as Map<String, dynamic>?;
               final expiryDate = subscription?['expiryDate'];
               if (expiryDate is String) {
                 return DateTime.parse(expiryDate);
@@ -235,7 +294,10 @@ class _DashboardShellState extends State<DashboardShell> {
             daysLeft: daysLeft,
           );
           if (goToRenew && mounted) {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => const PackageSelectionPage()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PackageSelectionPage()),
+            );
           }
         },
       );
@@ -259,7 +321,12 @@ class _DashboardShellState extends State<DashboardShell> {
     const ScheduledCampaignsPage(),
     const ChatbotListPage(),
     const HelpPage(),
-    SettingsPage(onRenewPlan: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PackageSelectionPage()))),
+    SettingsPage(
+      onRenewPlan: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PackageSelectionPage()),
+      ),
+    ),
     const IntegrationSettingsPage(),
     const RetrySystemPage(),
   ];
@@ -268,12 +335,8 @@ class _DashboardShellState extends State<DashboardShell> {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(
-          create: (context) => getIt<ChatBloc>(),
-        ),
-        BlocProvider(
-          create: (context) => getIt<ChatbotBloc>(),
-        ),
+        BlocProvider(create: (context) => getIt<ChatBloc>()),
+        BlocProvider(create: (context) => getIt<ChatbotBloc>()),
       ],
       child: Scaffold(
         body: Row(
@@ -281,10 +344,10 @@ class _DashboardShellState extends State<DashboardShell> {
             // Sidebar
             Container(
               width: 260,
-                color: Colors.white,
+              color: Colors.white,
               child: Column(
                 children: [
-                                   const SizedBox(height: 18),
+                  const SizedBox(height: 18),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Image.asset('assets/images/logo.png'),
@@ -296,14 +359,12 @@ class _DashboardShellState extends State<DashboardShell> {
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          _buildNavItem(0, Icons.send_rounded, 'Bulk Send'),
+                          _buildNavItem(0, Icons.send_rounded, 'Broadcast'),
                           _buildNavItem(1, Icons.forum_rounded, 'Chats'),
                           _buildNavItem(2, Icons.copy_rounded, 'Templates'),
                           _buildNavItem(3, Icons.people_alt_rounded, 'Clients'),
                           _buildNavItem(4, Icons.contacts_rounded, 'Leads'),
-                          _buildNavItem(5, Icons.bar_chart_rounded, 'Reports'),
-                          _buildNavItem(6, Icons.analytics_rounded, 'Meta Analytics'),
-                          _buildNavItem(7, Icons.schedule_rounded, 'Scheduled'),
+                          _buildExpandableReportsMenu(),
                           _buildNavItem(8, Icons.smart_toy_rounded, 'Chatbot'),
                           _buildNavItem(9, Icons.help_outline_rounded, 'Q & A'),
                           const SizedBox(height: 16),
@@ -312,9 +373,7 @@ class _DashboardShellState extends State<DashboardShell> {
                             indent: 20,
                             endIndent: 20,
                           ),
-                          _buildNavItem(10, Icons.settings_rounded, 'Settings'),
-                          _buildNavItem(11, Icons.integration_instructions_rounded, 'Integrations'),
-                          _buildNavItem(12, Icons.replay_circle_filled_outlined, 'Retry System'),
+                          _buildExpandableSettingsMenu(),
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -323,7 +382,11 @@ class _DashboardShellState extends State<DashboardShell> {
                 ],
               ),
             ),
-             const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+            const VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: Color(0xFFE0E0E0),
+            ),
             // Main Content
             Expanded(
               child: Container(
@@ -346,13 +409,206 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label) {
+  Widget _buildExpandableSettingsMenu() {
+    final bool isAnySettingsSelected =
+        _selectedIndex >= 10 && _selectedIndex <= 12;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: () {
+            setState(() {
+              _isSettingsExpanded = !_isSettingsExpanded;
+            });
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isAnySettingsSelected && !_isSettingsExpanded
+                  ? AppTheme.primaryColor.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.settings_rounded,
+                  color: AppTheme.secondaryColor,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    'Settings',
+                    style: TextStyle(
+                      color: AppTheme.secondaryColor,
+                      fontWeight: isAnySettingsSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _isSettingsExpanded ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppTheme.secondaryColor,
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox(width: double.infinity, height: 0),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Column(
+              children: [
+                _buildNavItem(
+                  10,
+                  Icons.tune_rounded,
+                  'General Settings',
+                  isSubItem: true,
+                ),
+                _buildNavItem(
+                  11,
+                  Icons.integration_instructions_rounded,
+                  'Integrations',
+                  isSubItem: true,
+                ),
+                _buildNavItem(
+                  12,
+                  Icons.replay_circle_filled_outlined,
+                  'Retry System',
+                  isSubItem: true,
+                ),
+              ],
+            ),
+          ),
+          crossFadeState: _isSettingsExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExpandableReportsMenu() {
+    final bool isAnyReportSelected = _selectedIndex >= 5 && _selectedIndex <= 7;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: () {
+            setState(() {
+              _isReportsExpanded = !_isReportsExpanded;
+            });
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isAnyReportSelected && !_isReportsExpanded
+                  ? AppTheme.primaryColor.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.bar_chart_rounded,
+                  color: AppTheme.secondaryColor,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    'Reports',
+                    style: TextStyle(
+                      color: AppTheme.secondaryColor,
+                      fontWeight: isAnyReportSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _isReportsExpanded ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppTheme.secondaryColor,
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox(width: double.infinity, height: 0),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Column(
+              children: [
+                _buildNavItem(
+                  5,
+                  Icons.analytics_outlined,
+                  'Campaign Reports',
+                  isSubItem: true,
+                ),
+                _buildNavItem(
+                  6,
+                  Icons.insights_rounded,
+                  'Meta Analytics',
+                  isSubItem: true,
+                ),
+                _buildNavItem(
+                  7,
+                  Icons.schedule_rounded,
+                  'Scheduled',
+                  isSubItem: true,
+                ),
+              ],
+            ),
+          ),
+          crossFadeState: _isReportsExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNavItem(
+    int index,
+    IconData icon,
+    String label, {
+    bool isSubItem = false,
+  }) {
     bool isSelected = _selectedIndex == index;
     return InkWell(
       onTap: () => _setSelectedIndex(index),
+      borderRadius: BorderRadius.circular(12),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: EdgeInsets.only(
+          left: isSubItem ? 12 : 12,
+          right: 12,
+          top: 3,
+          bottom: 3,
+        ),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSubItem ? 14 : 16,
+          vertical: isSubItem ? 10 : 12,
+        ),
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primaryColor.withValues(alpha: 0.12)
@@ -363,21 +619,280 @@ class _DashboardShellState extends State<DashboardShell> {
           children: [
             Icon(
               icon,
-              color: isSelected
-                  ? AppTheme.secondaryColor
-                  : AppTheme.secondaryColor,
+              size: isSubItem ? 19 : 22,
+              color: AppTheme.secondaryColor,
             ),
-            const SizedBox(width: 16),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                  ? AppTheme.secondaryColor
-                  : AppTheme.secondaryColor,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: AppTheme.secondaryColor,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontSize: isSubItem ? 13.5 : 14,
+                ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _fetchHeaderPhoneNumbers(
+    String wabaId,
+    String accessToken,
+  ) async {
+    if (_loadingHeaderPhoneNumbers) return;
+    setState(() {
+      _loadingHeaderPhoneNumbers = true;
+      _headerWabaId = wabaId;
+    });
+    try {
+      final numbers = await getIt<WhatsAppRepository>().fetchPhoneNumbers(
+        wabaId: wabaId,
+        accessToken: accessToken,
+      );
+      if (mounted) {
+        setState(() {
+          _headerPhoneNumbers = numbers ?? [];
+          _loadingHeaderPhoneNumbers = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loadingHeaderPhoneNumbers = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _updateHeaderActivePhoneNumber(
+    Map<String, dynamic> phone,
+    Map<String, dynamic> config,
+  ) async {
+    setState(() {
+      _isHeaderUpdatingPhone = true;
+    });
+    try {
+      final success = await getIt<WhatsAppRepository>().updateConfig(
+        phoneNumberId: phone['id']?.toString() ?? '',
+        accessToken: config['accessToken']?.toString() ?? '',
+        businessAccountId: config['businessAccountId']?.toString() ?? '',
+        metaAppId: config['metaAppId']?.toString() ?? '',
+        displayPhone: phone['display_phone_number']?.toString(),
+        verifiedName: phone['verified_name']?.toString(),
+        qualityRating: phone['quality_rating']?.toString(),
+        throughputLevel: phone['throughput']?['level']?.toString(),
+      );
+
+      if (success) {
+        if (mounted) {
+          context.read<AuthBloc>().add(AuthCheckRequested());
+          context.read<TemplateBloc>().add(FetchTemplates());
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Active phone number updated successfully!'),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to update active phone number'),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error updating active phone number: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isHeaderUpdatingPhone = false;
+        });
+      }
+    }
+  }
+
+  Widget _buildHeaderBadgeWidget(String value) {
+    Color badgeColor;
+    switch (value.toUpperCase()) {
+      case 'GREEN':
+        badgeColor = Colors.green;
+        break;
+      case 'YELLOW':
+        badgeColor = Colors.orange;
+        break;
+      case 'RED':
+        badgeColor = Colors.red;
+        break;
+      default:
+        badgeColor = Colors.grey;
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: badgeColor.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        value.toUpperCase(),
+        style: TextStyle(
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+          color: badgeColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderPhoneSelector(Map<String, dynamic> config) {
+    final wabaId = config['businessAccountId']?.toString();
+    final accessToken = config['accessToken']?.toString();
+    final currentPhoneId = config['phoneNumberId']?.toString();
+
+    if (wabaId != null &&
+        accessToken != null &&
+        wabaId != _headerWabaId &&
+        !_loadingHeaderPhoneNumbers) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _fetchHeaderPhoneNumbers(wabaId, accessToken);
+      });
+    }
+
+    if (currentPhoneId == null || currentPhoneId.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    if (_isHeaderUpdatingPhone || _loadingHeaderPhoneNumbers) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppTheme.secondaryColor,
+              ),
+            ),
+            SizedBox(width: 8),
+            Text(
+              'Updating...',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final List<Map<String, dynamic>> itemsList = List.from(_headerPhoneNumbers);
+    final hasCurrent = itemsList.any(
+      (p) => p['id']?.toString() == currentPhoneId,
+    );
+    if (!hasCurrent) {
+      itemsList.insert(0, {
+        'id': currentPhoneId,
+        'display_phone_number': config['displayPhone'] ?? 'Active Number',
+        'verified_name': config['verifiedName'] ?? 'Verified Name',
+        'quality_rating': config['qualityRating'] ?? 'GREEN',
+      });
+    }
+
+    return Container(
+      height: 42,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundColor,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: currentPhoneId,
+          icon: const Icon(
+            Icons.arrow_drop_down,
+            color: AppTheme.secondaryColor,
+          ),
+          style: const TextStyle(fontSize: 13, color: Colors.black87),
+          onChanged: (selectedId) async {
+            if (selectedId != null && selectedId != currentPhoneId) {
+              final verified = await showPasswordVerificationDialog(
+                context,
+                prompt:
+                    'Enter your login password to change WhatsApp phone number.',
+              );
+              if (verified) {
+                final selectedPhone = itemsList.firstWhere(
+                  (p) => p['id']?.toString() == selectedId,
+                );
+                _updateHeaderActivePhoneNumber(selectedPhone, config);
+              } else {
+                if (mounted) setState(() {});
+              }
+            }
+          },
+          items: itemsList.map((phone) {
+            final id = phone['id']?.toString() ?? '';
+            final displayPhone =
+                phone['display_phone_number']?.toString() ?? 'Unknown';
+            final verifiedName = phone['verified_name']?.toString() ?? '';
+            final rating = phone['quality_rating']?.toString() ?? 'GREEN';
+
+            return DropdownMenuItem<String>(
+              value: id,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    id == currentPhoneId
+                        ? Icons.check_circle
+                        : Icons.phone_android_rounded,
+                    color: id == currentPhoneId ? Colors.green : Colors.grey,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayPhone,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (verifiedName.isNotEmpty)
+                        Text(
+                          verifiedName,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  _buildHeaderBadgeWidget(rating),
+                ],
+              ),
+            );
+          }).toList(),
         ),
       ),
     );
@@ -398,12 +913,17 @@ class _DashboardShellState extends State<DashboardShell> {
           // Panel expiry badge
           BlocBuilder<AuthBloc, AuthState>(
             builder: (context, authState) {
-              if (authState is! AuthAuthenticated) return const SizedBox.shrink();
-              
-              final subscription = authState.tenant['subscription'] as Map<String, dynamic>?;
+              if (authState is! AuthAuthenticated) {
+                return const SizedBox.shrink();
+              }
+
+              final subscription =
+                  authState.tenant['subscription'] as Map<String, dynamic>?;
               final expiryDateStr = subscription?['expiryDate'];
-              if (expiryDateStr == null) return const SizedBox.shrink();
-              
+              if (expiryDateStr == null) {
+                return const SizedBox.shrink();
+              }
+
               final exp = DateTime.parse(expiryDateStr as String);
               final daysLeft = exp.difference(DateTime.now()).inDays;
               final isExpired = daysLeft < 0;
@@ -411,13 +931,16 @@ class _DashboardShellState extends State<DashboardShell> {
               final color = isExpired
                   ? Colors.red
                   : isWarning
-                      ? Colors.orange
-                      : AppTheme.secondaryColor;
+                  ? Colors.orange
+                  : AppTheme.secondaryColor;
               final expStr =
                   '${exp.day.toString().padLeft(2, '0')}/${exp.month.toString().padLeft(2, '0')}/${exp.year}';
 
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(8),
@@ -447,7 +970,10 @@ class _DashboardShellState extends State<DashboardShell> {
                     if (!isExpired) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: color.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
@@ -470,10 +996,27 @@ class _DashboardShellState extends State<DashboardShell> {
           const Spacer(),
           BlocBuilder<AuthBloc, AuthState>(
             builder: (context, authState) {
+              if (authState is AuthAuthenticated) {
+                final config =
+                    authState.tenant['whatsappConfig'] as Map<String, dynamic>?;
+                if (config != null &&
+                    config['accessToken'] != null &&
+                    config['accessToken'].toString().isNotEmpty) {
+                  return _buildHeaderPhoneSelector(config);
+                }
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+          const SizedBox(width: 12),
+          BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, authState) {
               // Show settings gear only when phoneNumberId or businessAccountId is missing
               final bool configIncomplete = () {
                 if (authState is AuthAuthenticated) {
-                  final config = authState.tenant['whatsappConfig'] as Map<String, dynamic>?;
+                  final config =
+                      authState.tenant['whatsappConfig']
+                          as Map<String, dynamic>?;
                   final phoneId = config?['phoneNumberId']?.toString() ?? '';
                   final wabaId = config?['businessAccountId']?.toString() ?? '';
                   return phoneId.isEmpty || wabaId.isEmpty;
@@ -494,7 +1037,9 @@ class _DashboardShellState extends State<DashboardShell> {
                     context.read<AuthBloc>().add(AuthCheckRequested());
                     context.read<TemplateBloc>().add(FetchTemplates());
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('API Configuration Updated')),
+                      const SnackBar(
+                        content: Text('API Configuration Updated'),
+                      ),
                     );
                   }
                 },
@@ -513,7 +1058,9 @@ class _DashboardShellState extends State<DashboardShell> {
               String name = 'User';
               if (state is AuthAuthenticated) {
                 final config = state.tenant['whatsappConfig'];
-                if (config != null && config['verifiedName'] != null && config['verifiedName'].toString().isNotEmpty) {
+                if (config != null &&
+                    config['verifiedName'] != null &&
+                    config['verifiedName'].toString().isNotEmpty) {
                   name = config['verifiedName'].toString();
                 } else {
                   name = state.user;
@@ -523,15 +1070,27 @@ class _DashboardShellState extends State<DashboardShell> {
                 });
               }
               final displayName = name;
-              final firstLetter = displayName.isNotEmpty ? displayName[0].toUpperCase() : 'U';
+              final firstLetter = displayName.isNotEmpty
+                  ? displayName[0].toUpperCase()
+                  : 'U';
 
               return PopupMenuButton<String>(
                 onSelected: (val) {
-                  if (val == 'logout') {
+                  if (val == 'whatsapp_profile') {
+                    if (state is AuthAuthenticated) {
+                      final config =
+                          state.tenant['whatsappConfig']
+                              as Map<String, dynamic>? ??
+                          {};
+                      WhatsAppBusinessProfileDialog.show(context, config);
+                    }
+                  } else if (val == 'logout') {
                     _showLogoutDialog(context, name);
                   }
                 },
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
                 elevation: 8,
                 offset: const Offset(0, 56),
                 itemBuilder: (context) => [
@@ -539,22 +1098,33 @@ class _DashboardShellState extends State<DashboardShell> {
                     enabled: false,
                     padding: EdgeInsets.zero,
                     child: Container(
-                      width: 220,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      width: 240,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       decoration: BoxDecoration(
                         color: AppTheme.secondaryColor.withValues(alpha: 0.06),
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(14),
+                        ),
                       ),
                       child: Row(
                         children: [
                           CircleAvatar(
                             radius: 20,
                             backgroundColor: AppTheme.secondaryColor,
-                            backgroundImage: _metaProfileImageUrl != null ? NetworkImage(_metaProfileImageUrl!) : null,
+                            backgroundImage: _metaProfileImageUrl != null
+                                ? NetworkImage(_metaProfileImageUrl!)
+                                : null,
                             child: _metaProfileImageUrl == null
                                 ? Text(
                                     firstLetter,
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                    ),
                                   )
                                 : null,
                           ),
@@ -563,8 +1133,22 @@ class _DashboardShellState extends State<DashboardShell> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87), overflow: TextOverflow.ellipsis),
-                                const Text('Tenant Account', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                                Text(
+                                  displayName.toUpperCase(),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                    color: Colors.black87,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const Text(
+                                  'Tenant Account',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey,
+                                  ),
+                                ),
                               ],
                             ),
                           ),
@@ -574,8 +1158,44 @@ class _DashboardShellState extends State<DashboardShell> {
                   ),
                   const PopupMenuDivider(height: 1),
                   PopupMenuItem<String>(
+                    value: 'whatsapp_profile',
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.chat_bubble_outline_rounded,
+                            size: 16,
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'WhatsApp Business Profile',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(height: 1),
+                  PopupMenuItem<String>(
                     value: 'logout',
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 4,
+                    ),
                     child: Row(
                       children: [
                         Container(
@@ -584,10 +1204,21 @@ class _DashboardShellState extends State<DashboardShell> {
                             color: Colors.red.shade50,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(Icons.logout_rounded, size: 16, color: Colors.red.shade600),
+                          child: Icon(
+                            Icons.logout_rounded,
+                            size: 16,
+                            color: Colors.red.shade600,
+                          ),
                         ),
                         const SizedBox(width: 12),
-                        Text('Logout', style: TextStyle(color: Colors.red.shade600, fontWeight: FontWeight.w600, fontSize: 14)),
+                        Text(
+                          'Logout',
+                          style: TextStyle(
+                            color: Colors.red.shade600,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -596,16 +1227,24 @@ class _DashboardShellState extends State<DashboardShell> {
                   children: [
                     CircleAvatar(
                       backgroundColor: AppTheme.secondaryColor,
-                      backgroundImage: _metaProfileImageUrl != null ? NetworkImage(_metaProfileImageUrl!) : null,
+                      backgroundImage: _metaProfileImageUrl != null
+                          ? NetworkImage(_metaProfileImageUrl!)
+                          : null,
                       child: _metaProfileImageUrl == null
                           ? Text(
                               firstLetter,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                             )
                           : null,
                     ),
                     const SizedBox(width: 12),
-                    Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      displayName.toUpperCase(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     const Icon(Icons.keyboard_arrow_down),
                   ],
                 ),
@@ -621,14 +1260,16 @@ class _DashboardShellState extends State<DashboardShell> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.orange.shade50,
-        border: Border(
-          bottom: BorderSide(color: Colors.orange.shade100),
-        ),
+        border: Border(bottom: BorderSide(color: Colors.orange.shade100)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
       child: Row(
         children: [
-          Icon(Icons.warning_amber_rounded, color: Colors.orange.shade800, size: 20),
+          Icon(
+            Icons.warning_amber_rounded,
+            color: Colors.orange.shade800,
+            size: 20,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -685,7 +1326,10 @@ class _SupportButton extends StatelessWidget {
               // Header
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 28),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 28,
+                ),
                 decoration: const BoxDecoration(color: AppTheme.secondaryColor),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -698,12 +1342,20 @@ class _SupportButton extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(Icons.headset_mic_rounded, color: Colors.white, size: 24),
+                          child: const Icon(
+                            Icons.headset_mic_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
                         ),
                         const Spacer(),
                         IconButton(
                           onPressed: () => Navigator.pop(ctx),
-                          icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.white70,
+                            size: 20,
+                          ),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
@@ -717,7 +1369,11 @@ class _SupportButton extends StatelessWidget {
                     const SizedBox(height: 4),
                     const Text(
                       'Contact Us',
-                      style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 ),
@@ -759,10 +1415,18 @@ class _SupportButton extends StatelessWidget {
                           backgroundColor: AppTheme.secondaryColor,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                           elevation: 0,
                         ),
-                        child: const Text('Got it', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                        child: const Text(
+                          'Got it',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -787,16 +1451,26 @@ class _SupportButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppTheme.secondaryColor.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppTheme.secondaryColor.withValues(alpha: 0.2)),
+            border: Border.all(
+              color: AppTheme.secondaryColor.withValues(alpha: 0.2),
+            ),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.headset_mic_rounded, size: 17, color: AppTheme.secondaryColor),
+              const Icon(
+                Icons.headset_mic_rounded,
+                size: 17,
+                color: AppTheme.secondaryColor,
+              ),
               const SizedBox(width: 6),
               const Text(
                 'Support',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.secondaryColor),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.secondaryColor,
+                ),
               ),
             ],
           ),
@@ -811,7 +1485,11 @@ class _SupportItem extends StatelessWidget {
   final String label;
   final String value;
 
-  const _SupportItem({required this.icon, required this.label, required this.value});
+  const _SupportItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -831,11 +1509,18 @@ class _SupportItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: const TextStyle(fontSize: 12, color: Colors.black45)),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 12, color: Colors.black45),
+              ),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black87,
+                ),
               ),
             ],
           ),

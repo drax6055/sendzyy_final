@@ -107,6 +107,42 @@ class _ApiConfigDialogState extends State<ApiConfigDialog> {
     }
   }
 
+  bool _isRegistering = false;
+
+  Future<void> _triggerRegistration() async {
+    setState(() => _isRegistering = true);
+    try {
+      final res = await _whatsappRepository.registerPhoneNumber();
+      if (mounted) {
+        setState(() => _isRegistering = false);
+        if (res != null && res['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('✅ Phone number registered successfully with Meta Cloud API! Status is now CONNECTED.')),
+          );
+        } else {
+          final errDetail = res?['error'] ?? res?['details'] ?? 'Registration failed';
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Registration Failed'),
+              content: Text('Meta registration error: $errDetail'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isRegistering = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -173,6 +209,21 @@ class _ApiConfigDialogState extends State<ApiConfigDialog> {
                     ),
                   ),
                   style: const TextStyle(color: Colors.black54),
+                ),
+                const SizedBox(height: 24),
+                OutlinedButton.icon(
+                  onPressed: _isRegistering ? null : _triggerRegistration,
+                  icon: _isRegistering 
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.verified_user_rounded, color: Colors.green),
+                  label: Text(
+                    _isRegistering ? 'Registering with Meta...' : 'Register Phone Number (Fix Error 141000)',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.green),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
                 ),
               ],
               const SizedBox(height: 8),

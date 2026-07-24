@@ -8,52 +8,77 @@ class HelpPage extends StatelessWidget {
     {
       'q': 'What is Sendzyy?',
       'a':
-          'iFloraBuzz is a WhatsApp Business messaging platform that lets you send bulk messages, manage client conversations, and use pre-approved templates — all from one dashboard.',
+          'Sendzyy is an all-in-one WhatsApp Business API marketing, broadcast, and automation platform that helps businesses launch broadcasts, automate chatbot flows, manage contacts, and track analytics.',
     },
     {
-      'q': 'How do I send a bulk message?',
+      'q': 'How do I send a Broadcast campaign?',
       'a':
-          'Go to "Bulk Send" from the sidebar, select a template, choose your clients, and hit Send. Make sure you have enough credits before sending.',
+          'Navigate to "Broadcast" in the sidebar, select an approved Meta message template, select target client groups or custom contacts, and click Send. You can also schedule broadcasts for future delivery.',
     },
     {
-      'q': 'What are credits and how are they used?',
+      'q': 'Where do I view Scheduled Campaigns and Reports?',
       'a':
-          'Credits are consumed each time you send a WhatsApp message. The cost depends on the message type (template vs. session). You can buy more credits from the "Buy Credits" section.',
+          'Expand the "Reports" parent menu in the sidebar to access:\n• Campaign Reports: Detailed logs for message delivery, read rates, and failures.\n• Meta Analytics: Visual metrics for overall message volume and performance.\n• Scheduled: Manage queued campaigns scheduled for future automated delivery.',
+    },
+    {
+      'q': 'How do I switch active WhatsApp Phone Numbers?',
+      'a':
+          'Click the active phone selector dropdown in the top header (or go to Settings -> General Settings). For account security, you will be prompted to verify your login password before switching numbers.',
+    },
+    {
+      'q': 'How do I edit my WhatsApp Business Profile?',
+      'a':
+          'Click your avatar in the top-right menu and select "WhatsApp Business Profile" (or navigate to Settings -> General Settings). Click the Edit icon button on the top right to update your profile image, status text, description, address, email, vertical category, and up to 2 website links.',
+    },
+    {
+      'q': 'How does the Retry System work?',
+      'a':
+          'Under Settings -> Retry System, Sendzyy tracks failed message dispatches and automatically re-attempts delivery or allows manual single/bulk retries to maximize delivery rates.',
+    },
+    {
+      'q': 'How do I build and configure Chatbot Flows?',
+      'a':
+          'Go to "Chatbot" in the sidebar. You can create visual flow trees using drag-and-drop nodes such as Start, Send Message, Quick Reply, Interactive Buttons, Media, User Input, and End node.',
+    },
+    {
+      'q': 'How do I manage Clients and Contact Groups?',
+      'a':
+          'Go to "Clients" in the sidebar. You can manually add contacts, bulk import/export clients via Excel/CSV, and organize contacts into custom target groups for segmented broadcasting.',
+    },
+    {
+      'q': 'How does Lead Management work in Sendzyy?',
+      'a':
+          'Go to "Leads" in the sidebar to capture, track, and convert incoming leads. Assign lead statuses (New, Contacted, Qualified, Converted, Lost), add tags, and record activity notes.',
     },
     {
       'q': 'Why can\'t I send a free-text message to a client?',
       'a':
-          'WhatsApp only allows free-text replies within a 24-hour conversation window. Once that window expires, you must use an approved template to re-engage the client.',
+          'WhatsApp policy permits free-text conversation replies within a 24-hour window from the client\'s last message. Outside of this 24-hour window, you must initiate conversation using a Meta-approved template.',
     },
     {
-      'q': 'How do I create or manage templates?',
+      'q': 'What do the chat message ticks (single tick, double tick, blue ticks) mean?',
       'a':
-          'Navigate to "Templates" in the sidebar. You can view existing approved templates there. New templates must be submitted through your WhatsApp Business API provider for approval.',
+          'In Chats and Campaign Reports, message status ticks represent real-time delivery stages:\n• Single Grey Tick (Sent): Message sent from Sendzyy to Meta WhatsApp servers.\n• Double Grey Ticks (Delivered): Message delivered to the recipient\'s phone.\n• Double Blue Ticks (Read): Recipient has opened and read your message.\n• Red Warning (Failed): Delivery failed (e.g. invalid number, insufficient credits, or Meta policy restriction).',
     },
     {
-      'q': 'How do I add a new client?',
+      'q': 'What do the phone number quality rating badges (GREEN, YELLOW, RED) mean?',
       'a':
-          'Go to "Clients" and click "Add Client". Enter the client\'s name and mobile number (with country code, e.g. 919876543210).',
+          'In the header & settings phone selector dropdown, Meta assigns quality rating badges:\n• GREEN (High Quality): High quality rating with low customer block/report rates.\n• YELLOW (Medium Quality): Medium rating. Consider reviewing broadcast relevance or frequency.\n• RED (Low Quality): Low rating caused by high customer block/report rates. Messaging limits may apply.\n• UNKNOWN: Quality rating is under initial evaluation by Meta.',
     },
     {
-      'q': 'What does the green/grey dot next to a conversation mean?',
+      'q': 'What does the Green vs Grey indicator dot in Chats mean?',
       'a':
-          'A green dot means the 24-hour conversation window is still open and you can send free-text messages. A grey dot means the window has expired and only templates can be sent.',
+          'In the Chats conversation list:\n• Green Dot: Active 24-Hour Window. The client messaged recently, so you can send free-text messages and custom replies.\n• Grey Dot: Expired 24-Hour Window. Free-text messaging is locked; send a Meta-approved template to re-engage the client.',
     },
     {
-      'q': 'How do I update my API configuration?',
+      'q': 'How do I set up Integrations and Webhooks?',
       'a':
-          'Click the settings (gear) icon in the top header bar to open the API Configuration dialog and update your credentials.',
+          'Expand Settings -> Integrations in the sidebar to configure integrations for E-Commerce platforms (Shopify, WooCommerce, WordPress) and webhooks for real-time message automation.',
     },
     {
-      'q': 'My messages are not being delivered. What should I check?',
+      'q': 'How do I update API Configuration credentials?',
       'a':
-          'Verify your API key and WhatsApp Business number in API Configuration. Also ensure you have sufficient credits and that the recipient\'s number is valid with the correct country code.',
-    },
-    {
-      'q': 'How do I view usage reports?',
-      'a':
-          'Go to "Reports" in the sidebar to see a breakdown of messages sent, delivered, and failed over time.',
+          'If your Meta credentials change, click the gear (Settings) icon in the top header bar to update your WhatsApp Business Account ID, Phone Number ID, and Access Token.',
     },
   ];
 
@@ -86,9 +111,9 @@ class HelpPage extends StatelessWidget {
                   Text(
                     'Help & Q/A',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.secondaryColor,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.secondaryColor,
+                    ),
                   ),
                   Text(
                     'Frequently asked questions & support',
@@ -104,9 +129,9 @@ class HelpPage extends StatelessWidget {
           Text(
             'Frequently Asked Questions',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.secondaryColor,
-                ),
+              fontWeight: FontWeight.bold,
+              color: AppTheme.secondaryColor,
+            ),
           ),
           const SizedBox(height: 16),
           ...(_faqs.map((faq) => _FaqTile(q: faq['q']!, a: faq['a']!))),
@@ -183,8 +208,7 @@ class _FaqTile extends StatelessWidget {
       ),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-        childrenPadding:
-            const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        childrenPadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         shape: const Border(),
         collapsedShape: const Border(),
         leading: Container(
