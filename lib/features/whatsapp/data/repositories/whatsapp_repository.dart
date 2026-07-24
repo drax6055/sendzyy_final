@@ -860,6 +860,26 @@ class WhatsAppRepository {
     }
   }
 
+  Future<Map<String, dynamic>?> registerPhoneNumber({String? pin}) async {
+    try {
+      final response = await _dio.post(
+        '/api/whatsapp/register-phone',
+        data: {
+          if (pin != null && pin.isNotEmpty) 'pin': pin,
+        },
+      );
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      }
+      return null;
+    } catch (e) {
+      if (e is DioException && e.response?.data != null) {
+        return e.response?.data as Map<String, dynamic>;
+      }
+      return {'error': e.toString()};
+    }
+  }
+
   Future<void> logSignupEvent({
     required String eventName,
     String? sessionId,

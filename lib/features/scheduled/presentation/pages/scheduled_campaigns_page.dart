@@ -22,12 +22,13 @@ class _ScheduledCampaignsPageState extends State<ScheduledCampaignsPage> {
   DateTimeRange? _dateRange;
 
   List<String> get _templateOptions {
-    final templates = _campaigns
-        .map((c) => c['template'] as String? ?? '')
-        .where((t) => t.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final templates =
+        _campaigns
+            .map((c) => c['template'] as String? ?? '')
+            .where((t) => t.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     return templates;
   }
 
@@ -44,12 +45,23 @@ class _ScheduledCampaignsPageState extends State<ScheduledCampaignsPage> {
         final DateTime? date = raw == null
             ? null
             : raw is DateTime
-                ? raw
-                : DateTime.tryParse(raw.toString());
+            ? raw
+            : DateTime.tryParse(raw.toString());
         if (date == null) return false;
         final local = date.toLocal();
-        final start = DateTime(_dateRange!.start.year, _dateRange!.start.month, _dateRange!.start.day);
-        final end = DateTime(_dateRange!.end.year, _dateRange!.end.month, _dateRange!.end.day, 23, 59, 59);
+        final start = DateTime(
+          _dateRange!.start.year,
+          _dateRange!.start.month,
+          _dateRange!.start.day,
+        );
+        final end = DateTime(
+          _dateRange!.end.year,
+          _dateRange!.end.month,
+          _dateRange!.end.day,
+          23,
+          59,
+          59,
+        );
         if (local.isBefore(start) || local.isAfter(end)) return false;
       }
 
@@ -68,7 +80,10 @@ class _ScheduledCampaignsPageState extends State<ScheduledCampaignsPage> {
     try {
       final repo = getIt<WhatsAppRepository>();
       final list = await repo.fetchScheduledCampaigns();
-      setState(() { _campaigns = list; _loading = false; });
+      setState(() {
+        _campaigns = list;
+        _loading = false;
+      });
     } catch (_) {
       setState(() => _loading = false);
     }
@@ -79,13 +94,21 @@ class _ScheduledCampaignsPageState extends State<ScheduledCampaignsPage> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Cancel Campaign'),
-        content: const Text('Are you sure you want to cancel this scheduled campaign?'),
+        content: const Text(
+          'Are you sure you want to cancel this scheduled campaign?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Yes, Cancel', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Yes, Cancel',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -116,19 +139,27 @@ class _ScheduledCampaignsPageState extends State<ScheduledCampaignsPage> {
                   color: Colors.orange.shade50,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.schedule_rounded, color: Colors.orange.shade700, size: 24),
+                child: Icon(
+                  Icons.schedule_rounded,
+                  color: Colors.orange.shade700,
+                  size: 24,
+                ),
               ),
               const SizedBox(width: 14),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Scheduled Campaigns',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.secondaryColor,
-                          )),
-                  Text('Campaigns queued for future delivery',
-                      style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                  Text(
+                    'Scheduled Campaigns',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.secondaryColor,
+                    ),
+                  ),
+                  Text(
+                    'Campaigns queued for future delivery',
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                  ),
                 ],
               ),
               const Spacer(),
@@ -141,7 +172,10 @@ class _ScheduledCampaignsPageState extends State<ScheduledCampaignsPage> {
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.grey.shade100,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(30),
                       borderSide: BorderSide.none,
@@ -151,9 +185,15 @@ class _ScheduledCampaignsPageState extends State<ScheduledCampaignsPage> {
                     DropdownMenuItem(value: 'all', child: Text('All Statuses')),
                     DropdownMenuItem(value: 'pending', child: Text('Pending')),
                     DropdownMenuItem(value: 'running', child: Text('Running')),
-                    DropdownMenuItem(value: 'completed', child: Text('Completed')),
+                    DropdownMenuItem(
+                      value: 'completed',
+                      child: Text('Completed'),
+                    ),
                     DropdownMenuItem(value: 'failed', child: Text('Failed')),
-                    DropdownMenuItem(value: 'cancelled', child: Text('Cancelled')),
+                    DropdownMenuItem(
+                      value: 'cancelled',
+                      child: Text('Cancelled'),
+                    ),
                   ],
                   onChanged: (v) => setState(() => _statusFilter = v ?? 'all'),
                 ),
@@ -163,23 +203,35 @@ class _ScheduledCampaignsPageState extends State<ScheduledCampaignsPage> {
               SizedBox(
                 width: 170,
                 child: DropdownButtonFormField<String>(
-                  value: _templateOptions.contains(_templateFilter) ? _templateFilter : 'all',
+                  value: _templateOptions.contains(_templateFilter)
+                      ? _templateFilter
+                      : 'all',
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.grey.shade100,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(30),
                       borderSide: BorderSide.none,
                     ),
                   ),
                   items: [
-                    const DropdownMenuItem(value: 'all', child: Text('All Templates')),
+                    const DropdownMenuItem(
+                      value: 'all',
+                      child: Text('All Templates'),
+                    ),
                     ..._templateOptions.map(
-                      (t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis)),
+                      (t) => DropdownMenuItem(
+                        value: t,
+                        child: Text(t, overflow: TextOverflow.ellipsis),
+                      ),
                     ),
                   ],
-                  onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
+                  onChanged: (v) =>
+                      setState(() => _templateFilter = v ?? 'all'),
                 ),
               ),
               const SizedBox(width: 10),
@@ -206,18 +258,30 @@ class _ScheduledCampaignsPageState extends State<ScheduledCampaignsPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.event_available_outlined, size: 72, color: Colors.grey.shade200),
+                    Icon(
+                      Icons.event_available_outlined,
+                      size: 72,
+                      color: Colors.grey.shade200,
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       _campaigns.isEmpty
                           ? 'No scheduled campaigns yet'
                           : 'No campaigns match the selected filters',
-                      style: TextStyle(color: Colors.grey.shade400, fontSize: 16),
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     if (_campaigns.isEmpty)
-                      Text('Use "Schedule for later" in Bulk Send to queue a campaign.',
-                          style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                      Text(
+                        'Use "Schedule for later" in Broadcast  to queue a campaign.',
+                        style: TextStyle(
+                          color: Colors.grey.shade400,
+                          fontSize: 13,
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -229,7 +293,8 @@ class _ScheduledCampaignsPageState extends State<ScheduledCampaignsPage> {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, i) => _CampaignCard(
                   data: _filtered[i],
-                  onCancel: () => _cancel(_filtered[i]['id'] ?? _filtered[i]['_id'] ?? ''),
+                  onCancel: () =>
+                      _cancel(_filtered[i]['id'] ?? _filtered[i]['_id'] ?? ''),
                 ),
               ),
             ),
@@ -272,7 +337,11 @@ class _CampaignCard extends StatelessWidget {
               color: _statusColor(status).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(_statusIcon(status), color: _statusColor(status), size: 20),
+            child: Icon(
+              _statusIcon(status),
+              color: _statusColor(status),
+              size: 20,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -281,8 +350,13 @@ class _CampaignCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(name,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     _StatusBadge(status: status),
                   ],
@@ -292,15 +366,40 @@ class _CampaignCard extends StatelessWidget {
                   spacing: 16,
                   runSpacing: 4,
                   children: [
-                    _InfoChip(icon: Icons.description_outlined, label: template),
-                    _InfoChip(icon: Icons.people_outline, label: '$recipientCount recipients'),
+                    _InfoChip(
+                      icon: Icons.description_outlined,
+                      label: template,
+                    ),
+                    _InfoChip(
+                      icon: Icons.people_outline,
+                      label: '$recipientCount recipients',
+                    ),
                     if (scheduledAt != null)
-                      _InfoChip(icon: Icons.calendar_today_outlined, label: _formatDate(scheduledAt)),
+                      _InfoChip(
+                        icon: Icons.calendar_today_outlined,
+                        label: _formatDate(scheduledAt),
+                      ),
                     if (status == 'completed') ...[
-                      _InfoChip(icon: Icons.send, label: '${data['totalCount'] ?? recipientCount} sent', color: Colors.blue),
-                      _InfoChip(icon: Icons.done_all, label: '${data['deliveredCount'] ?? 0} delivered', color: Colors.green),
-                      _InfoChip(icon: Icons.remove_red_eye, label: '${data['readCount'] ?? 0} read', color: Colors.orange),
-                      _InfoChip(icon: Icons.cancel_outlined, label: '${data['failureCount'] ?? 0} failed', color: Colors.red),
+                      _InfoChip(
+                        icon: Icons.send,
+                        label: '${data['totalCount'] ?? recipientCount} sent',
+                        color: Colors.blue,
+                      ),
+                      _InfoChip(
+                        icon: Icons.done_all,
+                        label: '${data['deliveredCount'] ?? 0} delivered',
+                        color: Colors.green,
+                      ),
+                      _InfoChip(
+                        icon: Icons.remove_red_eye,
+                        label: '${data['readCount'] ?? 0} read',
+                        color: Colors.orange,
+                      ),
+                      _InfoChip(
+                        icon: Icons.cancel_outlined,
+                        label: '${data['failureCount'] ?? 0} failed',
+                        color: Colors.red,
+                      ),
                     ],
                   ],
                 ),
@@ -327,7 +426,20 @@ class _CampaignCard extends StatelessWidget {
 
   String _formatDate(DateTime dt) {
     final local = dt.toLocal();
-    final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     final h = local.hour.toString().padLeft(2, '0');
     final m = local.minute.toString().padLeft(2, '0');
     return '${local.day} ${months[local.month - 1]} ${local.year}, $h:$m';
@@ -335,23 +447,35 @@ class _CampaignCard extends StatelessWidget {
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'pending': return Colors.orange;
-      case 'running': return Colors.blue;
-      case 'completed': return Colors.green;
-      case 'failed': return Colors.red;
-      case 'cancelled': return Colors.grey;
-      default: return Colors.grey;
+      case 'pending':
+        return Colors.orange;
+      case 'running':
+        return Colors.blue;
+      case 'completed':
+        return Colors.green;
+      case 'failed':
+        return Colors.red;
+      case 'cancelled':
+        return Colors.grey;
+      default:
+        return Colors.grey;
     }
   }
 
   IconData _statusIcon(String status) {
     switch (status) {
-      case 'pending': return Icons.schedule_rounded;
-      case 'running': return Icons.send_rounded;
-      case 'completed': return Icons.check_circle_rounded;
-      case 'failed': return Icons.error_rounded;
-      case 'cancelled': return Icons.cancel_rounded;
-      default: return Icons.help_outline;
+      case 'pending':
+        return Icons.schedule_rounded;
+      case 'running':
+        return Icons.send_rounded;
+      case 'completed':
+        return Icons.check_circle_rounded;
+      case 'failed':
+        return Icons.error_rounded;
+      case 'cancelled':
+        return Icons.cancel_rounded;
+      default:
+        return Icons.help_outline;
     }
   }
 }
@@ -379,7 +503,11 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         status[0].toUpperCase() + status.substring(1),
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: color,
+        ),
       ),
     );
   }
@@ -467,8 +595,9 @@ class _DateRangeButton extends StatelessWidget {
               ? AppTheme.primaryColor.withValues(alpha: 0.5)
               : Colors.grey.shade300,
         ),
-        backgroundColor:
-            hasRange ? AppTheme.primaryColor.withValues(alpha: 0.05) : null,
+        backgroundColor: hasRange
+            ? AppTheme.primaryColor.withValues(alpha: 0.05)
+            : null,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       ),

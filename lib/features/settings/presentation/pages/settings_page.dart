@@ -7,8 +7,6 @@ import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/features/auth/presentation/pages/login_page.dart';
-import 'package:iFloraBuzz/features/settings/presentation/widgets/retry_config_section.dart';
-import 'package:iFloraBuzz/features/settings/presentation/widgets/retry_health_section.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -18,6 +16,7 @@ import 'dart:js_interop';
 import 'package:iFloraBuzz/features/settings/presentation/widgets/onboarding_checklist_widget.dart';
 import 'package:iFloraBuzz/features/templates/presentation/pages/create_template_page.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:iFloraBuzz/core/widgets/password_verification_dialog.dart';
 
 // JS interop types for the signup result
 extension type _SignupResult._(JSObject _) implements JSObject {
@@ -57,6 +56,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _whatsappProfileLoading = false;
   String? _whatsappProfileError;
   bool _isSavingWhatsAppProfile = false;
+  bool _isProfileEditing = false;
   double _uploadProgress = 0.0;
   bool _isUploadingImage = false;
 
@@ -769,7 +769,28 @@ class _SettingsPageState extends State<SettingsPage> {
         const Divider(height: 1),
         const SizedBox(height: 20),
         
-        _sectionHeader(Icons.chat_bubble_outline, 'WhatsApp Business Profile'),
+        Row(
+          children: [
+            Expanded(
+              child: _sectionHeader(Icons.chat_bubble_outline, 'WhatsApp Business Profile'),
+            ),
+            IconButton(
+              tooltip: _isProfileEditing ? 'Cancel Edit' : 'Edit Profile',
+              icon: Icon(
+                _isProfileEditing ? Icons.close_rounded : Icons.edit_rounded,
+                color: _isProfileEditing ? Colors.redAccent : AppTheme.primaryColor,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isProfileEditing = !_isProfileEditing;
+                  if (!_isProfileEditing) {
+                    _initProfileFormFields();
+                  }
+                });
+              },
+            ),
+          ],
+        ),
         const SizedBox(height: 20),
 
         // Avatar Upload Section
@@ -790,7 +811,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   Positioned.fill(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.5),
+                        color: Colors.black.withValues(alpha: 0.5),
                         shape: BoxShape.circle,
                       ),
                       child: CircularProgressIndicator(
@@ -799,7 +820,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     ),
                   )
-                else
+                else if (_isProfileEditing)
                   Positioned.fill(
                     child: Material(
                       color: Colors.transparent,
@@ -808,7 +829,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         customBorder: const CircleBorder(),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.25),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
@@ -833,7 +854,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Click image to upload a new profile picture. Meta supports square JPG or PNG files.',
+                    _isProfileEditing
+                        ? 'Click image to upload a new profile picture. Meta supports square JPG or PNG files.'
+                        : 'WhatsApp Verified Business Profile',
                     style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                   ),
                 ],
@@ -847,11 +870,16 @@ class _SettingsPageState extends State<SettingsPage> {
         // About Status Text
         TextFormField(
           controller: _aboutController,
+          readOnly: !_isProfileEditing,
+          style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
           maxLength: 139,
           decoration: InputDecoration(
             labelText: 'About Status Text',
+            labelStyle: TextStyle(color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700, fontWeight: FontWeight.w600),
             hintText: 'Hey there! I am using WhatsApp.',
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            filled: true,
+            fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -859,6 +887,10 @@ class _SettingsPageState extends State<SettingsPage> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
           ),
         ),
@@ -867,11 +899,16 @@ class _SettingsPageState extends State<SettingsPage> {
         // Business Description
         TextFormField(
           controller: _descriptionController,
+          readOnly: !_isProfileEditing,
+          style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
           maxLines: 3,
           decoration: InputDecoration(
             labelText: 'Business Description',
+            labelStyle: TextStyle(color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700, fontWeight: FontWeight.w600),
             hintText: 'Tell customers about your business vertical, services, or catalog...',
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            filled: true,
+            fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -879,6 +916,10 @@ class _SettingsPageState extends State<SettingsPage> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
           ),
         ),
@@ -887,10 +928,15 @@ class _SettingsPageState extends State<SettingsPage> {
         // Business Address
         TextFormField(
           controller: _addressController,
+          readOnly: !_isProfileEditing,
+          style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
           decoration: InputDecoration(
             labelText: 'Business Address',
+            labelStyle: TextStyle(color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700, fontWeight: FontWeight.w600),
             hintText: 'Ahmedabad, Gujarat 380006',
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            filled: true,
+            fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -898,6 +944,10 @@ class _SettingsPageState extends State<SettingsPage> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
           ),
         ),
@@ -906,11 +956,16 @@ class _SettingsPageState extends State<SettingsPage> {
         // Contact Email
         TextFormField(
           controller: _emailController,
+          readOnly: !_isProfileEditing,
+          style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
           keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(
             labelText: 'Contact Email',
+            labelStyle: TextStyle(color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700, fontWeight: FontWeight.w600),
             hintText: 'info@yourbusiness.com',
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            filled: true,
+            fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -918,17 +973,29 @@ class _SettingsPageState extends State<SettingsPage> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
             ),
           ),
         ),
         const SizedBox(height: 16),
 
         // Industry Vertical Dropdown
-        const Text('Business Vertical Category', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(
+          'Business Vertical Category',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700),
+        ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: _selectedVertical,
+          initialValue: _selectedVertical,
           isExpanded: true,
+          style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+          disabledHint: Text(
+            _verticals[_selectedVertical] ?? _selectedVertical ?? 'None',
+            style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+          ),
           decoration: InputDecoration(
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             border: OutlineInputBorder(
@@ -939,47 +1006,55 @@ class _SettingsPageState extends State<SettingsPage> {
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade300),
             ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+            ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
           ),
           dropdownColor: Colors.white,
           items: _verticals.entries.map((e) {
             return DropdownMenuItem<String>(
               value: e.key,
-              child: Text(e.value),
+              child: Text(e.value, style: const TextStyle(color: Colors.black87)),
             );
           }).toList(),
-          onChanged: (val) {
-            setState(() {
-              _selectedVertical = val;
-            });
-          },
+          onChanged: _isProfileEditing
+              ? (val) {
+                  setState(() {
+                    _selectedVertical = val;
+                  });
+                }
+              : null,
         ),
         const SizedBox(height: 24),
 
         // Websites Editor
         _buildWebsitesEditor(),
-        const SizedBox(height: 32),
 
-        // Save Button
-        ElevatedButton(
-          onPressed: _isSavingWhatsAppProfile ? null : () => _saveWhatsAppProfile(config),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.primaryColor,
-            foregroundColor: Colors.white,
-            minimumSize: const Size(double.infinity, 50),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+        if (_isProfileEditing) ...[
+          const SizedBox(height: 32),
+          // Save Button
+          ElevatedButton(
+            onPressed: _isSavingWhatsAppProfile ? null : () => _saveWhatsAppProfile(config),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+              minimumSize: const Size(double.infinity, 50),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
+            child: _isSavingWhatsAppProfile
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                : const Text('Save WhatsApp Business Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ),
-          child: _isSavingWhatsAppProfile
-              ? const SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : const Text('Save WhatsApp Business Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-        ),
+        ],
       ],
     );
   }
@@ -988,7 +1063,10 @@ class _SettingsPageState extends State<SettingsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Websites', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text(
+          'Websites',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700),
+        ),
         const SizedBox(height: 8),
         ...List.generate(_websiteControllers.length, (index) {
           return Padding(
@@ -998,9 +1076,13 @@ class _SettingsPageState extends State<SettingsPage> {
                 Expanded(
                   child: TextFormField(
                     controller: _websiteControllers[index],
+                    readOnly: !_isProfileEditing,
+                    style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
                     decoration: InputDecoration(
                       hintText: 'https://example.com',
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      filled: true,
+                      fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: Colors.grey.shade300),
@@ -1009,35 +1091,50 @@ class _SettingsPageState extends State<SettingsPage> {
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: Colors.grey.shade300),
                       ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.delete, color: Colors.redAccent),
-                  onPressed: () {
-                    setState(() {
-                      _websiteControllers[index].dispose();
-                      _websiteControllers.removeAt(index);
-                      if (_websiteControllers.isEmpty) {
-                        _websiteControllers.add(TextEditingController());
-                      }
-                    });
-                  },
-                ),
+                if (_isProfileEditing) ...[
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.delete, color: Colors.redAccent),
+                    onPressed: () {
+                      setState(() {
+                        _websiteControllers[index].dispose();
+                        _websiteControllers.removeAt(index);
+                        if (_websiteControllers.isEmpty) {
+                          _websiteControllers.add(TextEditingController());
+                        }
+                      });
+                    },
+                  ),
+                ],
               ],
             ),
           );
         }),
-        TextButton.icon(
-          onPressed: () {
-            setState(() {
-              _websiteControllers.add(TextEditingController());
-            });
-          },
-          icon: const Icon(Icons.add),
-          label: const Text('Add Another Website'),
-        ),
+        if (_isProfileEditing && _websiteControllers.length < 2)
+          TextButton.icon(
+            onPressed: () {
+              setState(() {
+                _websiteControllers.add(TextEditingController());
+              });
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Another Website'),
+          )
+        else if (_isProfileEditing && _websiteControllers.length >= 2)
+          const Padding(
+            padding: EdgeInsets.only(top: 4.0),
+            child: Text(
+              'Maximum 2 websites allowed by Meta.',
+              style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic),
+            ),
+          ),
       ],
     );
   }
@@ -1180,6 +1277,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
       if (success) {
         if (mounted) {
+          setState(() {
+            _isProfileEditing = false;
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('WhatsApp Business Profile updated successfully!')),
           );
@@ -1761,6 +1861,55 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  bool _isRegisteringPhone = false;
+
+  Future<void> _registerPhoneWithMeta() async {
+    setState(() => _isRegisteringPhone = true);
+    try {
+      final res = await getIt<WhatsAppRepository>().registerPhoneNumber();
+      if (mounted) setState(() => _isRegisteringPhone = false);
+
+      if (res != null && res['success'] == true) {
+        if (mounted) {
+          context.read<AuthBloc>().add(AuthCheckRequested());
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Phone number registered successfully with Meta Cloud API! Status is now CONNECTED.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        final errDetail = res?['error'] ?? res?['details'] ?? 'Registration failed';
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.red),
+                  SizedBox(width: 8),
+                  Text('Registration Failed'),
+                ],
+              ),
+              content: Text('Meta API Error: ${errDetail.toString()}'),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+              ],
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isRegisteringPhone = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
   Widget _buildConnectedDetailsCard(BuildContext context, Map<String, dynamic> config) {
     return Card(
       elevation: 2,
@@ -1811,7 +1960,7 @@ class _SettingsPageState extends State<SettingsPage> {
             const Divider(height: 32),
             _buildDetailRow('WABA ID', config['businessAccountId'] ?? 'N/A'),
             const Divider(height: 32),
-            _buildDetailRow('Access Token', '••••••••••••••••' + (config['accessToken']?.toString().substring((config['accessToken']?.toString().length ?? 4) - 4) ?? '')),
+            _buildDetailRow('Access Token', '••••••••••••••••${config['accessToken']?.toString().substring((config['accessToken']?.toString().length ?? 4) - 4) ?? ''}'),
             if ((config['displayPhone'] as String?)?.isNotEmpty == true) ...[
               const Divider(height: 32),
               _buildDetailRow('Display Phone', config['displayPhone'] ?? ''),
@@ -1829,15 +1978,36 @@ class _SettingsPageState extends State<SettingsPage> {
               _buildDetailRow('Throughput', config['throughputLevel'] ?? ''),
             ],
             const SizedBox(height: 25),
-            // OutlinedButton.icon(
-            //   onPressed: () => _showManualConfig(context),
-            //   icon: const Icon(Icons.edit_note),
-            //   label: const Text('Update Connection Settings'),
-            //   style: OutlinedButton.styleFrom(
-            //     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            //   ),
-            // ),
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _isRegisteringPhone ? null : _registerPhoneWithMeta,
+                  icon: _isRegisteringPhone 
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.verified_user_rounded, color: Colors.white),
+                  label: Text(
+                    _isRegisteringPhone ? 'Registering Phone...' : 'Register Phone Number (Fix Error 141000)',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _showManualConfig(context),
+                  icon: const Icon(Icons.edit_note),
+                  label: const Text('Update Connection Settings'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -1969,10 +2139,18 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         );
       }).toList(),
-      onChanged: _isUpdatingPhone ? null : (selectedId) {
+      onChanged: _isUpdatingPhone ? null : (selectedId) async {
         if (selectedId != null && selectedId != currentPhoneId) {
-          final selectedPhone = itemsList.firstWhere((p) => p['id']?.toString() == selectedId);
-          _updateActivePhoneNumber(selectedPhone, config);
+          final verified = await showPasswordVerificationDialog(
+            context,
+            prompt: 'Enter your login password to change WhatsApp phone number.',
+          );
+          if (verified) {
+            final selectedPhone = itemsList.firstWhere((p) => p['id']?.toString() == selectedId);
+            _updateActivePhoneNumber(selectedPhone, config);
+          } else {
+            if (mounted) setState(() {});
+          }
         }
       },
     );

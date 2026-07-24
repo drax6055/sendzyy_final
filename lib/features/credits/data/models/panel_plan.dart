@@ -28,9 +28,9 @@ class PanelPlan {
         id: json['id']?.toString() ?? '',
         name: json['name']?.toString() ?? '',
         description: json['description']?.toString() ?? '',
-        basePrice: (json['basePrice'] as num?)?.toInt() ?? 10169,
+        basePrice: (json['basePrice'] as num?)?.toInt() ?? 12711,
         gstPercent: (json['gstPercent'] as num?)?.toInt() ?? 18,
-        totalPrice: (json['totalPrice'] as num?)?.toInt() ?? 11999,
+        totalPrice: (json['totalPrice'] as num?)?.toInt() ?? 14999,
         panelDays: (json['panelDays'] as num?)?.toInt() ?? 365,
       );
 }
