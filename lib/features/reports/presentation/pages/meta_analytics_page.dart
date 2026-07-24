@@ -591,16 +591,33 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
                   ),
                 ],
               ),
-              ElevatedButton.icon(
-                onPressed: _rawDataPoints.isEmpty ? null : _exportCSV,
-                icon: const Icon(Icons.download_rounded, size: 16),
-                label: const Text('Export CSV'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _fetchAnalyticsData,
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('Sync with Meta'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueGrey,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _rawDataPoints.isEmpty ? null : _exportCSV,
+                    icon: const Icon(Icons.download_rounded, size: 16),
+                    label: const Text('Export CSV'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
