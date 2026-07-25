@@ -126,130 +126,208 @@ class _ScheduledCampaignsPageState extends State<ScheduledCampaignsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
     return Padding(
-      padding: const EdgeInsets.all(32),
+      padding: EdgeInsets.all(isMobile ? 12 : 32),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(10),
+          if (isMobile) ...[
+            // Mobile Header
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.schedule_rounded, color: Colors.orange.shade700, size: 20),
                 ),
-                child: Icon(
-                  Icons.schedule_rounded,
-                  color: Colors.orange.shade700,
-                  size: 24,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Scheduled Campaigns',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.secondaryColor,
+                              fontSize: 18,
+                            ),
+                      ),
+                      Text(
+                        'Queued for future delivery',
+                        style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                IconButton(
+                  onPressed: _fetch,
+                  icon: const Icon(Icons.refresh_rounded),
+                  tooltip: 'Refresh',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Mobile Filter Bar (Horizontal Scroll)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Row(
                 children: [
-                  Text(
-                    'Scheduled Campaigns',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.secondaryColor,
+                  SizedBox(
+                    width: 145,
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: _statusFilter,
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'all', child: Text('All Statuses', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'pending', child: Text('Pending', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'running', child: Text('Running', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'completed', child: Text('Completed', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'failed', child: Text('Failed', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                        DropdownMenuItem(value: 'cancelled', child: Text('Cancelled', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                      ],
+                      onChanged: (v) => setState(() => _statusFilter = v ?? 'all'),
                     ),
                   ),
-                  Text(
-                    'Campaigns queued for future delivery',
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 155,
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: _templateOptions.contains(_templateFilter) ? _templateFilter : 'all',
+                      decoration: InputDecoration(
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      items: [
+                        const DropdownMenuItem(value: 'all', child: Text('All Templates', style: TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                        ..._templateOptions.map(
+                          (t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 13), overflow: TextOverflow.ellipsis)),
+                        ),
+                      ],
+                      onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  _DateRangeButton(
+                    dateRange: _dateRange,
+                    onChanged: (r) => setState(() => _dateRange = r),
+                    onClear: () => setState(() => _dateRange = null),
                   ),
                 ],
               ),
-              const Spacer(),
-              // ── Filters ────────────────────────────────────────────────
-              // Status dropdown
-              SizedBox(
-                width: 150,
-                child: DropdownButtonFormField<String>(
-                  value: _statusFilter,
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      borderSide: BorderSide.none,
-                    ),
+            ),
+          ] else ...[
+            // Desktop Header & Filter Row
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'all', child: Text('All Statuses')),
-                    DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                    DropdownMenuItem(value: 'running', child: Text('Running')),
-                    DropdownMenuItem(
-                      value: 'completed',
-                      child: Text('Completed'),
-                    ),
-                    DropdownMenuItem(value: 'failed', child: Text('Failed')),
-                    DropdownMenuItem(
-                      value: 'cancelled',
-                      child: Text('Cancelled'),
-                    ),
-                  ],
-                  onChanged: (v) => setState(() => _statusFilter = v ?? 'all'),
+                  child: Icon(Icons.schedule_rounded, color: Colors.orange.shade700, size: 24),
                 ),
-              ),
-              const SizedBox(width: 10),
-              // Template dropdown
-              SizedBox(
-                width: 170,
-                child: DropdownButtonFormField<String>(
-                  value: _templateOptions.contains(_templateFilter)
-                      ? _templateFilter
-                      : 'all',
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(30),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                  items: [
-                    const DropdownMenuItem(
-                      value: 'all',
-                      child: Text('All Templates'),
-                    ),
-                    ..._templateOptions.map(
-                      (t) => DropdownMenuItem(
-                        value: t,
-                        child: Text(t, overflow: TextOverflow.ellipsis),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Scheduled Campaigns',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.secondaryColor,
+                            )),
+                    Text('Campaigns queued for future delivery',
+                        style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+                  ],
+                ),
+                const Spacer(),
+                SizedBox(
+                  width: 150,
+                  child: DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    value: _statusFilter,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
                       ),
                     ),
-                  ],
-                  onChanged: (v) =>
-                      setState(() => _templateFilter = v ?? 'all'),
+                    items: const [
+                      DropdownMenuItem(value: 'all', child: Text('All Statuses')),
+                      DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                      DropdownMenuItem(value: 'running', child: Text('Running')),
+                      DropdownMenuItem(value: 'completed', child: Text('Completed')),
+                      DropdownMenuItem(value: 'failed', child: Text('Failed')),
+                      DropdownMenuItem(value: 'cancelled', child: Text('Cancelled')),
+                    ],
+                    onChanged: (v) => setState(() => _statusFilter = v ?? 'all'),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              // Date range picker
-              _DateRangeButton(
-                dateRange: _dateRange,
-                onChanged: (r) => setState(() => _dateRange = r),
-                onClear: () => setState(() => _dateRange = null),
-              ),
-              const SizedBox(width: 10),
-              IconButton.outlined(
-                onPressed: _fetch,
-                icon: const Icon(Icons.refresh_rounded),
-                tooltip: 'Refresh',
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: 170,
+                  child: DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    value: _templateOptions.contains(_templateFilter) ? _templateFilter : 'all',
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    items: [
+                      const DropdownMenuItem(value: 'all', child: Text('All Templates')),
+                      ..._templateOptions.map(
+                        (t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis)),
+                      ),
+                    ],
+                    onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                _DateRangeButton(
+                  dateRange: _dateRange,
+                  onChanged: (r) => setState(() => _dateRange = r),
+                  onClear: () => setState(() => _dateRange = null),
+                ),
+                const SizedBox(width: 10),
+                IconButton.outlined(
+                  onPressed: _fetch,
+                  icon: const Icon(Icons.refresh_rounded),
+                  tooltip: 'Refresh',
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16),
           if (_loading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (_filtered.isEmpty)
@@ -312,6 +390,7 @@ class _CampaignCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
     final status = data['status'] as String? ?? 'pending';
     final scheduledAt = _parseDate(data['scheduledAt']);
     final recipientCount = (data['recipients'] as List?)?.length ?? 0;
@@ -321,98 +400,71 @@ class _CampaignCard extends StatelessWidget {
         : 'Campaign';
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(isMobile ? 14 : 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: _statusColor(status).withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              _statusIcon(status),
-              color: _statusColor(status),
-              size: 20,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: _statusColor(status).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(_statusIcon(status), color: _statusColor(status), size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              _StatusBadge(status: status),
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      name,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    _StatusBadge(status: status),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 4,
-                  children: [
-                    _InfoChip(
-                      icon: Icons.description_outlined,
-                      label: template,
-                    ),
-                    _InfoChip(
-                      icon: Icons.people_outline,
-                      label: '$recipientCount recipients',
-                    ),
-                    if (scheduledAt != null)
-                      _InfoChip(
-                        icon: Icons.calendar_today_outlined,
-                        label: _formatDate(scheduledAt),
-                      ),
-                    if (status == 'completed') ...[
-                      _InfoChip(
-                        icon: Icons.send,
-                        label: '${data['totalCount'] ?? recipientCount} sent',
-                        color: Colors.blue,
-                      ),
-                      _InfoChip(
-                        icon: Icons.done_all,
-                        label: '${data['deliveredCount'] ?? 0} delivered',
-                        color: Colors.green,
-                      ),
-                      _InfoChip(
-                        icon: Icons.remove_red_eye,
-                        label: '${data['readCount'] ?? 0} read',
-                        color: Colors.orange,
-                      ),
-                      _InfoChip(
-                        icon: Icons.cancel_outlined,
-                        label: '${data['failureCount'] ?? 0} failed',
-                        color: Colors.red,
-                      ),
-                    ],
-                  ],
-                ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 12,
+            runSpacing: 6,
+            children: [
+              _InfoChip(icon: Icons.description_outlined, label: template),
+              _InfoChip(icon: Icons.people_outline, label: '$recipientCount recipients'),
+              if (scheduledAt != null)
+                _InfoChip(icon: Icons.calendar_today_outlined, label: _formatDate(scheduledAt)),
+              if (status == 'completed') ...[
+                _InfoChip(icon: Icons.send, label: '${data['totalCount'] ?? recipientCount} sent', color: Colors.blue),
+                _InfoChip(icon: Icons.done_all, label: '${data['deliveredCount'] ?? 0} delivered', color: Colors.green),
+                _InfoChip(icon: Icons.remove_red_eye, label: '${data['readCount'] ?? 0} read', color: Colors.orange),
+                _InfoChip(icon: Icons.cancel_outlined, label: '${data['failureCount'] ?? 0} failed', color: Colors.red),
               ],
-            ),
+            ],
           ),
-          if (status == 'pending')
-            TextButton.icon(
-              onPressed: onCancel,
-              icon: const Icon(Icons.cancel_outlined, size: 16),
-              label: const Text('Cancel'),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
+          if (status == 'pending') ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onCancel,
+                icon: const Icon(Icons.cancel_outlined, size: 16),
+                label: const Text('Cancel Campaign'),
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.red,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                ),
+              ),
             ),
+          ],
         ],
       ),
     );

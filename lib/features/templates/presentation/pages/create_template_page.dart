@@ -37,6 +37,7 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
   PlatformFile? _selectedFile;
   AuthFormState _authFormState = const AuthFormState();
   int _validitySeconds = 0; // 0 means disabled
+  int _createTab = 0;
 
   @override
   void initState() {
@@ -121,108 +122,124 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
                               children: [
                                 _buildStepProgress(),
                                 const SizedBox(height: 16),
-                                if (_currentStep == 0) ...[
-                                  _buildCard(
-                                    title: 'Template Settings',
-                                    icon: Icons.settings_outlined,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text('Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54)),
-                                        const SizedBox(height: 8),
-                                        CategorySelectorWidget(
-                                          selectedCategory: _category,
-                                          onChanged: (category) {
-                                            setState(() {
-                                              _category = category;
-                                              // Reset all Step 2 fields to defaults
-                                              _headerController.clear();
-                                              _bodyController.clear();
-                                              _footerController.clear();
-                                              _buttons.clear();
-                                              _mediaSample = 'NONE';
-                                              _selectedFile = null;
-                                              _authFormState = const AuthFormState();
-                                              _validitySeconds = 0;
-                                            });
-                                          },
-                                        ),
-                                        const SizedBox(height: 24),
-                                        _buildLanguageSelection(),
-                                        const SizedBox(height: 24),
-                                        TextFormField(
-                                          controller: _nameController,
-                                          decoration: const InputDecoration(
-                                            labelText: 'Template Name',
-                                            hintText: 'welcome_message',
-                                            prefixIcon: Icon(
-                                              Icons.label_outline,
-                                            ),
-                                          ),
-                                          validator: (val) {
-                                            if (val == null || val.isEmpty)
-                                              return 'Required';
-                                            if (!RegExp(
-                                              r'^[a-z0-9_]+$',
-                                            ).hasMatch(val)) {
-                                              return 'Only lowercase, numbers, and underscores';
-                                            }
-                                            return null;
-                                          },
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ] else ...[
-                                  if (_category == 'AUTHENTICATION') ...[
+                                if (!isWide && _currentStep == 1) ...[
+                                  _buildMobileTabs(),
+                                  const SizedBox(height: 8),
+                                ],
+                                if (isWide || _currentStep == 0 || _createTab == 0) ...[
+                                  if (_currentStep == 0) ...[
                                     _buildCard(
-                                      title: 'Content',
-                                      icon: Icons.edit_note_outlined,
-                                      child: AuthenticationFormWidget(
-                                        initialState: _authFormState,
-                                        onChanged: (state) => setState(() => _authFormState = state),
-                                      ),
-                                    ),
-                                  ] else ...[
-                                    _buildCard(
-                                      title: 'Content',
-                                      icon: Icons.edit_note_outlined,
+                                      title: 'Template Settings',
+                                      icon: Icons.settings_outlined,
                                       child: Column(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          const Text(
-                                            'Add a header, body and footer for your template. Cloud API hosted by Meta will review the template variables and content to protect the security and integrity of our services.',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.black54,
-                                            ),
+                                          const Text('Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54)),
+                                          const SizedBox(height: 8),
+                                          CategorySelectorWidget(
+                                            selectedCategory: _category,
+                                            onChanged: (category) {
+                                              setState(() {
+                                                _category = category;
+                                                // Reset all Step 2 fields to defaults
+                                                _headerController.clear();
+                                                _bodyController.clear();
+                                                _footerController.clear();
+                                                _buttons.clear();
+                                                _mediaSample = 'NONE';
+                                                _selectedFile = null;
+                                                _authFormState = const AuthFormState();
+                                                _validitySeconds = 0;
+                                              });
+                                            },
                                           ),
-                                          const SizedBox(height: 16),
-                                          _buildVariableAndMediaSelection(),
-                                          _buildMediaUploadField(),
                                           const SizedBox(height: 24),
-                                          _buildHeaderSection(),
-                                          const SizedBox(height: 16),
-                                          _buildBodySection(),
-                                          const SizedBox(height: 16),
-                                          _buildFooterSection(),
+                                          _buildLanguageSelection(),
+                                          const SizedBox(height: 24),
+                                          TextFormField(
+                                            controller: _nameController,
+                                            decoration: const InputDecoration(
+                                              labelText: 'Template Name',
+                                              hintText: 'welcome_message',
+                                              prefixIcon: Icon(
+                                                Icons.label_outline,
+                                              ),
+                                            ),
+                                            validator: (val) {
+                                              if (val == null || val.isEmpty)
+                                                return 'Required';
+                                              if (!RegExp(
+                                                r'^[a-z0-9_]+$',
+                                              ).hasMatch(val)) {
+                                                return 'Only lowercase, numbers, and underscores';
+                                              }
+                                              return null;
+                                            },
+                                          ),
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(height: 16),
-                                    _buildButtonsSection(),
-                                    if (_category == 'UTILITY') ...[
-                                      const SizedBox(height: 16),
-                                      MessageValidityPeriodWidget(
-                                        defaultOn: false,
-                                        enabled: _validitySeconds != 0,
-                                        selectedSeconds: _validitySeconds != 0 ? _validitySeconds : 600,
-                                        onChanged: (seconds) => setState(() => _validitySeconds = seconds),
+                                  ] else ...[
+                                    if (_category == 'AUTHENTICATION') ...[
+                                      _buildCard(
+                                        title: 'Content',
+                                        icon: Icons.edit_note_outlined,
+                                        child: AuthenticationFormWidget(
+                                          initialState: _authFormState,
+                                          onChanged: (state) => setState(() => _authFormState = state),
+                                        ),
                                       ),
+                                    ] else ...[
+                                      _buildCard(
+                                        title: 'Content',
+                                        icon: Icons.edit_note_outlined,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Add a header, body and footer for your template. Cloud API hosted by Meta will review the template variables and content to protect the security and integrity of our services.',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.black54,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 16),
+                                            _buildVariableAndMediaSelection(),
+                                            _buildMediaUploadField(),
+                                            const SizedBox(height: 24),
+                                            _buildHeaderSection(),
+                                            const SizedBox(height: 16),
+                                            _buildBodySection(),
+                                            const SizedBox(height: 16),
+                                            _buildFooterSection(),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      _buildButtonsSection(),
+                                      if (_category == 'UTILITY') ...[
+                                        const SizedBox(height: 16),
+                                        MessageValidityPeriodWidget(
+                                          defaultOn: false,
+                                          enabled: _validitySeconds != 0,
+                                          selectedSeconds: _validitySeconds != 0 ? _validitySeconds : 600,
+                                          onChanged: (seconds) => setState(() => _validitySeconds = seconds),
+                                        ),
+                                      ],
                                     ],
                                   ],
+                                ] else if (!isWide && _currentStep == 1 && _createTab == 1) ...[
+                                  Container(
+                                    height: 500,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.grey.shade200),
+                                    ),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: _buildPreview(),
+                                  ),
                                 ],
                                 const SizedBox(height: 32),
                                 _buildActionButtons(state),
@@ -277,30 +294,35 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
                   showModalBottomSheet(
                     context: context,
                     isScrollControlled: true,
-                    builder: (context) => Container(
-                      height: MediaQuery.of(context).size.height * 0.8,
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Template Preview',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                    builder: (context) => Material(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                      clipBehavior: Clip.antiAlias,
+                      child: Container(
+                        height: MediaQuery.of(context).size.height * 0.8,
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Template Preview',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              IconButton(
-                                onPressed: () => Navigator.pop(context),
-                                icon: const Icon(Icons.close),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Expanded(child: _buildPreview()),
-                        ],
+                                IconButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  icon: const Icon(Icons.close),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Expanded(child: _buildPreview()),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -352,8 +374,86 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
     );
   }
 
+  Widget _buildMobileTabs() {
+    return Container(
+      height: 44,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _createTab = 0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                decoration: BoxDecoration(
+                  color: _createTab == 0 ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: _createTab == 0
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
+                          ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Form Editor',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: _createTab == 0 ? FontWeight.bold : FontWeight.normal,
+                    color: _createTab == 0 ? AppTheme.secondaryColor : Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _createTab = 1),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                decoration: BoxDecoration(
+                  color: _createTab == 1 ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: _createTab == 1
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
+                          ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'Live Preview',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: _createTab == 1 ? FontWeight.bold : FontWeight.normal,
+                    color: _createTab == 1 ? AppTheme.secondaryColor : Colors.grey.shade600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStepCircle(int step, String label, bool isActive) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 28,
@@ -376,15 +476,17 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            color: isActive ? AppTheme.secondaryColor : Colors.black54,
+        if (!isMobile) ...[
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              color: isActive ? AppTheme.secondaryColor : Colors.black54,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
@@ -607,111 +709,125 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
     );
   }
 
-  Widget _buildVariableAndMediaSelection() {
+  Widget _buildVariableTypeDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        const Text(
+          'Type of variable',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _variableType,
+          items: ['Name', 'Number']
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: (val) {
+            if (val != null) setState(() => _variableType = val);
+          },
+          decoration: const InputDecoration(
+            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMediaSampleDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Media sample · Optional',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _mediaSample,
+          items: [
+            const DropdownMenuItem(
+              value: 'NONE',
+              child: Text('None'),
+            ),
+            const DropdownMenuItem(
+              value: 'IMAGE',
+              child: Row(
                 children: [
-                  const Text(
-                    'Type of variable',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _variableType,
-                    items: ['Name', 'Number']
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _variableType = val);
-                    },
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
+                  Icon(Icons.image_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Image'),
                 ],
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            const DropdownMenuItem(
+              value: 'VIDEO',
+              child: Row(
                 children: [
-                  const Text(
-                    'Media sample · Optional',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    value: _mediaSample,
-                    items: [
-                      const DropdownMenuItem(
-                        value: 'NONE',
-                        child: Text('None'),
-                      ),
-                      const DropdownMenuItem(
-                        value: 'IMAGE',
-                        child: Row(
-                          children: [
-                            Icon(Icons.image_outlined, size: 18),
-                            SizedBox(width: 8),
-                            Text('Image'),
-                          ],
-                        ),
-                      ),
-                      const DropdownMenuItem(
-                        value: 'VIDEO',
-                        child: Row(
-                          children: [
-                            Icon(Icons.play_circle_outline, size: 18),
-                            SizedBox(width: 8),
-                            Text('Video'),
-                          ],
-                        ),
-                      ),
-                      const DropdownMenuItem(
-                        value: 'DOCUMENT',
-                        child: Row(
-                          children: [
-                            Icon(Icons.description_outlined, size: 18),
-                            SizedBox(width: 8),
-                            Text('Document'),
-                          ],
-                        ),
-                      ),
-                      const DropdownMenuItem(
-                        value: 'LOCATION',
-                        child: Row(
-                          children: [
-                            Icon(Icons.location_on_outlined, size: 18),
-                            SizedBox(width: 8),
-                            Text('Location'),
-                          ],
-                        ),
-                      ),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        setState(() {
-                          _mediaSample = val;
-                          if (val != 'NONE') _headerController.clear();
-                        });
-                      }
-                    },
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
+                  Icon(Icons.play_circle_outline, size: 18),
+                  SizedBox(width: 8),
+                  Text('Video'),
+                ],
+              ),
+            ),
+            const DropdownMenuItem(
+              value: 'DOCUMENT',
+              child: Row(
+                children: [
+                  Icon(Icons.description_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Document'),
+                ],
+              ),
+            ),
+            const DropdownMenuItem(
+              value: 'LOCATION',
+              child: Row(
+                children: [
+                  Icon(Icons.location_on_outlined, size: 18),
+                  SizedBox(width: 8),
+                  Text('Location'),
                 ],
               ),
             ),
           ],
+          onChanged: (val) {
+            if (val != null) {
+              setState(() {
+                _mediaSample = val;
+                if (val != 'NONE') _headerController.clear();
+              });
+            }
+          },
+          decoration: const InputDecoration(
+            contentPadding: EdgeInsets.symmetric(horizontal: 12),
+          ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildVariableAndMediaSelection() {
+    final isMobile = MediaQuery.of(context).size.width < 800;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        isMobile
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildVariableTypeDropdown(),
+                  const SizedBox(height: 16),
+                  _buildMediaSampleDropdown(),
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(child: _buildVariableTypeDropdown()),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildMediaSampleDropdown()),
+                ],
+              ),
       ],
     );
   }
@@ -831,6 +947,7 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
   }
 
   Widget _buildBodySection() {
+    final isMobile = MediaQuery.of(context).size.width < 600;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -856,57 +973,128 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
               bottomRight: Radius.circular(12),
             ),
           ),
-          child: Row(
-            children: [
-              IconButton(
-                onPressed: _showEmojiPicker,
-                icon: const Icon(
-                  Icons.sentiment_satisfied_alt_outlined,
-                  size: 20,
-                  color: Colors.black54,
+          child: isMobile
+              ? SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        onPressed: _showEmojiPicker,
+                        icon: const Icon(
+                          Icons.sentiment_satisfied_alt_outlined,
+                          size: 20,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        onPressed: () => _formatText('*'),
+                        icon: const Icon(
+                          Icons.format_bold,
+                          size: 20,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        onPressed: () => _formatText('_'),
+                        icon: const Icon(
+                          Icons.format_italic,
+                          size: 20,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        onPressed: () => _formatText('~'),
+                        icon: const Icon(
+                          Icons.format_strikethrough,
+                          size: 20,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        onPressed: () => _formatText('```'),
+                        icon: const Icon(Icons.code, size: 20, color: Colors.black54),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton.icon(
+                        onPressed: () => _insertTag('{{1}}', _bodyController),
+                        icon: const Icon(Icons.add, size: 16),
+                        label: const Text(
+                          'Variable',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.info_outline, size: 16, color: Colors.black54),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                )
+              : Row(
+                  children: [
+                    IconButton(
+                      onPressed: _showEmojiPicker,
+                      icon: const Icon(
+                        Icons.sentiment_satisfied_alt_outlined,
+                        size: 20,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _formatText('*'),
+                      icon: const Icon(
+                        Icons.format_bold,
+                        size: 20,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _formatText('_'),
+                      icon: const Icon(
+                        Icons.format_italic,
+                        size: 20,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _formatText('~'),
+                      icon: const Icon(
+                        Icons.format_strikethrough,
+                        size: 20,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _formatText('```'),
+                      icon: const Icon(Icons.code, size: 20, color: Colors.black54),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () => _insertTag('{{1}}', _bodyController),
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text(
+                        'Add variable',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                    const Icon(Icons.info_outline, size: 16, color: Colors.black54),
+                    const SizedBox(width: 8),
+                  ],
                 ),
-              ),
-              IconButton(
-                onPressed: () => _formatText('*'),
-                icon: const Icon(
-                  Icons.format_bold,
-                  size: 20,
-                  color: Colors.black54,
-                ),
-              ),
-              IconButton(
-                onPressed: () => _formatText('_'),
-                icon: const Icon(
-                  Icons.format_italic,
-                  size: 20,
-                  color: Colors.black54,
-                ),
-              ),
-              IconButton(
-                onPressed: () => _formatText('~'),
-                icon: const Icon(
-                  Icons.format_strikethrough,
-                  size: 20,
-                  color: Colors.black54,
-                ),
-              ),
-              IconButton(
-                onPressed: () => _formatText('```'),
-                icon: const Icon(Icons.code, size: 20, color: Colors.black54),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () => _insertTag('{{1}}', _bodyController),
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text(
-                  'Add variable',
-                  style: TextStyle(fontSize: 12),
-                ),
-              ),
-              const Icon(Icons.info_outline, size: 16, color: Colors.black54),
-              const SizedBox(width: 8),
-            ],
-          ),
         ),
       ],
     );

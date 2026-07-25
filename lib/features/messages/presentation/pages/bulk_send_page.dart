@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
 import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
@@ -15,6 +16,7 @@ import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.da
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/templates/presentation/widgets/whatsapp_preview.dart';
 import 'package:iFloraBuzz/features/messages/presentation/widgets/campaign_result_dialog.dart';
+import 'package:iFloraBuzz/core/widgets/multi_contact_picker_dialog.dart';
 
 class BulkSendPage extends StatefulWidget {
   const BulkSendPage({super.key});
@@ -36,6 +38,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
   // Counters shown in Campaign Summary
   int _totalDuplicates = 0;
   int _totalInvalid = 0;
+  int _recipientTab = 0;
 
   @override
   void initState() {
@@ -47,6 +50,49 @@ class _BulkSendPageState extends State<BulkSendPage> {
         context.read<TemplateBloc>().add(FetchTemplates());
       }
     });
+  }
+
+  Future<void> _pickNumberFromContacts() async {
+    try {
+      final selectedNumbers = await MultiContactPickerDialog.show(context);
+      if (selectedNumbers == null || selectedNumbers.isEmpty) return;
+
+      final List<String> validNormalized = [];
+      final List<String> invalidNumbers = [];
+
+      for (final rawNumber in selectedNumbers) {
+        final normalized = RecipientData.normalizeNumber(rawNumber);
+        if (normalized != null) {
+          validNormalized.add(normalized);
+        } else {
+          invalidNumbers.add(rawNumber);
+        }
+      }
+
+      if (validNormalized.isNotEmpty) {
+        setState(() {
+          final existingText = _manualNumbersController.text.trim();
+          final joinedNew = validNormalized.join(', ');
+          if (existingText.isEmpty) {
+            _manualNumbersController.text = joinedNew;
+          } else {
+            _manualNumbersController.text = '$existingText, $joinedNew';
+          }
+        });
+      }
+
+      if (invalidNumbers.isNotEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Invalid contact format skipped: ${invalidNumbers.join(", ")}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick contacts: $e')),
+        );
+      }
+    }
   }
 
   // Per-recipient variable controllers: recipientIndex -> {varIndex -> controller}
@@ -328,7 +374,15 @@ class _BulkSendPageState extends State<BulkSendPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Campaign scheduled for ${_formatScheduledAt(_scheduledAt!)}')),
           );
-          setState(() { _isScheduled = false; _scheduledAt = null; });
+          setState(() {
+            _isScheduled = false;
+            _scheduledAt = null;
+            _recipients.clear();
+            _selectedTemplate = null;
+            _selectedTemplateData = null;
+            _campaignMedia = null;
+            _currentMobileStep = 0;
+          });
         }
       } catch (e) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to schedule: $e')));
@@ -355,15 +409,308 @@ class _BulkSendPageState extends State<BulkSendPage> {
     super.dispose();
   }
 
+  int _currentMobileStep = 0;
+
+  Widget _buildWebLayout() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Create Campaign',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.secondaryColor,
+                ),
+          ),
+          const SizedBox(height: 32),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: _buildRecipientCard()),
+              const SizedBox(width: 24),
+              Expanded(flex: 1, child: CsvUploader(onParsed: _onCsvParsed)),
+            ],
+          ),
+          const SizedBox(height: 32),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    _buildTemplateSelector(),
+                    const SizedBox(height: 16),
+                    if (_selectedTemplateData != null) ...[
+                      if (_templateVariableCount > 0) _buildVariableMapping(),
+                      const SizedBox(height: 16),
+                      _buildMediaSelector(),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 32),
+              Expanded(
+                child: _selectedTemplateData != null
+                    ? _buildTemplatePreview()
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+          _buildSummaryCard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout() {
+    bool isNextDisabled = false;
+    if (_currentMobileStep == 0 && _recipients.isEmpty) isNextDisabled = true;
+    if (_currentMobileStep == 1 && _selectedTemplateData == null) isNextDisabled = true;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildMobileStepIndicator(),
+          const SizedBox(height: 24),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 350),
+            transitionBuilder: (child, anim) {
+              return FadeTransition(
+                opacity: anim,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0.1, 0.0),
+                    end: Offset.zero,
+                  ).animate(anim),
+                  child: child,
+                ),
+              );
+            },
+            child: _buildMobileStepContent(),
+          ),
+          const SizedBox(height: 32),
+
+          // Bottom Action Row
+          Row(
+            children: [
+              if (_currentMobileStep > 0)
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      onPressed: () => setState(() => _currentMobileStep--),
+                      icon: const Icon(Icons.arrow_back),
+                      label: const Text('Back'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.grey.shade700,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              if (_currentMobileStep > 0 && _currentMobileStep < 2) const SizedBox(width: 16),
+              if (_currentMobileStep < 2)
+                Expanded(
+                  child: SizedBox(
+                    height: 50,
+                    child: ElevatedButton(
+                      onPressed: isNextDisabled ? null : () => setState(() => _currentMobileStep++),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: Colors.grey.shade200,
+                        disabledForegroundColor: Colors.grey.shade400,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: const [
+                          Text('Next'),
+                          SizedBox(width: 8),
+                          Icon(Icons.arrow_forward, size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileStepIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          _buildMobileStepCircle(0, 'Recipients', Icons.people_alt_rounded),
+          _buildMobileStepLine(0),
+          _buildMobileStepCircle(1, 'Setup', Icons.settings_rounded),
+          _buildMobileStepLine(1),
+          _buildMobileStepCircle(2, 'Send', Icons.send_rounded),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileStepCircle(int step, String label, IconData icon) {
+    bool isActive = _currentMobileStep == step;
+    bool isCompleted = _currentMobileStep > step;
+
+    return Expanded(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            height: 38,
+            width: 38,
+            decoration: BoxDecoration(
+              color: isCompleted
+                  ? Colors.green
+                  : isActive
+                      ? AppTheme.primaryColor
+                      : Colors.grey.shade100,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: isActive ? AppTheme.primaryColor : Colors.transparent,
+                width: 2,
+              ),
+            ),
+            child: Icon(
+              isCompleted ? Icons.check : icon,
+              size: 16,
+              color: isActive || isCompleted ? Colors.white : Colors.grey.shade500,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              color: isCompleted
+                  ? Colors.green
+                  : isActive
+                      ? AppTheme.primaryColor
+                      : Colors.grey.shade500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileStepLine(int step) {
+    bool isCompleted = _currentMobileStep > step;
+    return Container(
+      height: 2,
+      width: 30,
+      margin: const EdgeInsets.only(bottom: 18),
+      color: isCompleted ? Colors.green : Colors.grey.shade200,
+    );
+  }
+
+  Widget _buildMobileStepContent() {
+    switch (_currentMobileStep) {
+      case 0:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          key: const ValueKey(0),
+          children: [
+            _buildRecipientCard(),
+          ],
+        );
+      case 1:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          key: const ValueKey(1),
+          children: [
+            _buildTemplateSelector(),
+            const SizedBox(height: 16),
+            if (_selectedTemplateData != null) ...[
+              if (_templateVariableCount > 0) ...[
+                _buildVariableMapping(),
+                const SizedBox(height: 16),
+              ],
+              _buildMediaSelector(),
+            ] else
+              Container(
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.description_outlined, size: 48, color: Colors.grey.shade400),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Please select a WhatsApp template to start your campaign setup.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      case 2:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          key: const ValueKey(2),
+          children: [
+            if (_selectedTemplateData != null) ...[
+              _buildTemplatePreview(),
+              const SizedBox(height: 24),
+            ],
+            _buildSummaryCard(),
+          ],
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 800;
-
     return MultiBlocListener(
       listeners: [
         BlocListener<MessageBloc, MessageState>(
           listener: (context, state) {
             if (state is MessageSent) {
+              setState(() {
+                _recipients.clear();
+                _selectedTemplate = null;
+                _selectedTemplateData = null;
+                _campaignMedia = null;
+                _currentMobileStep = 0;
+              });
               showDialog(
                 context: context,
                 builder: (context) => CampaignResultDialog(
@@ -377,82 +724,335 @@ class _BulkSendPageState extends State<BulkSendPage> {
           },
         ),
       ],
-      child: SingleChildScrollView(
-        padding: EdgeInsets.all(isMobile ? 16 : 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Create Campaign',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppTheme.secondaryColor,
+      child: kIsWeb ? _buildWebLayout() : _buildMobileLayout(),
+    );
+  }
+
+  Widget _buildRecipientTabs() {
+    return Container(
+      height: 48,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _recipientTab = 0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: _recipientTab == 0 ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: _recipientTab == 0
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.edit_note_rounded,
+                      size: 18,
+                      color: _recipientTab == 0 ? AppTheme.primaryColor : Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Manual & Contacts',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: _recipientTab == 0 ? FontWeight.bold : FontWeight.normal,
+                        color: _recipientTab == 0 ? Colors.black87 : Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 32),
-
-            if (isMobile) ...[
-              _buildRecipientCard(),
-              const SizedBox(height: 16),
-              CsvUploader(onParsed: _onCsvParsed),
-            ] else ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 3, child: _buildRecipientCard()),
-                  const SizedBox(width: 24),
-                  Expanded(flex: 1, child: CsvUploader(onParsed: _onCsvParsed)),
-                ],
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _recipientTab = 1),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                decoration: BoxDecoration(
+                  color: _recipientTab == 1 ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: _recipientTab == 1
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.upload_file_rounded,
+                      size: 18,
+                      color: _recipientTab == 1 ? AppTheme.primaryColor : Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Upload CSV',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: _recipientTab == 1 ? FontWeight.bold : FontWeight.normal,
+                        color: _recipientTab == 1 ? Colors.black87 : Colors.grey.shade600,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-            const SizedBox(height: 32),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-            if (isMobile) ...[
-              _buildTemplateSelector(),
-              const SizedBox(height: 16),
-              if (_selectedTemplateData != null) ...[
-                if (_templateVariableCount > 0) _buildVariableMapping(),
-                const SizedBox(height: 16),
-                _buildMediaSelector(),
-              ],
-              const SizedBox(height: 16),
-              if (_selectedTemplateData != null) _buildTemplatePreview(),
-            ] else ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        _buildTemplateSelector(),
-                        const SizedBox(height: 16),
-                        if (_selectedTemplateData != null) ...[
-                          if (_templateVariableCount > 0) _buildVariableMapping(),
-                          const SizedBox(height: 16),
-                          _buildMediaSelector(),
-                        ],
-                      ],
+  Widget _buildMobileManualSection() {
+    return Container(
+      key: const ValueKey('manual'),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Enter Mobile Numbers',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: TextField(
+                    controller: _manualNumbersController,
+                    decoration: InputDecoration(
+                      hintText: 'Enter numbers separated by comma',
+                      hintStyle: TextStyle(fontSize: 13, color: Colors.grey.shade400),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      suffixIcon: kIsWeb
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.contacts_rounded, color: AppTheme.primaryColor),
+                              onPressed: _pickNumberFromContacts,
+                              tooltip: 'Select from contacts',
+                            ),
                     ),
                   ),
-                  const SizedBox(width: 32),
-                  Expanded(
-                    child: _selectedTemplateData != null
-                        ? _buildTemplatePreview()
-                        : const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: _addManualNumbers,
+                child: Container(
+                  height: 50,
+                  width: 50,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                        blurRadius: 6,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
                   ),
-                ],
+                  child: const Icon(Icons.add_rounded, color: Colors.white, size: 24),
+                ),
               ),
             ],
-            const SizedBox(height: 32),
-
-            _buildSummaryCard(),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Quick Imports',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black54),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _addFromClients,
+                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 16),
+                  label: const Text('From Clients', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.secondaryColor,
+                    side: BorderSide(color: AppTheme.secondaryColor.withValues(alpha: 0.15)),
+                    backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.02),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _addFromGroup,
+                  icon: const Icon(Icons.group_add_rounded, size: 16),
+                  label: const Text('From Groups', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.secondaryColor,
+                    side: BorderSide(color: AppTheme.secondaryColor.withValues(alpha: 0.15)),
+                    backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.02),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (_recipients.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            const Divider(height: 1, color: Colors.black12),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Text(
+                  'Selected Recipients',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(100),
+                  ),
+                  child: Text(
+                    '${_recipients.length}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.secondaryColor,
+                    ),
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => setState(() => _recipients.clear()),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.red.shade600,
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Clear All', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _recipients.take(15).map((r) {
+                return Container(
+                  padding: const EdgeInsets.only(left: 10, right: 4, top: 4, bottom: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(100),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        r.mobileNumber,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey.shade800,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      GestureDetector(
+                        onTap: () => setState(() => _recipients.removeWhere((x) => x.mobileNumber == r.mobileNumber)),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.close_rounded, size: 10, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            if (_recipients.length > 15)
+              Padding(
+                padding: const EdgeInsets.only(top: 8, left: 4),
+                child: Text(
+                  '+ ${_recipients.length - 15} more recipients',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                ),
+              ),
           ],
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildRecipientCard() {
+    final isMobile = MediaQuery.of(context).size.width < 800;
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildRecipientTabs(),
+          const SizedBox(height: 16),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: _recipientTab == 0
+                ? _buildMobileManualSection()
+                : CsvUploader(onParsed: _onCsvParsed),
+          ),
+        ],
+      );
+    }
+
     return Card(
       elevation: 0,
       color: const Color(0xFFF9FBFB),
@@ -478,10 +1078,17 @@ class _BulkSendPageState extends State<BulkSendPage> {
                     ),
                     child: TextField(
                       controller: _manualNumbersController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'Enter numbers separated by comma or newline',
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                        suffixIcon: kIsWeb
+                            ? null
+                            : IconButton(
+                                icon: const Icon(Icons.contacts_rounded, color: Colors.green),
+                                onPressed: _pickNumberFromContacts,
+                                tooltip: 'Select from contacts',
+                              ),
                       ),
                     ),
                   ),
@@ -1033,6 +1640,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
   }
 
   Widget _buildTemplatePreview() {
+    if (_selectedTemplateData == null) return const SizedBox.shrink();
     final components = _selectedTemplateData!['components'] as List<dynamic>? ?? [];
     String? header;
     String? body;
@@ -1099,7 +1707,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
           ),
         ),
         Container(
-          constraints: const BoxConstraints(maxHeight: 500),
+          height: 450,
           decoration: BoxDecoration(
             color: const Color(0xFFE5DDD5),
             borderRadius:
@@ -1120,6 +1728,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
   }
 
   Widget _buildMediaSelector() {
+    if (_selectedTemplateData == null) return const SizedBox.shrink();
     final components = _selectedTemplateData!['components'] as List<dynamic>? ?? [];
     final headerComp = components.firstWhere(
       (c) => c['type'] == 'HEADER',

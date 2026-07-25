@@ -12,25 +12,11 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
-import 'dart:js_interop';
+import 'package:iFloraBuzz/core/js/whatsapp_signup.dart';
 import 'package:iFloraBuzz/features/settings/presentation/widgets/onboarding_checklist_widget.dart';
 import 'package:iFloraBuzz/features/templates/presentation/pages/create_template_page.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:iFloraBuzz/core/widgets/password_verification_dialog.dart';
-
-// JS interop types for the signup result
-extension type _SignupResult._(JSObject _) implements JSObject {
-  external String get status;
-  external String? get code;
-  external String? get wabaId;
-  external String? get phoneNumberId;
-  external String? get sessionId;
-  external String? get sessionInfoResponse;
-  external String? get businessPortfolioId; // Step 3 — Business Portfolio ID
-}
-
-@JS()
-external JSPromise<_SignupResult> launchWhatsAppSignup(String appId, String configId);
 
 class SettingsPage extends StatefulWidget {
   final VoidCallback? onRenewPlan;
@@ -479,75 +465,130 @@ class _SettingsPageState extends State<SettingsPage> {
             border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final isSmall = constraints.maxWidth < 450;
+
+              final renewButton = ElevatedButton.icon(
+                onPressed: widget.onRenewPlan,
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: const Text('Renew Plan'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isExpired || isWarning
+                      ? badgeColor
+                      : AppTheme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  textStyle: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.bold),
                 ),
-                child: const Icon(Icons.workspace_premium_rounded,
-                    color: AppTheme.secondaryColor, size: 20),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Panel Plan',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
-                    ),
-                    if (expiresAt != null) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        'Expires $expiryDateFormatted',
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+              );
+
+              final badgeWidget = daysLeft != null
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: badgeColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
                       ),
-                    ],
+                      child: Text(
+                        expiryLabel,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: badgeColor,
+                        ),
+                      ),
+                    )
+                  : null;
+
+              if (isSmall) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.workspace_premium_rounded,
+                              color: AppTheme.secondaryColor, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Panel Plan',
+                                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                              ),
+                              if (expiresAt != null) ...[
+                                const SizedBox(height: 3),
+                                Text(
+                                  'Expires $expiryDateFormatted',
+                                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        if (badgeWidget != null) badgeWidget,
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: renewButton,
+                    ),
                   ],
-                ),
-              ),
-              // Days-left badge
-              if (daysLeft != null)
-                Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: badgeColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+                );
+              }
+
+              return Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.workspace_premium_rounded,
+                        color: AppTheme.secondaryColor, size: 20),
                   ),
-                  child: Text(
-                    expiryLabel,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: badgeColor,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Panel Plan',
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                        ),
+                        if (expiresAt != null) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            'Expires $expiryDateFormatted',
+                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ),
-              SizedBox(
-                width: 130,
-                child: ElevatedButton.icon(
-                  onPressed: widget.onRenewPlan,
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text('Renew Plan'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isExpired || isWarning
-                        ? badgeColor
-                        : AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                    textStyle: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
+                  if (badgeWidget != null) ...[
+                    badgeWidget,
+                    const SizedBox(width: 12),
+                  ],
+                  renewButton,
+                ],
+              );
+            },
           ),
         );
       },
@@ -586,15 +627,16 @@ class _SettingsPageState extends State<SettingsPage> {
                 children: [
                   Icon(icon, color: isExpanded ? AppTheme.primaryColor : Colors.blueGrey),
                   const SizedBox(width: 16),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w500,
-                      fontSize: 15,
-                      color: isExpanded ? AppTheme.primaryColor : Colors.black87,
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 15,
+                        color: isExpanded ? AppTheme.primaryColor : Colors.black87,
+                      ),
                     ),
                   ),
-                  const Spacer(),
                   AnimatedRotation(
                     turns: isExpanded ? 0.25 : 0,
                     duration: const Duration(milliseconds: 250),
@@ -1728,10 +1770,17 @@ class _SettingsPageState extends State<SettingsPage> {
       // Log start event to backend server.log
       await getIt<WhatsAppRepository>().logSignupEvent(eventName: 'START');
 
-      final result = await launchWhatsAppSignup(
+      final result = await launchWhatsAppSignupFlow(
         AppConstants.metaAppId,
         AppConstants.metaConfigId,
-      ).toDart;
+      );
+
+      if (result == null) {
+        if (mounted) {
+          _showManualConfig(context);
+        }
+        return;
+      }
 
       if (result.status == 'success') {
         setState(() => _isConnecting = true);
@@ -1911,11 +1960,13 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildConnectedDetailsCard(BuildContext context, Map<String, dynamic> config) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(isMobile ? 16 : 32),
         width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1923,90 +1974,110 @@ class _SettingsPageState extends State<SettingsPage> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: const BoxDecoration(
                     color: Colors.green,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.check, color: Colors.white, size: 24),
+                  child: const Icon(Icons.check, color: Colors.white, size: 20),
                 ),
-                const SizedBox(width: 16),
-                const Text(
-                  'Meta Account Connected',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Phone Number ID',
-                  style: TextStyle(color: Colors.grey, fontSize: 16),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.centerRight,
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 340),
-                      child: _buildActivePhoneSelector(config),
-                    ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Meta Account Connected',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
                   ),
                 ),
               ],
             ),
-            const Divider(height: 32),
+            const SizedBox(height: 24),
+            if (isMobile) ...[
+              const Text(
+                'Phone Number ID',
+                style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              _buildActivePhoneSelector(config),
+            ] else ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Phone Number ID',
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 340),
+                        child: _buildActivePhoneSelector(config),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const Divider(height: 28),
             _buildDetailRow('WABA ID', config['businessAccountId'] ?? 'N/A'),
-            const Divider(height: 32),
+            const Divider(height: 28),
             _buildDetailRow('Access Token', '••••••••••••••••${config['accessToken']?.toString().substring((config['accessToken']?.toString().length ?? 4) - 4) ?? ''}'),
             if ((config['displayPhone'] as String?)?.isNotEmpty == true) ...[
-              const Divider(height: 32),
+              const Divider(height: 28),
               _buildDetailRow('Display Phone', config['displayPhone'] ?? ''),
             ],
             if ((config['verifiedName'] as String?)?.isNotEmpty == true) ...[
-              const Divider(height: 32),
+              const Divider(height: 28),
               _buildDetailRow('Verified Name', config['verifiedName'] ?? ''),
             ],
             if ((config['qualityRating'] as String?)?.isNotEmpty == true) ...[
-              const Divider(height: 32),
+              const Divider(height: 28),
               _buildQualityRow('Quality Rating', config['qualityRating'] ?? ''),
             ],
             if ((config['throughputLevel'] as String?)?.isNotEmpty == true) ...[
-              const Divider(height: 32),
+              const Divider(height: 28),
               _buildDetailRow('Throughput', config['throughputLevel'] ?? ''),
             ],
-            const SizedBox(height: 25),
-            Wrap(
-              spacing: 16,
-              runSpacing: 12,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _isRegisteringPhone ? null : _registerPhoneWithMeta,
-                  icon: _isRegisteringPhone 
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Icon(Icons.verified_user_rounded, color: Colors.white),
-                  label: Text(
-                    _isRegisteringPhone ? 'Registering Phone...' : 'Register Phone Number (Fix Error 141000)',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  SizedBox(
+                    width: isMobile ? double.infinity : null,
+                    child: ElevatedButton.icon(
+                      onPressed: _isRegisteringPhone ? null : _registerPhoneWithMeta,
+                      icon: _isRegisteringPhone 
+                          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Icon(Icons.verified_user_rounded, color: Colors.white),
+                      label: Text(
+                        _isRegisteringPhone ? 'Registering Phone...' : 'Register Phone Number',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  SizedBox(
+                    width: isMobile ? double.infinity : null,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _showManualConfig(context),
+                      icon: const Icon(Icons.edit_note),
+                      label: const Text('Update Connection Settings'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
                   ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _showManualConfig(context),
-                  icon: const Icon(Icons.edit_note),
-                  label: const Text('Update Connection Settings'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -2059,9 +2130,26 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     final currentPhoneId = config['phoneNumberId']?.toString();
-
     if (_phoneNumbers.isEmpty) {
-      return _buildDetailRow('Phone Number ID', currentPhoneId ?? 'N/A');
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              currentPhoneId ?? 'No Phone Selected',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.refresh, size: 18),
+            onPressed: () {
+              final wabaId = config['businessAccountId']?.toString();
+              final accessToken = config['accessToken']?.toString();
+              if (wabaId != null && accessToken != null) _fetchPhoneNumbers(wabaId, accessToken);
+            },
+          ),
+        ],
+      );
     }
 
     final hasCurrent = _phoneNumbers.any((p) => p['id']?.toString() == currentPhoneId);
@@ -2189,8 +2277,20 @@ class _SettingsPageState extends State<SettingsPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 16)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.grey, fontSize: 14),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
       ],
     );
   }
@@ -2214,7 +2314,11 @@ class _SettingsPageState extends State<SettingsPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 16)),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.grey, fontSize: 14),
+        ),
+        const SizedBox(width: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
           decoration: BoxDecoration(
@@ -2223,11 +2327,11 @@ class _SettingsPageState extends State<SettingsPage> {
             border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
           ),
           child: Text(
-            value,
+            value.toUpperCase(),
             style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
               color: badgeColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 11,
             ),
           ),
         ),
@@ -2250,11 +2354,12 @@ class _SettingsPageState extends State<SettingsPage> {
           children: [
             Icon(icon, color: Colors.blueGrey),
             const SizedBox(width: 16),
-            Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15),
+              ),
             ),
-            const Spacer(),
             const Icon(Icons.chevron_right, color: Colors.grey, size: 20),
           ],
         ),

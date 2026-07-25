@@ -7,6 +7,7 @@ import 'package:iFloraBuzz/features/clients/presentation/widgets/create_group_di
 import 'package:iFloraBuzz/features/clients/presentation/widgets/delete_group_dialog.dart';
 import 'package:iFloraBuzz/features/clients/presentation/widgets/group_card.dart';
 import 'package:iFloraBuzz/features/clients/presentation/widgets/group_qr_dialog.dart';
+import 'package:iFloraBuzz/features/clients/presentation/widgets/view_group_clients_dialog.dart';
 
 class GroupsTab extends StatefulWidget {
   const GroupsTab({super.key});
@@ -60,6 +61,13 @@ class _GroupsTabState extends State<GroupsTab> {
     showDialog(
       context: context,
       builder: (_) => GroupQrDialog(group: group),
+    );
+  }
+
+  void _openViewDialog(GroupModel group) {
+    showDialog(
+      context: context,
+      builder: (_) => ViewGroupClientsDialog(group: group),
     );
   }
 
@@ -190,6 +198,7 @@ class _GroupsTabState extends State<GroupsTab> {
                   final group = groups[index];
                   return GroupCard(
                     group: group,
+                    onView: () => _openViewDialog(group),
                     onEdit: () => _openEditDialog(group),
                     onDelete: () => _openDeleteDialog(group),
                     onQrCode: () => _openQrDialog(group),

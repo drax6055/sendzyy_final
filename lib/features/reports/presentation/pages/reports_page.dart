@@ -66,97 +66,176 @@ class _ReportsPageState extends State<ReportsPage> {
               onRefresh: () async {
                 ctx.read<ReportBloc>().add(FetchReportHistory());
               },
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isMobile = constraints.maxWidth < 650;
+
+                  return SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.all(isMobile ? 16.0 : 32.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            'Campaign Reports',
-                            style: Theme.of(ctx).textTheme.headlineMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.secondaryColor,
-                                ),
-                          ),
-                        ),
-                        // Template filter dropdown
-                        SizedBox(
-                          width: 170,
-                          child: DropdownButtonFormField<String>(
-                            value: templateOptions.contains(_templateFilter) ? _templateFilter : 'all',
-                            decoration: InputDecoration(
-                              filled: true,
-                              fillColor: Colors.grey.shade100,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(30),
-                                borderSide: BorderSide.none,
+                        if (isMobile) ...[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Campaign Reports',
+                                style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppTheme.secondaryColor,
+                                    ),
                               ),
-                            ),
-                            items: [
-                              const DropdownMenuItem(value: 'all', child: Text('All Templates')),
-                              ...templateOptions.map(
-                                (t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis)),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.download),
+                                    onPressed: () {
+                                      showDialog(
+                                        context: ctx,
+                                        builder: (_) => ReportDownloadDialog(
+                                          campaigns: filtered,
+                                        ),
+                                      );
+                                    },
+                                    tooltip: 'Download Report',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.refresh),
+                                    onPressed: () =>
+                                        ctx.read<ReportBloc>().add(FetchReportHistory()),
+                                    tooltip: 'Reload History',
+                                  ),
+                                ],
                               ),
                             ],
-                            onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Date range filter button
-                        _DateRangeButton(
-                          dateRange: _dateRange,
-                          onChanged: (r) => setState(() => _dateRange = r),
-                          onClear: () => setState(() => _dateRange = null),
-                        ),
-                        const SizedBox(width: 4),
-                        IconButton(
-                          icon: const Icon(Icons.download),
-                          onPressed: () {
-                            showDialog(
-                              context: ctx,
-                              builder: (_) => ReportDownloadDialog(
-                                campaigns: filtered,
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: DropdownButtonFormField<String>(
+                                  value: templateOptions.contains(_templateFilter) ? _templateFilter : 'all',
+                                  isExpanded: true,
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.grey.shade100,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem(value: 'all', child: Text('All Templates', overflow: TextOverflow.ellipsis)),
+                                    ...templateOptions.map(
+                                      (t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis)),
+                                    ),
+                                  ],
+                                  onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
+                                ),
                               ),
-                            );
-                          },
-                          tooltip: 'Download Report',
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.refresh),
-                          onPressed: () =>
-                              ctx.read<ReportBloc>().add(FetchReportHistory()),
-                          tooltip: 'Reload History',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    _buildStatGrid(state, filtered),
-                    const SizedBox(height: 32),
-                    Row(
-                      children: [
-                        const Text(
-                          'Recent Campaigns',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        if (_dateRange != null || _templateFilter != 'all') ...[
-                          const SizedBox(width: 10),
-                          Text(
-                            '${filtered.length} result${filtered.length == 1 ? '' : 's'}',
-                            style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: _DateRangeButton(
+                                  dateRange: _dateRange,
+                                  onChanged: (r) => setState(() => _dateRange = r),
+                                  onClear: () => setState(() => _dateRange = null),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else ...[
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Campaign Reports',
+                                  style: Theme.of(ctx).textTheme.headlineMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.secondaryColor,
+                                      ),
+                                ),
+                              ),
+                              // Template filter dropdown
+                              SizedBox(
+                                width: 170,
+                                child: DropdownButtonFormField<String>(
+                                  value: templateOptions.contains(_templateFilter) ? _templateFilter : 'all',
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.grey.shade100,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem(value: 'all', child: Text('All Templates')),
+                                    ...templateOptions.map(
+                                      (t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis)),
+                                    ),
+                                  ],
+                                  onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Date range filter button
+                              _DateRangeButton(
+                                dateRange: _dateRange,
+                                onChanged: (r) => setState(() => _dateRange = r),
+                                onClear: () => setState(() => _dateRange = null),
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(Icons.download),
+                                onPressed: () {
+                                  showDialog(
+                                    context: ctx,
+                                    builder: (_) => ReportDownloadDialog(
+                                      campaigns: filtered,
+                                    ),
+                                  );
+                                },
+                                tooltip: 'Download Report',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.refresh),
+                                onPressed: () =>
+                                    ctx.read<ReportBloc>().add(FetchReportHistory()),
+                                tooltip: 'Reload History',
+                              ),
+                            ],
                           ),
                         ],
+                        const SizedBox(height: 24),
+                        _buildStatGrid(state, filtered, isMobile),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            const Text(
+                              'Recent Campaigns',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            if (_dateRange != null || _templateFilter != 'all') ...[
+                              const SizedBox(width: 10),
+                              Text(
+                                '${filtered.length} result${filtered.length == 1 ? '' : 's'}',
+                                style: TextStyle(fontSize: 13, color: Colors.grey.shade500),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        _buildCampaignTable(ctx, state, filtered, isMobile),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    _buildCampaignTable(ctx, state, filtered),
-                  ],
-                ),
+                  );
+                },
               ),
             );
           }
@@ -166,7 +245,7 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
-  Widget _buildStatGrid(ReportLoaded state, List<Map<String, dynamic>> campaigns) {
+  Widget _buildStatGrid(ReportLoaded state, List<Map<String, dynamic>> campaigns, bool isMobile) {
     // Compute stats from filtered campaigns
     int sent = 0, delivered = 0, read = 0, failed = 0;
     for (final c in campaigns) {
@@ -175,6 +254,29 @@ class _ReportsPageState extends State<ReportsPage> {
       read += (c['readCount'] as num? ?? 0).toInt();
       failed += (c['failureCount'] as num? ?? 0).toInt();
     }
+
+    if (isMobile) {
+      return Column(
+        children: [
+          Row(
+            children: [
+              _buildStatCard('Total Sent', '$sent', Icons.send, Colors.blue),
+              const SizedBox(width: 12),
+              _buildStatCard('Delivered', '$delivered', Icons.done_all, Colors.green),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _buildStatCard('Read', '$read', Icons.remove_red_eye, Colors.orange),
+              const SizedBox(width: 12),
+              _buildStatCard('Failed', '$failed', Icons.error_outline, Colors.red),
+            ],
+          ),
+        ],
+      );
+    }
+
     return Row(
       children: [
         _buildStatCard('Total Sent', '$sent', Icons.send, Colors.blue),
@@ -194,27 +296,40 @@ class _ReportsPageState extends State<ReportsPage> {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(12),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(icon, color: color, size: 20),
+                child: Icon(icon, color: color, size: 18),
               ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  Text(value,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      value,
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 18)),
-                ],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -223,7 +338,7 @@ class _ReportsPageState extends State<ReportsPage> {
     );
   }
 
-  Widget _buildCampaignTable(BuildContext pageContext, ReportLoaded state, List<Map<String, dynamic>> campaigns) {
+  Widget _buildCampaignTable(BuildContext pageContext, ReportLoaded state, List<Map<String, dynamic>> campaigns, bool isMobile) {
     if (campaigns.isEmpty) {
       return Card(
         child: Padding(
@@ -259,6 +374,59 @@ class _ReportsPageState extends State<ReportsPage> {
             date = DateTime.now();
           }
           final dateStr = DateFormat('MMM dd, yyyy • HH:mm').format(date);
+
+          if (isMobile) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            Text(
+                              'Campaign ${campaign['template']}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            _buildRetryStatusBadge(
+                              campaign['status'] as String?,
+                              hasPendingRetry: campaign['hasPendingRetry'] as bool? ?? false,
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: 'View Report',
+                        icon: const Icon(Icons.analytics_outlined, color: AppTheme.primaryColor),
+                        onPressed: () {
+                          showDialog(
+                            context: pageContext,
+                            builder: (_) => CampaignReportDialog(campaign: campaign),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  Text('Sent: $dateStr', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _buildMiniStat('Sent', '${campaign['totalCount'] ?? 0}', Colors.blue),
+                      _buildMiniStat('Delivered', '${((campaign['deliveredCount'] as num? ?? 0).toInt()).clamp(0, 9999999)}', Colors.green),
+                      _buildMiniStat('Read', '${campaign['readCount'] ?? 0}', Colors.orange),
+                      _buildMiniStat('Failed', '${campaign['failureCount'] ?? 0}', Colors.red),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          }
 
           return ListTile(
             contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -390,7 +558,7 @@ class _DateRangeButton extends StatelessWidget {
         ? '${DateFormat('dd/MM/yy').format(dateRange!.start)} – ${DateFormat('dd/MM/yy').format(dateRange!.end)}'
         : 'Date Range';
 
-    return OutlinedButton.icon(
+    return OutlinedButton(
       onPressed: () async {
         final picked = await showCompactDateRangePicker(
           context: context,
@@ -400,30 +568,6 @@ class _DateRangeButton extends StatelessWidget {
         );
         onChanged(picked);
       },
-      icon: Icon(
-        Icons.date_range,
-        size: 16,
-        color: hasRange ? AppTheme.primaryColor : Colors.grey.shade600,
-      ),
-      label: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: hasRange ? AppTheme.primaryColor : Colors.grey.shade700,
-            ),
-          ),
-          if (hasRange) ...[
-            const SizedBox(width: 6),
-            GestureDetector(
-              onTap: onClear,
-              child: Icon(Icons.close, size: 14, color: AppTheme.primaryColor),
-            ),
-          ],
-        ],
-      ),
       style: OutlinedButton.styleFrom(
         side: BorderSide(
           color: hasRange
@@ -433,8 +577,37 @@ class _DateRangeButton extends StatelessWidget {
         backgroundColor: hasRange
             ? AppTheme.primaryColor.withValues(alpha: 0.05)
             : null,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.date_range,
+            size: 16,
+            color: hasRange ? AppTheme.primaryColor : Colors.grey.shade600,
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                color: hasRange ? AppTheme.primaryColor : Colors.grey.shade700,
+              ),
+            ),
+          ),
+          if (hasRange) ...[
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: onClear,
+              child: Icon(Icons.close, size: 14, color: AppTheme.primaryColor),
+            ),
+          ],
+        ],
       ),
     );
   }

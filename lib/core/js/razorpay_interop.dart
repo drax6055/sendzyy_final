@@ -1,4 +1,2 @@
-import 'dart:js_interop';
-
-@JS('openRazorpay')
-external void openRazorpay(JSObject options, JSFunction callback);
+export 'razorpay_interop_stub.dart'
+    if (dart.library.html) 'razorpay_interop_web.dart';

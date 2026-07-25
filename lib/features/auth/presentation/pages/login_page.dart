@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
@@ -22,7 +23,7 @@ class _LoginPageState extends State<LoginPage> {
   final _shakeKey = GlobalKey<ShakeWidgetState>();
 
   void _showForgotPasswordDialog(BuildContext context) {
-    showDialog(context: context, builder: (_) => const _ForgotPasswordDialog());
+    showDialog(context: context, builder: (_) => const ForgotPasswordDialog());
   }
 
   void _handleLogin() {
@@ -41,6 +42,311 @@ class _LoginPageState extends State<LoginPage> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Widget _buildWebBody(AuthState state) {
+    return Stack(
+      children: [
+        // Full-screen background image
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/home-bg-wp.png',
+            fit: BoxFit.cover,
+          ),
+        ),
+        SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: ShakeWidget(
+                key: _shakeKey,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween<double>(begin: 0.8, end: 1.0),
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.easeOutBack,
+                  builder: (context, scale, child) {
+                    return Transform.scale(scale: scale, child: child);
+                  },
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 400),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.12),
+                          blurRadius: 25,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(32),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Logo
+                          Center(
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween<double>(begin: 0.0, end: 1.0),
+                              duration: const Duration(milliseconds: 800),
+                              curve: Curves.easeOutBack,
+                              builder: (context, val, child) {
+                                return Transform.scale(scale: val, child: child);
+                              },
+                              child: Image.asset(
+                                'assets/images/logo.png',
+                                height: 65,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 36),
+                          InteractiveTextField(
+                            controller: _emailController,
+                            hintText: 'Email Address',
+                            prefixIcon: Icons.email_outlined,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) return 'Required';
+                              if (!value.contains('@')) return 'Enter a valid email';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          InteractiveTextField(
+                            controller: _passwordController,
+                            hintText: 'Password',
+                            prefixIcon: Icons.lock_outline,
+                            isPassword: true,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) return 'Required';
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton(
+                              onPressed: () => _showForgotPasswordDialog(context),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppTheme.primaryColor,
+                                padding: EdgeInsets.zero,
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: const Text(
+                                'Forgot Password?',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+                          InteractiveButton(
+                            onPressed: _handleLogin,
+                            isLoading: state is AuthLoading,
+                            child: const Text(
+                              'LOGIN',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  letterSpacing: 1.2),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Center(
+                            child: TextButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const RegisterPage(),
+                                  ),
+                                );
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppTheme.primaryColor,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              ),
+                              child: Text.rich(
+                                TextSpan(
+                                  text: "Don't have an account? ",
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
+                                  children: const [
+                                    TextSpan(
+                                      text: 'Register',
+                                      style: TextStyle(
+                                        color: AppTheme.primaryColor,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMobileBody(AuthState state) {
+    return Stack(
+      children: [
+        // Full-screen background image matching web
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/home-bg-wp.png',
+            fit: BoxFit.cover,
+          ),
+        ),
+        SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: ShakeWidget(
+                key: _shakeKey,
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 20,
+                        offset: const Offset(0, 8),
+                      ),
+                    ],
+                  ),
+                  padding: const EdgeInsets.all(28),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Logo
+                        Center(
+                          child: Image.asset(
+                            'assets/images/logo.png',
+                            height: 65,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        InteractiveTextField(
+                          controller: _emailController,
+                          hintText: 'Email Address',
+                          prefixIcon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return 'Required';
+                            if (!value.contains('@')) return 'Enter a valid email';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 20),
+                        InteractiveTextField(
+                          controller: _passwordController,
+                          hintText: 'Password',
+                          prefixIcon: Icons.lock_outline,
+                          isPassword: true,
+                          validator: (value) {
+                            if (value == null || value.isEmpty) return 'Required';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => _showForgotPasswordDialog(context),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.primaryColor,
+                              padding: EdgeInsets.zero,
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                            child: const Text(
+                              'Forgot Password?',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 28),
+                        InteractiveButton(
+                          onPressed: _handleLogin,
+                          isLoading: state is AuthLoading,
+                          child: const Text(
+                            'LOG IN',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Center(
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const RegisterPage(),
+                                ),
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.primaryColor,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            ),
+                            child: Text.rich(
+                              TextSpan(
+                                text: "Don't have an account? ",
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                                children: const [
+                                  TextSpan(
+                                    text: 'Register',
+                                    style: TextStyle(
+                                      color: AppTheme.primaryColor,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   @override
@@ -72,181 +378,7 @@ class _LoginPageState extends State<LoginPage> {
       builder: (context, state) {
         return Scaffold(
           resizeToAvoidBottomInset: true,
-          body: Stack(
-            children: [
-              // Full-screen background image
-              Positioned.fill(
-                child: Image.asset(
-                  'assets/images/home-bg-wp.png',
-                  fit: BoxFit.cover,
-                ),
-              ),
-              // Main content centered and scrollable for keyboard resize compatibility
-              SafeArea(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    child: ShakeWidget(
-                      key: _shakeKey,
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween<double>(begin: 0.8, end: 1.0),
-                        duration: const Duration(milliseconds: 600),
-                        curve: Curves.easeOutBack,
-                        builder: (context, scale, child) {
-                          return Transform.scale(
-                            scale: scale,
-                            child: child,
-                          );
-                        },
-                        child: Container(
-                          constraints: const BoxConstraints(maxWidth: 400),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(28),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.12),
-                                blurRadius: 25,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.all(32),
-                          child: Form(
-                            key: _formKey,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                // Logo
-                                Center(
-                                  child: TweenAnimationBuilder<double>(
-                                    tween: Tween<double>(begin: 0.0, end: 1.0),
-                                    duration: const Duration(milliseconds: 800),
-                                    curve: Curves.easeOutBack,
-                                    builder: (context, val, child) {
-                                      return Transform.scale(
-                                        scale: val,
-                                        child: child,
-                                      );
-                                    },
-                                    child: Image.asset(
-                                      'assets/images/logo.png',
-                                      height: 65,
-                                      fit: BoxFit.contain,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 36),
-                                
-                                // Email Address Field with real-time feedback
-                                InteractiveTextField(
-                                  controller: _emailController,
-                                  hintText: 'Email Address',
-                                  prefixIcon: Icons.email_outlined,
-                                  keyboardType: TextInputType.emailAddress,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) return 'Required';
-                                    if (!value.contains('@')) return 'Enter a valid email';
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 20),
-                                
-                                // Password Field
-                                InteractiveTextField(
-                                  controller: _passwordController,
-                                  hintText: 'Password',
-                                  prefixIcon: Icons.lock_outline,
-                                  isPassword: true,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) return 'Required';
-                                    return null;
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                
-                                // Forgot Password
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton(
-                                    onPressed: () => _showForgotPasswordDialog(context),
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: AppTheme.primaryColor,
-                                      padding: EdgeInsets.zero,
-                                      minimumSize: Size.zero,
-                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                    ),
-                                    child: const Text(
-                                      'Forgot Password?',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 32),
-                                
-                                // Interactive Gradient Login Button
-                                InteractiveButton(
-                                  onPressed: _handleLogin,
-                                  isLoading: state is AuthLoading,
-                                  child: const Text(
-                                    'LOGIN',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: Colors.white,
-                                      letterSpacing: 1.2,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 24),
-                                
-                                // Register Link
-                                Center(
-                                  child: TextButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => const RegisterPage(),
-                                        ),
-                                      );
-                                    },
-                                    style: TextButton.styleFrom(
-                                      foregroundColor: AppTheme.primaryColor,
-                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    ),
-                                    child: Text.rich(
-                                      TextSpan(
-                                        text: "Don't have an account? ",
-                                        style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                                        children: const [
-                                          TextSpan(
-                                            text: 'Register',
-                                            style: TextStyle(
-                                              color: AppTheme.primaryColor,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
+          body: kIsWeb ? _buildWebBody(state) : _buildMobileBody(state),
         );
       },
     );
@@ -516,14 +648,14 @@ class ShakeWidgetState extends State<ShakeWidget> with SingleTickerProviderState
   }
 }
 
-class _ForgotPasswordDialog extends StatefulWidget {
-  const _ForgotPasswordDialog();
+class ForgotPasswordDialog extends StatefulWidget {
+  const ForgotPasswordDialog({super.key});
 
   @override
-  State<_ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
+  State<ForgotPasswordDialog> createState() => _ForgotPasswordDialogState();
 }
 
-class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
+class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   bool _loading = false;

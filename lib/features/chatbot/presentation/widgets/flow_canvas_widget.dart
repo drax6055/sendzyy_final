@@ -46,8 +46,7 @@ class _FlowCanvasWidgetState extends State<FlowCanvasWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: DragTarget<FlowNodeType>(
+    return DragTarget<FlowNodeType>(
         onAcceptWithDetails: (details) {
           final box = context.findRenderObject() as RenderBox?;
           if (box == null) return;
@@ -95,8 +94,7 @@ class _FlowCanvasWidgetState extends State<FlowCanvasWidget> {
             ),
           );
         },
-      ),
-    );
+      );
   }
 
   Widget _buildNodeCard(FlowNode node) {

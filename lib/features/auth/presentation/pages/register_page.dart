@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
@@ -113,6 +114,387 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
+  Widget _buildWebBody(AuthState state) {
+    return Container(
+      decoration: const BoxDecoration(
+        image: DecorationImage(
+          image: AssetImage('assets/images/home-bg-wp.png'),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 450),
+          padding: const EdgeInsets.all(32),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Image.asset('assets/images/logo.png', height: 70),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Join our Saas platform today',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                const SizedBox(height: 32),
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    hintText: 'Business Name',
+                    prefixIcon: Icon(Icons.business),
+                  ),
+                  validator: (value) =>
+                      (value == null || value.isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _emailController,
+                  decoration: const InputDecoration(
+                    hintText: 'Email Address',
+                    prefixIcon: Icon(Icons.email_outlined),
+                  ),
+                  validator: (value) =>
+                      (value == null || value.isEmpty) ? 'Required' : null,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: !_isPasswordVisible,
+                  decoration: InputDecoration(
+                    hintText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isPasswordVisible
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                    ),
+                  ),
+                  validator: (value) =>
+                      (value == null || value.length < 6) ? 'Min 6 characters' : null,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Checkbox(
+                      value: _acceptedTerms,
+                      activeColor: AppTheme.primaryColor,
+                      onChanged: (val) => setState(() => _acceptedTerms = val ?? false),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _showTermsDialog,
+                        child: RichText(
+                          text: const TextSpan(
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                            children: [
+                              TextSpan(text: 'I agree to the '),
+                              TextSpan(
+                                text: 'Terms & Conditions',
+                                style: TextStyle(
+                                  color: AppTheme.primaryColor,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: state is AuthLoading ? null : _handleRegister,
+                  child: state is AuthLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text(
+                          'REGISTER NOW',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                ),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Already have an account? Login'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileBody(AuthState state) {
+    return Stack(
+      children: [
+        // Full-screen background image matching web
+        Positioned.fill(
+          child: Image.asset(
+            'assets/images/home-bg-wp.png',
+            fit: BoxFit.cover,
+          ),
+        ),
+        SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 450),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(28),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Center(
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          height: 65,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      const Center(
+                        child: Text(
+                          'Create Account',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.secondaryColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Center(
+                        child: Text(
+                          'Join our SaaS WhatsApp marketing platform today',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+
+                      // Name
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: InputDecoration(
+                          labelText: 'Business Name',
+                          hintText: 'Enter your business name',
+                          prefixIcon: const Icon(Icons.business_rounded),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                          ),
+                        ),
+                        validator: (value) =>
+                            (value == null || value.isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Email
+                      TextFormField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: 'Email Address',
+                          hintText: 'Enter your email address',
+                          prefixIcon: const Icon(Icons.email_outlined),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                          ),
+                        ),
+                        validator: (value) =>
+                            (value == null || value.isEmpty) ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Password
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: !_isPasswordVisible,
+                        decoration: InputDecoration(
+                          labelText: 'Password',
+                          hintText: 'Enter your password',
+                          prefixIcon: const Icon(Icons.lock_outline),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isPasswordVisible
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                            ),
+                            onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade50,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(color: Colors.grey.shade200),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                          ),
+                        ),
+                        validator: (value) =>
+                            (value == null || value.length < 6) ? 'Min 6 characters' : null,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Terms
+                      Row(
+                        children: [
+                          Checkbox(
+                            value: _acceptedTerms,
+                            activeColor: AppTheme.primaryColor,
+                            onChanged: (val) => setState(() => _acceptedTerms = val ?? false),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: _showTermsDialog,
+                              child: RichText(
+                                text: const TextSpan(
+                                  style: TextStyle(color: Colors.grey, fontSize: 13),
+                                  children: [
+                                    TextSpan(text: 'I agree to the '),
+                                    TextSpan(
+                                      text: 'Terms & Conditions',
+                                      style: TextStyle(
+                                        color: AppTheme.primaryColor,
+                                        fontWeight: FontWeight.bold,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Register Button
+                      SizedBox(
+                        height: 56,
+                        child: ElevatedButton(
+                          onPressed: state is AuthLoading ? null : _handleRegister,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: state is AuthLoading
+                              ? const CircularProgressIndicator(color: Colors.white)
+                              : const Text(
+                                  'REGISTER NOW',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Back to Login
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Already have an account? ',
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                          ),
+                          GestureDetector(
+                            onTap: () => Navigator.pop(context),
+                            child: const Text(
+                              'Login',
+                              style: TextStyle(
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthBloc, AuthState>(
@@ -134,145 +516,10 @@ class _RegisterPageState extends State<RegisterPage> {
         }
       },
       child: Scaffold(
-        body: Container(  
-          decoration: BoxDecoration(
-              image: DecorationImage(
-      image: AssetImage('assets/images/home-bg-wp.png'),
-      fit: BoxFit.cover, // optional
-    ),
-            ),
-          child: Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 450),
-              padding: const EdgeInsets.all(32),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                     Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20,),
-                    child: Image.asset('assets/images/logo.png',height: 70),
-                  ),
-                    const SizedBox(height: 16),
-                    // Text(
-                    //   'Register Business',
-                    //   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    //         fontWeight: FontWeight.bold,
-                    //         color: AppTheme.secondaryColor,
-                    //       ),
-                    // ),
-                    const Text(
-                      'Join our Saas platform today',
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                    const SizedBox(height: 32),
-                    TextFormField(
-                      controller: _nameController,
-                      decoration: const InputDecoration(
-                        hintText: 'Business Name',
-                        prefixIcon: Icon(Icons.business),
-                      ),
-                      validator: (value) =>
-                          (value == null || value.isEmpty) ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _emailController,
-                      decoration: const InputDecoration(
-                        hintText: 'Email Address',
-                        prefixIcon: Icon(Icons.email_outlined),
-                      ),
-                      validator: (value) =>
-                          (value == null || value.isEmpty) ? 'Required' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _passwordController,
-                      obscureText: !_isPasswordVisible,
-                      decoration: InputDecoration(
-                        hintText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _isPasswordVisible
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                          ),
-                          onPressed: () => setState(
-                              () => _isPasswordVisible = !_isPasswordVisible),
-                        ),
-                      ),
-                      validator: (value) =>
-                          (value == null || value.length < 6) ? 'Min 6 characters' : null,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: _acceptedTerms,
-                          activeColor: AppTheme.primaryColor,
-                          onChanged: (val) =>
-                              setState(() => _acceptedTerms = val ?? false),
-                        ),
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: _showTermsDialog,
-                            child: RichText(
-                              text: const TextSpan(
-                                style: TextStyle(color: Colors.grey, fontSize: 13),
-                                children: [
-                                  TextSpan(text: 'I agree to the '),
-                                  TextSpan(
-                                    text: 'Terms & Conditions',
-                                    style: TextStyle(
-                                      color: AppTheme.primaryColor,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    BlocBuilder<AuthBloc, AuthState>(
-                      builder: (context, state) {
-                        return ElevatedButton(
-                          onPressed: state is AuthLoading ? null : _handleRegister,
-                          child: state is AuthLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
-                              : const Text(
-                                  'REGISTER NOW',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold, fontSize: 16),
-                                ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Already have an account? Login'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+        body: BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, state) {
+            return kIsWeb ? _buildWebBody(state) : _buildMobileBody(state);
+          },
         ),
       ),
     );

@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:ui_web' as ui_web;
+import 'dart:io' as io;
+import 'package:dio/dio.dart';
+import 'package:universal_html/html.dart' as html;
+import 'package:iFloraBuzz/core/utils/platform_view_registry.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -38,6 +40,21 @@ class _ChatPageState extends State<ChatPage> {
   void initState() {
     super.initState();
     _loadReadContactTimestamps();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final isMobile = MediaQuery.of(context).size.width < 800;
+        if (isMobile) {
+          context.read<ChatBloc>().add(SelectConversation(null));
+        }
+      }
+    });
+  }
+
+  String _getSafeInitial(dynamic nameVal) {
+    final text = nameVal?.toString();
+    if (text == null || text.trim().isEmpty) return '?';
+    final chars = text.trim().characters;
+    return chars.isNotEmpty ? chars.first.toUpperCase() : '?';
   }
 
   Future<void> _loadReadContactTimestamps() async {
@@ -78,7 +95,7 @@ class _ChatPageState extends State<ChatPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_messagesScrollController.hasClients) {
         _messagesScrollController.animateTo(
-          _messagesScrollController.position.maxScrollExtent,
+          0.0,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
@@ -97,6 +114,129 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
+  void _showContactProfileDialog(BuildContext context, Map<String, dynamic> contact, bool isWithin24h) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        elevation: 16,
+        child: Container(
+          width: 320,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircleAvatar(
+                radius: 36,
+                backgroundColor: AppTheme.secondaryColor,
+                child: Text(
+                  _getSafeInitial(contact['name']),
+                  style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                (contact['name'] as String?)?.isNotEmpty == true
+                    ? contact['name']
+                    : 'Unknown Name',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    contact['id'] ?? '',
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(width: 6),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(4),
+                    onTap: () async {
+                      await Clipboard.setData(ClipboardData(text: contact['id'] ?? ''));
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(
+                          const SnackBar(
+                            content: Text('Phone number copied to clipboard'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(4.0),
+                      child: Icon(
+                        Icons.copy_rounded,
+                        size: 14,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              const Divider(),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('24h Window:', style: TextStyle(fontSize: 13, color: Colors.black54)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isWithin24h ? Colors.green.shade50 : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isWithin24h ? Colors.green : Colors.grey,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          isWithin24h ? 'Open' : 'Expired',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: isWithin24h ? Colors.green.shade800 : Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Close', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _messageController.dispose();
@@ -107,6 +247,8 @@ class _ChatPageState extends State<ChatPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
     return BlocConsumer<ChatBloc, ChatState>(
       listener: (context, state) {
         if (state is ChatLoaded) {
@@ -127,6 +269,12 @@ class _ChatPageState extends State<ChatPage> {
         }
 
         if (state is ChatLoaded) {
+          if (isMobile) {
+            return state.selectedContactId == null
+                ? _buildConversationSidebar(state)
+                : _buildChatWindow(state);
+          }
+
           return Row(
             children: [
               // 1. Conversation Sidebar
@@ -219,8 +367,10 @@ class _ChatPageState extends State<ChatPage> {
       return DateTime.now().difference(lastActive).inHours < 24;
     }).length;
 
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
     return Container(
-      width: 350,
+      width: isMobile ? double.infinity : 350,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(right: BorderSide(color: Colors.grey.shade200)),
@@ -228,7 +378,7 @@ class _ChatPageState extends State<ChatPage> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+            padding: EdgeInsets.fromLTRB(isMobile ? 16 : 24, isMobile ? 16 : 24, isMobile ? 16 : 24, 12),
             child: Row(
               children: [
                 const Icon(
@@ -335,8 +485,15 @@ class _ChatPageState extends State<ChatPage> {
                                     ) ??
                                     DateTime.now())
                                 .toLocal();
-                      final bool isWithin24h =
-                          DateTime.now().difference(lastActive).inHours < 24;
+                      final contactId = conv['id'] as String? ?? '';
+                      final lastReadStr = _readContactTimestamps[contactId];
+                      bool isUnread = true;
+                      if (lastReadStr != null) {
+                        final lastRead = DateTime.tryParse(lastReadStr)?.toLocal();
+                        if (lastRead != null && !lastRead.isBefore(lastActive)) {
+                          isUnread = false;
+                        }
+                      }
 
                       return ListTile(
                         onTap: () {
@@ -352,9 +509,7 @@ class _ChatPageState extends State<ChatPage> {
                         leading: CircleAvatar(
                           backgroundColor: AppTheme.secondaryColor,
                           child: Text(
-                            (conv['name'] as String?)?.isNotEmpty == true
-                                ? conv['name'][0].toUpperCase()
-                                : '?',
+                            _getSafeInitial(conv['name']),
                             style: const TextStyle(color: Colors.white),
                           ),
                         ),
@@ -390,17 +545,16 @@ class _ChatPageState extends State<ChatPage> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            // 24h Indicator
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isWithin24h
-                                    ? Colors.green
-                                    : Colors.grey.shade300,
+                            // Unread Indicator
+                            if (isUnread)
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.green,
+                                ),
                               ),
-                            ),
                           ],
                         ),
                       );
@@ -486,6 +640,7 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildChatWindow(ChatLoaded state) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
     final contact = state.conversations.firstWhere(
       (c) => c['id'] == state.selectedContactId,
     );
@@ -501,70 +656,98 @@ class _ChatPageState extends State<ChatPage> {
         children: [
           // Chat Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 12 : 24,
+              vertical: isMobile ? 10 : 16,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: AppTheme.secondaryColor,
-                  child: Text(
-                    (contact['name'] as String?)?.isNotEmpty == true
-                        ? contact['name'][0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(color: Colors.white),
+                if (isMobile) ...[
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () {
+                      context.read<ChatBloc>().add(SelectConversation(null));
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                ],
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      _showContactProfileDialog(context, contact, isWithin24h);
+                    },
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: AppTheme.secondaryColor,
+                          child: Text(
+                            _getSafeInitial(contact['name']),
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                (contact['name'] as String?)?.isNotEmpty == true
+                                    ? contact['name']
+                                    : 'Unknown',
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isWithin24h ? Colors.green : Colors.grey,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      () {
+                                        final id = contact['id']?.toString() ?? '';
+                                        final name = contact['name']?.toString() ?? '';
+                                        final status = isWithin24h
+                                            ? '24h Window Open'
+                                            : '24h Window Expired';
+                                        if (name.isNotEmpty && name != id) {
+                                          return '$id  ·  $status';
+                                        }
+                                        return status;
+                                      }(),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey.shade600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          contact['name'] ?? 'Unknown',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          contact['id'] ?? '',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: const Color.fromARGB(255, 99, 99, 99),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isWithin24h ? Colors.green : Colors.grey,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isWithin24h
-                              ? '24h Window Open'
-                              : '24h Window Expired (Requires Template)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const Spacer(),
                 if (isWithin24h) _WindowTimerWidget(lastActive: lastActive),
               ],
             ),
@@ -574,12 +757,13 @@ class _ChatPageState extends State<ChatPage> {
           Expanded(
             child: Container(
               color: AppTheme.backgroundColor,
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(isMobile ? 12 : 24),
               child: ListView.builder(
                 controller: _messagesScrollController,
+                reverse: true,
                 itemCount: state.messages.length,
                 itemBuilder: (context, index) {
-                  final msg = state.messages[index];
+                  final msg = state.messages[state.messages.length - 1 - index];
                   return _buildMessageBubble(msg);
                 },
               ),
@@ -594,10 +778,13 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildMessageBubble(Map<String, dynamic> msg) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
     final bloc = context.read<ChatBloc>();
     return MessageRenderer(
       msg: msg,
-      maxWidth: MediaQuery.of(context).size.width * 0.4,
+      maxWidth: isMobile
+          ? MediaQuery.of(context).size.width * 0.75
+          : MediaQuery.of(context).size.width * 0.4,
       formatTime: _formatMessageTime,
       baseUrl: AppConstants.baseUrl,
       authToken: bloc.authToken,
@@ -605,8 +792,9 @@ class _ChatPageState extends State<ChatPage> {
   }
 
   Widget _buildInputArea(String contactId, bool isWithin24h) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 12 : 24),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey.shade200)),
@@ -1692,37 +1880,93 @@ class _AudioBubble extends StatefulWidget {
 
 class _AudioBubbleState extends State<_AudioBubble> {
   late final String _viewId;
+  bool _downloading = false;
 
   @override
   void initState() {
     super.initState();
     _viewId = 'audio-player-${widget.mediaId}';
-    _registerAudioElement();
+    if (kIsWeb) {
+      _registerAudioElement();
+    }
   }
 
   void _registerAudioElement() {
     final audioUrl =
         '${widget.baseUrl}/media/${widget.mediaId}?token=${widget.authToken}';
+    final audio = html.AudioElement()
+      ..src = audioUrl
+      ..controls = true
+      ..style.width = '100%'
+      ..style.height = '40px'
+      ..style.outline = 'none';
+    registerWebPlatformView(_viewId, audio);
+  }
 
-    // ignore: undefined_prefixed_name
-    ui_web.platformViewRegistry.registerViewFactory(_viewId, (int viewId) {
-      final audio = html.AudioElement()
-        ..src = audioUrl
-        ..controls = true
-        ..style.width = '100%'
-        ..style.height = '40px'
-        ..style.outline = 'none';
-      return audio;
-    });
+  Future<void> _playAudio() async {
+    setState(() => _downloading = true);
+    try {
+      final audioUrl = '${widget.baseUrl}/media/${widget.mediaId}?token=${widget.authToken}';
+      final dio = Dio();
+      final dir = await getTemporaryDirectory();
+      final file = io.File('${dir.path}/${widget.mediaId}.mp3');
+      if (!await file.exists()) {
+        await dio.download(audioUrl, file.path);
+      }
+      await OpenFile.open(file.path);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to play audio: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 260,
-      height: 48,
-      child: HtmlElementView(viewType: _viewId),
-    );
+    if (kIsWeb) {
+      return SizedBox(
+        width: 260,
+        height: 48,
+        child: HtmlElementView(viewType: _viewId),
+      );
+    } else {
+      return Container(
+        width: 200,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: widget.isMe ? Colors.lightGreen[100] : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: InkWell(
+          onTap: _downloading ? null : _playAudio,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _downloading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      Icons.play_circle_fill,
+                      size: 32,
+                      color: widget.isMe ? AppTheme.primaryColor : Colors.grey[700],
+                    ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  _downloading ? 'Downloading...' : 'Play Voice Note',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 }
 
@@ -1749,6 +1993,7 @@ class _VideoBubble extends StatefulWidget {
 class _VideoBubbleState extends State<_VideoBubble> {
   late final String _videoUrl;
   late final String _viewId;
+  bool _downloading = false;
 
   @override
   void initState() {
@@ -1756,26 +2001,45 @@ class _VideoBubbleState extends State<_VideoBubble> {
     _videoUrl =
         '${widget.baseUrl}/media/${widget.mediaId}?token=${widget.authToken}';
     _viewId = 'video-thumb-${widget.mediaId}';
-    _registerVideoElement();
+    if (kIsWeb) {
+      _registerVideoElement();
+    }
   }
 
   void _registerVideoElement() {
-    // ignore: undefined_prefixed_name
-    ui_web.platformViewRegistry.registerViewFactory(_viewId, (int viewId) {
-      final video = html.VideoElement()
-        ..src = _videoUrl
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..style.objectFit = 'cover'
-        ..style.borderRadius = '8px'
-        ..preload = 'metadata'
-        ..muted = true;
-      // Seek to first frame so the poster shows
-      video.onLoadedMetadata.listen((_) {
-        video.currentTime = 0.1;
-      });
-      return video;
+    final video = html.VideoElement()
+      ..src = _videoUrl
+      ..style.width = '100%'
+      ..style.height = '100%'
+      ..style.objectFit = 'cover'
+      ..style.borderRadius = '8px'
+      ..preload = 'metadata'
+      ..muted = true;
+    // Seek to first frame so the poster shows
+    video.onLoadedMetadata.listen((_) {
+      video.currentTime = 0.1;
     });
+    registerWebPlatformView(_viewId, video);
+  }
+
+  Future<void> _playVideo() async {
+    setState(() => _downloading = true);
+    try {
+      final videoUrl = '${widget.baseUrl}/media/${widget.mediaId}?token=${widget.authToken}';
+      final dio = Dio();
+      final dir = await getTemporaryDirectory();
+      final file = io.File('${dir.path}/${widget.mediaId}.mp4');
+      if (!await file.exists()) {
+        await dio.download(videoUrl, file.path);
+      }
+      await OpenFile.open(file.path);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to play video: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _downloading = false);
+    }
   }
 
   @override
@@ -1784,44 +2048,81 @@ class _VideoBubbleState extends State<_VideoBubble> {
         ? Colors.white.withValues(alpha: 0.9)
         : Colors.white.withValues(alpha: 0.9);
 
-    return GestureDetector(
-      onTap: () => html.window.open(_videoUrl, '_blank'),
-      child: SizedBox(
+    if (kIsWeb) {
+      return GestureDetector(
+        onTap: () => html.window.open(_videoUrl, '_blank'),
+        child: SizedBox(
+          width: 200,
+          height: 150,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: HtmlElementView(viewType: _viewId),
+              ),
+              // Dark overlay + play icon
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.black.withValues(alpha: 0.25),
+                ),
+              ),
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.55),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    color: iconColor,
+                    size: 32,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      return Container(
         width: 200,
         height: 150,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: HtmlElementView(viewType: _viewId),
-            ),
-            // Dark overlay + play icon
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                color: Colors.black.withValues(alpha: 0.25),
-              ),
-            ),
-            Center(
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.play_arrow_rounded,
-                  color: iconColor,
-                  size: 32,
-                ),
-              ),
-            ),
-          ],
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(8),
         ),
-      ),
-    );
+        child: InkWell(
+          onTap: _downloading ? null : _playVideo,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              if (_downloading)
+                const CircularProgressIndicator()
+              else
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.play_circle_fill,
+                      size: 48,
+                      color: widget.isMe ? AppTheme.primaryColor : Colors.grey[700],
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Play Video',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 }
 

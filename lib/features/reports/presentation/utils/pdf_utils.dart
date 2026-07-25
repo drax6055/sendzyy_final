@@ -4,8 +4,11 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
+import 'dart:io' as io;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import 'package:csv/csv.dart';
 
 class PdfUtils {
@@ -382,15 +385,25 @@ class PdfUtils {
 
     final csvString = const ListToCsvConverter().convert(rows);
     final bytes = utf8.encode(csvString);
-    final blob = html.Blob([bytes], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    
     final fileName = 'campaign_${template}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
-    
-    html.AnchorElement(href: url)
-      ..setAttribute('download', fileName)
-      ..click();
-    html.Url.revokeObjectUrl(url);
+
+    if (kIsWeb) {
+      final blob = html.Blob([bytes], 'text/csv');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)
+        ..setAttribute('download', fileName)
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    } else {
+      try {
+        final dir = await getTemporaryDirectory();
+        final file = io.File('${dir.path}/$fileName');
+        await file.writeAsBytes(bytes);
+        await OpenFile.open(file.path);
+      } catch (e) {
+        debugPrint("Error writing CSV: $e");
+      }
+    }
   }
 
   static Future<void> generatePhaseReport({
@@ -543,15 +556,25 @@ class PdfUtils {
 
     final csvString = const ListToCsvConverter().convert(rows);
     final bytes = utf8.encode(csvString);
-    final blob = html.Blob([bytes], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-
     final fileName = 'phase_report_${campaignTemplate}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
 
-    html.AnchorElement(href: url)
-      ..setAttribute('download', fileName)
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    if (kIsWeb) {
+      final blob = html.Blob([bytes], 'text/csv');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)
+        ..setAttribute('download', fileName)
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    } else {
+      try {
+        final dir = await getTemporaryDirectory();
+        final file = io.File('${dir.path}/$fileName');
+        await file.writeAsBytes(bytes);
+        await OpenFile.open(file.path);
+      } catch (e) {
+        debugPrint("Error writing CSV: $e");
+      }
+    }
   }
 
   static pw.Widget _buildPhaseSection(Map<String, dynamic> phase) {

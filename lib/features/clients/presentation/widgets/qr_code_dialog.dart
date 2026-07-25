@@ -1,6 +1,10 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:convert';
-import 'dart:html' as html;
+import 'dart:io' as io;
+import 'package:universal_html/html.dart' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -69,20 +73,36 @@ class _QrCodeDialogState extends State<QrCodeDialog> {
       );
       final jpegBytes = img.encodeJpg(imgFrame, quality: 95);
 
-      final blob = html.Blob([jpegBytes], 'image/jpeg');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      html.AnchorElement(href: url)
-        ..setAttribute('download', 'client_registration_qr.jpg')
-        ..click();
-      html.Url.revokeObjectUrl(url);
+      if (kIsWeb) {
+        final blob = html.Blob([jpegBytes], 'image/jpeg');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        html.AnchorElement(href: url)
+          ..setAttribute('download', 'client_registration_qr.jpg')
+          ..click();
+        html.Url.revokeObjectUrl(url);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('QR downloaded as JPG'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('QR downloaded as JPG'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        final dir = await getTemporaryDirectory();
+        final file = io.File('${dir.path}/client_registration_qr.jpg');
+        await file.writeAsBytes(jpegBytes);
+        await OpenFile.open(file.path);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('QR saved locally'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -205,123 +225,131 @@ class _QrCodeDialogState extends State<QrCodeDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 500;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        width: 420,
+        width: isMobile ? screenWidth * 0.92 : 420,
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(isMobile ? 16 : 32),
         child: SingleChildScrollView(
           child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Client Registration QR',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.secondaryColor,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Print or display this QR at your front desk. Customers scan it to self-register.',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            if (_tenantId == null)
-              const CircularProgressIndicator()
-            else ...[
-              // Preview of the styled frame shown in dialog
-              _buildStyledFrame(),
-              const SizedBox(height: 16),
-              // URL display
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _registrationUrl,
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.black54),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy, size: 18),
-                      tooltip: 'Copy URL',
-                      onPressed: () {
-                        Clipboard.setData(
-                            ClipboardData(text: _registrationUrl));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('URL copied'),
-                              backgroundColor: Colors.green),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+            mainAxisSize: MainAxisSize.min,
+            children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
-                      label: const Text('Close'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.secondaryColor,
-                        side: BorderSide(
-                            color:
-                                AppTheme.secondaryColor.withOpacity(0.4)),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
+                    child: Text(
+                      'Client Registration QR',
+                      style: TextStyle(
+                        fontSize: isMobile ? 18 : 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.secondaryColor,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _downloadQr,
-                      icon: const Icon(Icons.download),
-                      label: const Text('Download'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Print or display this QR at your front desk. Customers scan it to self-register.',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              if (_tenantId == null)
+                const CircularProgressIndicator()
+              else ...[
+                // Preview of the styled frame shown in dialog
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: _buildStyledFrame(),
+                ),
+                const SizedBox(height: 16),
+                // URL display
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _registrationUrl,
+                          style: const TextStyle(
+                              fontSize: 11, color: Colors.black54),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        tooltip: 'Copy URL',
+                        onPressed: () {
+                          Clipboard.setData(
+                              ClipboardData(text: _registrationUrl));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                                content: Text('URL copied'),
+                                backgroundColor: Colors.green),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                        label: const Text('Close'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.secondaryColor,
+                          side: BorderSide(
+                              color:
+                                  AppTheme.secondaryColor.withOpacity(0.4)),
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _downloadQr,
+                        icon: const Icon(Icons.download),
+                        label: const Text('Download'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
-        ),
+          ),
         ),
       ),
     );

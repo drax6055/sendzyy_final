@@ -21,7 +21,7 @@ class UpdateConversations extends ChatEvent {
 }
 
 class SelectConversation extends ChatEvent {
-  final String contactId;
+  final String? contactId;
   SelectConversation(this.contactId);
   @override
   List<Object?> get props => [contactId];
@@ -142,13 +142,24 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<SelectConversation>((event, emit) async {
       if (state is ChatLoaded) {
         final currentState = state as ChatLoaded;
-        emit(currentState.copyWith(
+        if (event.contactId == null) {
+          _messagesSubscription?.cancel();
+          emit(ChatLoaded(
+            conversations: currentState.conversations,
+            selectedContactId: null,
+            messages: const [],
+          ));
+          return;
+        }
+
+        emit(ChatLoaded(
+          conversations: currentState.conversations,
           selectedContactId: event.contactId,
           messages: const [],
         ));
 
         // Fetch existing messages via REST immediately
-        final initial = await _repository.getMessages(event.contactId);
+        final initial = await _repository.getMessages(event.contactId!);
         if (state is ChatLoaded) {
           emit((state as ChatLoaded).copyWith(messages: initial));
         }
@@ -156,7 +167,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         // Subscribe to socket for live updates
         _messagesSubscription?.cancel();
         _messagesSubscription =
-            _socketService.getMessages(event.contactId).listen((messages) {
+            _socketService.getMessages(event.contactId!).listen((messages) {
           add(UpdateMessages(messages));
         });
       }

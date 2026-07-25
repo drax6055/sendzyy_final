@@ -1,6 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:html' as html;
+import 'dart:io' as io;
+import 'package:universal_html/html.dart' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
@@ -13,6 +17,8 @@ import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
 import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
 import 'package:iFloraBuzz/features/clients/presentation/bloc/client_bloc.dart';
 import 'package:iFloraBuzz/features/clients/presentation/bloc/group_bloc.dart';
+import 'package:flutter_native_contact_picker/flutter_native_contact_picker.dart';
+import 'package:flutter_native_contact_picker/model/contact.dart' as npc;
 
 class CreateGroupDialog extends StatefulWidget {
   /// Non-null means edit mode — dialog is pre-populated with existing data.
@@ -33,6 +39,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
   String? _bulkError;
   bool _isSubmitting = false;
   bool _isResolving = false;
+  final _contactPicker = FlutterNativeContactPicker();
 
   final List<ClientModel> _clients = [];
   int _currentPage = 1;
@@ -171,17 +178,30 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
     }
   }
 
-  void _downloadSample() {
+  void _downloadSample() async {
     const csv = 'name,mobile,company,email,venue,remark\n'
         'John Doe,919876543210,Acme Corp,john@acme.com,Main Street Store,VIP customer\n'
         'Jane Smith,919123456789,,jane@example.com,Wedding Expo 2025,\n'
         'Bob Kumar,917890123456,Bob Enterprises,,City Mall,Referred by John\n';
-    final blob = html.Blob([csv], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', 'sample_clients.csv')
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    if (kIsWeb) {
+      final blob = html.Blob([csv], 'text/csv');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)
+        ..setAttribute('download', 'sample_clients.csv')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    } else {
+      try {
+        final dir = await getTemporaryDirectory();
+        final file = io.File('${dir.path}/sample_clients.csv');
+        await file.writeAsString(csv);
+        await OpenFile.open(file.path);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not download sample: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _pickBulkFile() async {
@@ -283,6 +303,121 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
     }
   }
 
+  Future<void> _pickFromContacts() async {
+    setState(() {
+      _bulkError = null;
+    });
+
+    final List<ClientModel> pickedClients = [];
+
+    try {
+      // First try selectContacts() (multi-select system picker UI, supported on iOS)
+      List<npc.Contact>? contacts;
+      try {
+        final List<dynamic>? rawContacts = await _contactPicker.selectContacts();
+        contacts = rawContacts?.cast<npc.Contact>();
+      } catch (e) {
+        // If selectContacts() fails/throws unimplemented, fallback to Android loop
+        contacts = null;
+      }
+
+      if (contacts != null) {
+        // iOS multi-select succeeded
+        for (final contact in contacts) {
+          final name = contact.fullName?.trim() ?? '';
+          final rawMobile = contact.selectedPhoneNumber ?? contact.phoneNumbers?.firstOrNull ?? '';
+          final mobile = rawMobile.replaceAll(RegExp(r'[^0-9]'), '');
+          
+          if (name.isNotEmpty && mobile.isNotEmpty) {
+            pickedClients.add(ClientModel(
+              id: '',
+              tenantId: '',
+              name: name,
+              mobileNumber: mobile,
+              venue: 'Mobile Contact',
+              createdAt: DateTime.now(),
+            ));
+          }
+        }
+      } else {
+        // Fallback: Sequential picking loop (for Android)
+        int count = 0;
+        while (true) {
+          final npc.Contact? contact = await _contactPicker.selectPhoneNumber();
+          if (contact == null) break;
+
+          final name = contact.fullName?.trim() ?? '';
+          final rawMobile = contact.selectedPhoneNumber ?? contact.phoneNumbers?.firstOrNull ?? '';
+          final mobile = rawMobile.replaceAll(RegExp(r'[^0-9]'), '');
+          
+          if (name.isNotEmpty && mobile.isNotEmpty) {
+            pickedClients.add(ClientModel(
+              id: '',
+              tenantId: '',
+              name: name,
+              mobileNumber: mobile,
+              venue: 'Mobile Contact',
+              createdAt: DateTime.now(),
+            ));
+            count++;
+            
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Picked $count: "$name". Close picker when finished.'),
+                  duration: const Duration(milliseconds: 1500),
+                ),
+              );
+            }
+          }
+          await Future.delayed(const Duration(milliseconds: 350));
+        }
+      }
+
+      if (pickedClients.isEmpty) return;
+
+      setState(() {
+        _isResolving = true;
+      });
+
+      final resolved = await getIt<ClientRepository>().bulkResolveClients(pickedClients);
+
+      setState(() {
+        for (final c in resolved) {
+          _selectedClientIds.add(c.id);
+        }
+        _isResolving = false;
+        if (_clientsError != null && _selectedClientIds.isNotEmpty) {
+          _clientsError = null;
+        }
+      });
+
+      // Reload clients list to show the new contacts in the list
+      if (mounted) {
+        _loadClients(page: 1);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${resolved.length} contacts added and selected successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isResolving = false;
+        _bulkError = e.toString().replaceAll('Exception: ', '');
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not add contacts: $_bulkError'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
   int _findCol(List<String> header, List<String> keys) {
     for (final key in keys) {
       final idx = header.indexWhere((h) => h.replaceAll(' ', '').replaceAll('_', '') == key.replaceAll(' ', '').replaceAll('_', ''));
@@ -296,6 +431,9 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return BlocListener<GroupsBloc, GroupsState>(
       listener: (context, state) {
         if (!_isSubmitting) return;
@@ -314,10 +452,10 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: SizedBox(
-          width: 520,
+          width: isMobile ? screenWidth * 0.92 : 520,
           height: 620,
           child: Padding(
-            padding: const EdgeInsets.all(28),
+            padding: EdgeInsets.all(isMobile ? 16 : 28),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -344,16 +482,28 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          _isEditMode ? 'Edit Group' : 'Create Group',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.secondaryColor,
-          ),
+        Row(
+          children: [
+            const Icon(Icons.group_add_outlined, color: AppTheme.secondaryColor, size: 24),
+            const SizedBox(width: 8),
+            Text(
+              _isEditMode ? 'Edit Group' : 'Create Group',
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.secondaryColor,
+              ),
+            ),
+          ],
         ),
         IconButton(
-          icon: const Icon(Icons.close),
+          icon: const Icon(Icons.close, size: 20),
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.grey.shade100,
+            foregroundColor: Colors.grey.shade700,
+            padding: const EdgeInsets.all(8),
+            minimumSize: Size.zero,
+          ),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ],
@@ -371,8 +521,30 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
           },
           decoration: InputDecoration(
             labelText: 'Group Name *',
-            border: const OutlineInputBorder(),
-            prefixIcon: const Icon(Icons.group_outlined),
+            prefixIcon: const Icon(Icons.group_outlined, color: AppTheme.primaryColor),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade200),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: Colors.grey.shade200),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+            ),
             errorText: _nameError,
           ),
         ),
@@ -408,37 +580,55 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                   ],
                 ],
               ),
-              Row(
-                children: [
-                  GestureDetector(
-                    onTap: _isResolving ? null : _downloadSample,
-                    child: const Text(
-                      'Download Sample',
-                      style: TextStyle(
-                        color: AppTheme.primaryColor,
-                        fontSize: 12,
-                        decoration: TextDecoration.underline,
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryColor, size: 20),
+                tooltip: 'Import Options',
+                onSelected: (value) {
+                  if (value == 'sample') {
+                    _downloadSample();
+                  } else if (value == 'bulk') {
+                    _pickBulkFile();
+                  } else if (value == 'contacts') {
+                    _pickFromContacts();
+                  }
+                },
+                itemBuilder: (context) => [
+                  if (!kIsWeb)
+                    const PopupMenuItem(
+                      value: 'contacts',
+                      child: Row(
+                        children: [
+                          Icon(Icons.contact_phone_outlined, size: 18, color: AppTheme.secondaryColor),
+                          SizedBox(width: 8),
+                          Text('Import from Contacts'),
+                        ],
                       ),
                     ),
+                  const PopupMenuItem(
+                    value: 'bulk',
+                    child: Row(
+                      children: [
+                        Icon(Icons.upload_file_outlined, size: 18, color: AppTheme.secondaryColor),
+                        SizedBox(width: 8),
+                        Text('Bulk Upload CSV'),
+                      ],
+                    ),
                   ),
-                  const SizedBox(width: 12),
-                  GestureDetector(
-                    onTap: _isResolving ? null : _pickBulkFile,
-                    child: const Text(
-                      'Bulk Upload',
-                      style: TextStyle(
-                        color: AppTheme.primaryColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        decoration: TextDecoration.underline,
-                      ),
+                  const PopupMenuItem(
+                    value: 'sample',
+                    child: Row(
+                      children: [
+                        Icon(Icons.download_outlined, size: 18, color: AppTheme.secondaryColor),
+                        SizedBox(width: 8),
+                        Text('Download CSV Sample'),
+                      ],
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           TextField(
             onChanged: (val) {
               setState(() {
@@ -449,12 +639,25 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                 _loadClients(page: 1);
               });
             },
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Search by name or mobile...',
-              border: OutlineInputBorder(),
-              prefixIcon: Icon(Icons.search),
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              filled: true,
+              fillColor: Colors.grey.shade100,
               isDense: true,
-              contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(28),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(28),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(28),
+                borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              ),
             ),
           ),
           if (_bulkError != null) ...[
@@ -471,7 +674,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
               style: const TextStyle(color: Colors.red, fontSize: 12),
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Expanded(child: _buildClientList()),
         ],
       ),
@@ -503,14 +706,63 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
     final allFilteredSelected = _clients.isNotEmpty && _clients.every((c) => _selectedClientIds.contains(c.id));
     return Column(
       children: [
-        CheckboxListTile(
+        ListTile(
           dense: true,
-          value: allFilteredSelected,
-          onChanged: _isSelectingAll
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          leading: SizedBox(
+            width: 84,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Checkbox(
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  value: allFilteredSelected,
+                  activeColor: AppTheme.primaryColor,
+                  onChanged: _isSelectingAll
+                      ? null
+                      : (checked) {
+                          setState(() {
+                            if (checked == true) {
+                              if (_totalClients > _clients.length) {
+                                _selectAllTotalClients();
+                              } else {
+                                for (final client in _clients) {
+                                  _selectedClientIds.add(client.id);
+                                }
+                              }
+                            } else {
+                              _selectedClientIds.clear();
+                            }
+                            if (_clientsError != null && _selectedClientIds.isNotEmpty) {
+                              _clientsError = null;
+                            }
+                          });
+                        },
+                ),
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                  child: const Icon(
+                    Icons.people,
+                    color: AppTheme.primaryColor,
+                    size: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          title: const Text(
+            'Select All',
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+          ),
+          onTap: _isSelectingAll
               ? null
-              : (checked) {
+              : () {
                   setState(() {
-                    if (checked == true) {
+                    if (allFilteredSelected) {
+                      _selectedClientIds.clear();
+                    } else {
                       if (_totalClients > _clients.length) {
                         _selectAllTotalClients();
                       } else {
@@ -518,20 +770,12 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                           _selectedClientIds.add(client.id);
                         }
                       }
-                    } else {
-                      _selectedClientIds.clear();
                     }
                     if (_clientsError != null && _selectedClientIds.isNotEmpty) {
                       _clientsError = null;
                     }
                   });
                 },
-          title: const Text(
-            'Select All',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-          activeColor: AppTheme.primaryColor,
-          controlAffinity: ListTileControlAffinity.leading,
         ),
         const Divider(height: 1),
         Expanded(
@@ -554,21 +798,47 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
 
               final client = _clients[index];
               final isSelected = _selectedClientIds.contains(client.id);
-              return CheckboxListTile(
+              return ListTile(
                 dense: true,
-                value: isSelected,
-                onChanged: (checked) {
-                  setState(() {
-                    if (checked == true) {
-                      _selectedClientIds.add(client.id);
-                    } else {
-                      _selectedClientIds.remove(client.id);
-                    }
-                    if (_clientsError != null && _selectedClientIds.isNotEmpty) {
-                      _clientsError = null;
-                    }
-                  });
-                },
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                leading: SizedBox(
+                  width: 84,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Checkbox(
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        value: isSelected,
+                        activeColor: AppTheme.primaryColor,
+                        onChanged: (checked) {
+                          setState(() {
+                            if (checked == true) {
+                              _selectedClientIds.add(client.id);
+                            } else {
+                              _selectedClientIds.remove(client.id);
+                            }
+                            if (_clientsError != null && _selectedClientIds.isNotEmpty) {
+                              _clientsError = null;
+                            }
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.1),
+                        child: Text(
+                          client.name[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: AppTheme.secondaryColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 title: Text(
                   client.name,
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
@@ -577,8 +847,18 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                   client.mobileNumber,
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                 ),
-                activeColor: AppTheme.primaryColor,
-                controlAffinity: ListTileControlAffinity.leading,
+                onTap: () {
+                  setState(() {
+                    if (isSelected) {
+                      _selectedClientIds.remove(client.id);
+                    } else {
+                      _selectedClientIds.add(client.id);
+                    }
+                    if (_clientsError != null && _selectedClientIds.isNotEmpty) {
+                      _clientsError = null;
+                    }
+                  });
+                },
               );
             },
           ),
@@ -615,10 +895,12 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
           child: OutlinedButton(
             onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(),
             style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.grey.shade700,
+              side: BorderSide(color: Colors.grey.shade300),
               minimumSize: const Size(0, 48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
         ),
         const SizedBox(width: 12),
@@ -629,7 +911,8 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
               backgroundColor: AppTheme.primaryColor,
               foregroundColor: Colors.white,
               minimumSize: const Size(0, 48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: _isSubmitting
                 ? const SizedBox(
@@ -637,7 +920,10 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
                     height: 20,
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
-                : Text(_isEditMode ? 'Update' : 'Create'),
+                : Text(
+                    _isEditMode ? 'Update' : 'Create',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
           ),
         ),
       ],

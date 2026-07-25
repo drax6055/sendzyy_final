@@ -42,6 +42,7 @@ class _DashboardShellState extends State<DashboardShell> {
   bool _isReportsExpanded = false;
   bool _isSettingsExpanded = false;
   late final RenewalReminderService _reminderService;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   bool _onboardingIncomplete = false;
   bool _checkingOnboarding = true;
 
@@ -51,6 +52,7 @@ class _DashboardShellState extends State<DashboardShell> {
   List<Map<String, dynamic>> _headerPhoneNumbers = [];
   bool _loadingHeaderPhoneNumbers = false;
   String? _headerWabaId;
+  bool _fetchedHeaderPhoneNumbers = false;
   bool _isHeaderUpdatingPhone = false;
 
   static const _selectedIndexKey = 'dashboard_selected_index';
@@ -382,36 +384,140 @@ class _DashboardShellState extends State<DashboardShell> {
         BlocProvider(create: (context) => getIt<ChatBloc>()),
         BlocProvider(create: (context) => getIt<ChatbotBloc>()),
       ],
-      child: Scaffold(
-        drawer: isMobile ? Drawer(child: SafeArea(child: _buildSidebar(true))) : null,
-        body: Row(
-          children: [
-            // Sidebar for desktop
-            if (!isMobile) ...[
-              _buildSidebar(false),
-              const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE0E0E0)),
-            ],
-            // Main Content
-            Expanded(
-              child: Container(
-                color: AppTheme.backgroundColor,
-                child: SafeArea(
-                  top: true,
-                  bottom: false,
+      child: Builder(
+        builder: (scaffoldContext) {
+          return Scaffold(
+            key: _scaffoldKey,
+            drawer: isMobile ? Drawer(child: SafeArea(child: _buildSidebar(true))) : null,
+            bottomNavigationBar: isMobile ? _buildBottomNavigationBar() : null,
+            body: Row(
+              children: [
+                // Sidebar for desktop
+                if (!isMobile) ...[
+                  _buildSidebar(false),
+                  const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+                ],
+                // Main Content
+                Expanded(
+                  child: Container(
+                    color: AppTheme.backgroundColor,
+                    child: SafeArea(
+                      top: true,
+                      bottom: false,
+                      child: Column(
+                        children: [
+                          // Header
+                          _buildHeader(isMobile),
+                          if (!_checkingOnboarding && _onboardingIncomplete)
+                            _buildOnboardingWarningBanner(),
+                          // Page Content
+                          Expanded(
+                            child: (isMobile && _selectedIndex == 6)
+                                ? _pages[5]
+                                : _pages[_selectedIndex],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    int activeBottomIndex = 0;
+    if (_selectedIndex == 1) {
+      activeBottomIndex = 0;
+    } else if (_selectedIndex == 0) {
+      activeBottomIndex = 1;
+    } else if (_selectedIndex == 2) {
+      activeBottomIndex = 2;
+    } else if (_selectedIndex == 3) {
+      activeBottomIndex = 3;
+    } else {
+      activeBottomIndex = 4;
+    }
+
+    final items = [
+      (icon: Icons.chat_bubble_outline_rounded, activeIcon: Icons.chat_bubble_rounded, label: 'Chats'),
+      (icon: Icons.send_outlined, activeIcon: Icons.send_rounded, label: 'Broadcast'),
+      (icon: Icons.copy_outlined, activeIcon: Icons.copy_rounded, label: 'Templates'),
+      (icon: Icons.people_outline_rounded, activeIcon: Icons.people_rounded, label: 'Clients'),
+      (icon: Icons.menu_rounded, activeIcon: Icons.menu_rounded, label: 'More'),
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(items.length, (index) {
+              final isSelected = activeBottomIndex == index;
+              final item = items[index];
+              return InkWell(
+                onTap: () {
+                  if (index == 0) {
+                    _setSelectedIndex(1);
+                  } else if (index == 1) {
+                    _setSelectedIndex(0);
+                  } else if (index == 2) {
+                    _setSelectedIndex(2);
+                  } else if (index == 3) {
+                    _setSelectedIndex(3);
+                  } else if (index == 4) {
+                    _scaffoldKey.currentState?.openDrawer();
+                  }
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppTheme.primaryColor.withValues(alpha: 0.12)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Header
-                      _buildHeader(isMobile),
-                      if (!_checkingOnboarding && _onboardingIncomplete)
-                        _buildOnboardingWarningBanner(),
-                      // Page Content
-                      Expanded(child: _pages[_selectedIndex]),
+                      Icon(
+                        isSelected ? item.activeIcon : item.icon,
+                        size: 21,
+                        color: isSelected ? AppTheme.secondaryColor : Colors.grey.shade600,
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        item.label,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          color: isSelected ? AppTheme.secondaryColor : Colors.grey.shade600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-              ),
-            ),
-          ],
+              );
+            }),
+          ),
         ),
       ),
     );
@@ -576,13 +682,14 @@ class _DashboardShellState extends State<DashboardShell> {
                   isSubItem: true,
                   isMobile: isMobile,
                 ),
-                _buildNavItem(
-                  6,
-                  Icons.insights_rounded,
-                  'Meta Analytics',
-                  isSubItem: true,
-                  isMobile: isMobile,
-                ),
+                if (!isMobile)
+                  _buildNavItem(
+                    6,
+                    Icons.insights_rounded,
+                    'Meta Analytics',
+                    isSubItem: true,
+                    isMobile: isMobile,
+                  ),
                 _buildNavItem(
                   7,
                   Icons.schedule_rounded,
@@ -658,56 +765,13 @@ class _DashboardShellState extends State<DashboardShell> {
       ),
     );
   }
-      child: Container(
-        margin: EdgeInsets.only(
-          left: isSubItem ? 12 : 12,
-          right: 12,
-          top: 3,
-          bottom: 3,
-        ),
-        padding: EdgeInsets.symmetric(
-          horizontal: isSubItem ? 14 : 16,
-          vertical: isSubItem ? 10 : 12,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppTheme.primaryColor.withValues(alpha: 0.12)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: isSubItem ? 19 : 22,
-              color: AppTheme.secondaryColor,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  color: AppTheme.secondaryColor,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  fontSize: isSubItem ? 13.5 : 14,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _fetchHeaderPhoneNumbers(
     String wabaId,
     String accessToken,
   ) async {
     if (_loadingHeaderPhoneNumbers) return;
-    setState(() {
-      _loadingHeaderPhoneNumbers = true;
-      _headerWabaId = wabaId;
-    });
+    _loadingHeaderPhoneNumbers = true;
+    _headerWabaId = wabaId;
     try {
       final numbers = await getIt<WhatsAppRepository>().fetchPhoneNumbers(
         wabaId: wabaId,
@@ -716,14 +780,13 @@ class _DashboardShellState extends State<DashboardShell> {
       if (mounted) {
         setState(() {
           _headerPhoneNumbers = numbers ?? [];
-          _loadingHeaderPhoneNumbers = false;
         });
       }
     } catch (_) {
+    } finally {
+      _loadingHeaderPhoneNumbers = false;
       if (mounted) {
-        setState(() {
-          _loadingHeaderPhoneNumbers = false;
-        });
+        setState(() {});
       }
     }
   }
@@ -813,14 +876,16 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
-  Widget _buildHeaderPhoneSelector(Map<String, dynamic> config) {
+  Widget _buildHeaderPhoneSelector(Map<String, dynamic> config, {bool isMobile = false}) {
     final wabaId = config['businessAccountId']?.toString();
     final accessToken = config['accessToken']?.toString();
     final currentPhoneId = config['phoneNumberId']?.toString();
 
     if (wabaId != null &&
         accessToken != null &&
-        wabaId != _headerWabaId &&
+        wabaId.isNotEmpty &&
+        accessToken.isNotEmpty &&
+        (_headerWabaId != wabaId || _headerPhoneNumbers.isEmpty) &&
         !_loadingHeaderPhoneNumbers) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _fetchHeaderPhoneNumbers(wabaId, accessToken);
@@ -831,7 +896,7 @@ class _DashboardShellState extends State<DashboardShell> {
       return const SizedBox.shrink();
     }
 
-    if (_isHeaderUpdatingPhone || _loadingHeaderPhoneNumbers) {
+    if (_isHeaderUpdatingPhone) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -860,11 +925,18 @@ class _DashboardShellState extends State<DashboardShell> {
       );
     }
 
-    final List<Map<String, dynamic>> itemsList = List.from(_headerPhoneNumbers);
-    final hasCurrent = itemsList.any(
-      (p) => p['id']?.toString() == currentPhoneId,
-    );
-    if (!hasCurrent) {
+    final List<Map<String, dynamic>> itemsList = [];
+    final Set<String> seenIds = {};
+
+    for (final p in _headerPhoneNumbers) {
+      final id = p['id']?.toString();
+      if (id != null && id.isNotEmpty && !seenIds.contains(id)) {
+        seenIds.add(id);
+        itemsList.add(p);
+      }
+    }
+
+    if (!seenIds.contains(currentPhoneId)) {
       itemsList.insert(0, {
         'id': currentPhoneId,
         'display_phone_number': config['displayPhone'] ?? 'Active Number',
@@ -874,8 +946,8 @@ class _DashboardShellState extends State<DashboardShell> {
     }
 
     return Container(
-      height: 42,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: isMobile ? 36 : 42,
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 10),
       decoration: BoxDecoration(
         color: AppTheme.backgroundColor,
         borderRadius: BorderRadius.circular(10),
@@ -884,11 +956,53 @@ class _DashboardShellState extends State<DashboardShell> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: currentPhoneId,
-          icon: const Icon(
+          icon: Icon(
             Icons.arrow_drop_down,
             color: AppTheme.secondaryColor,
+            size: isMobile ? 18 : 24,
           ),
-          style: const TextStyle(fontSize: 13, color: Colors.black87),
+          style: TextStyle(fontSize: isMobile ? 11 : 13, color: Colors.black87),
+          selectedItemBuilder: (context) {
+            return itemsList.map<Widget>((phone) {
+              final displayPhone = phone['display_phone_number']?.toString() ??
+                  phone['displayPhone']?.toString() ??
+                  phone['phoneNumber']?.toString() ??
+                  config['displayPhone']?.toString() ??
+                  'Active Number';
+              final id = phone['id']?.toString() ?? '';
+              return Align(
+                alignment: Alignment.centerLeft,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: isMobile ? 125 : 180),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        id == currentPhoneId
+                            ? Icons.check_circle
+                            : Icons.phone_android_rounded,
+                        color: id == currentPhoneId ? Colors.green : Colors.grey,
+                        size: isMobile ? 13 : 16,
+                      ),
+                      SizedBox(width: isMobile ? 4 : 6),
+                      Flexible(
+                        child: Text(
+                          displayPhone,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: isMobile ? 11 : 13,
+                            color: Colors.black87,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList();
+          },
           onChanged: (selectedId) async {
             if (selectedId != null && selectedId != currentPhoneId) {
               final verified = await showPasswordVerificationDialog(
@@ -915,41 +1029,49 @@ class _DashboardShellState extends State<DashboardShell> {
 
             return DropdownMenuItem<String>(
               value: id,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    id == currentPhoneId
-                        ? Icons.check_circle
-                        : Icons.phone_android_rounded,
-                    color: id == currentPhoneId ? Colors.green : Colors.grey,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        displayPhone,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                      if (verifiedName.isNotEmpty)
-                        Text(
-                          verifiedName,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            color: Colors.grey,
+              child: SizedBox(
+                width: isMobile ? 240 : 280,
+                child: Row(
+                  children: [
+                    Icon(
+                      id == currentPhoneId
+                          ? Icons.check_circle
+                          : Icons.phone_android_rounded,
+                      color: id == currentPhoneId ? Colors.green : Colors.grey,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            displayPhone,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: isMobile ? 12 : 13,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                           ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  _buildHeaderBadgeWidget(rating),
-                ],
+                          if (verifiedName.isNotEmpty)
+                            Text(
+                              verifiedName,
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    _buildHeaderBadgeWidget(rating),
+                  ],
+                ),
               ),
             );
           }).toList(),
@@ -958,8 +1080,11 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
-  Widget _buildHeader() {
->>>>>>> origin/main
+  Widget _buildHeader(bool isMobile) {
+    if (isMobile) {
+      return _buildMobileHeader();
+    }
+
     return Container(
       height: 80,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -971,14 +1096,6 @@ class _DashboardShellState extends State<DashboardShell> {
       ),
       child: Row(
         children: [
-          if (isMobile)
-            Builder(
-              builder: (ctx) => IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () => Scaffold.of(ctx).openDrawer(),
-              ),
-            ),
-          if (isMobile) const SizedBox(width: 8),
           // Panel expiry badge
           BlocBuilder<AuthBloc, AuthState>(
             builder: (context, authState) {
@@ -1003,7 +1120,7 @@ class _DashboardShellState extends State<DashboardShell> {
                   ? Colors.orange
                   : AppTheme.secondaryColor;
               final expStr =
-                  '${exp.day.toString().padLeft(2, '0')}/${exp.month.toString().padLeft(2, '0')}/${exp.year.toString().substring(2)}'; // Use short year format
+                  '${exp.day.toString().padLeft(2, '0')}/${exp.month.toString().padLeft(2, '0')}/${exp.year.toString().substring(2)}';
 
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -1026,14 +1143,14 @@ class _DashboardShellState extends State<DashboardShell> {
                     Text(
                       isExpired
                           ? 'Expired'
-                          : (isMobile ? '$daysLeft d' : 'Dashboard Exp on $expStr'),
+                          : 'Dashboard Exp on $expStr',
                       style: TextStyle(
                         color: color,
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
                       ),
                     ),
-                    if (!isExpired && !isMobile) ...[
+                    if (!isExpired) ...[
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -1068,61 +1185,18 @@ class _DashboardShellState extends State<DashboardShell> {
                 if (config != null &&
                     config['accessToken'] != null &&
                     config['accessToken'].toString().isNotEmpty) {
-                  return _buildHeaderPhoneSelector(config);
+                  return _buildHeaderPhoneSelector(config, isMobile: false);
                 }
               }
               return const SizedBox.shrink();
             },
           ),
-          const SizedBox(width: 12),
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, authState) {
-              // Show settings gear only when phoneNumberId or businessAccountId is missing
-              final bool configIncomplete = () {
-                if (authState is AuthAuthenticated) {
-                  final config =
-                      authState.tenant['whatsappConfig']
-                          as Map<String, dynamic>?;
-                  final phoneId = config?['phoneNumberId']?.toString() ?? '';
-                  final wabaId = config?['businessAccountId']?.toString() ?? '';
-                  return phoneId.isEmpty || wabaId.isEmpty;
-                }
-                return false;
-              }();
-
-              if (!configIncomplete) return const SizedBox.shrink();
-
-              return IconButton(
-                icon: const Icon(Icons.settings_outlined, color: Colors.grey),
-                onPressed: () async {
-                  final result = await showDialog(
-                    context: context,
-                    builder: (context) => const ApiConfigDialog(),
-                  );
-                  if (result == true && context.mounted) {
-                    context.read<AuthBloc>().add(AuthCheckRequested());
-                    context.read<TemplateBloc>().add(FetchTemplates());
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('API Configuration Updated'),
-                      ),
-                    );
-                  }
-                },
-                tooltip: 'API Configuration',
-              );
-            },
-          ),
           const SizedBox(width: 8),
           // Support button
-          _SupportButton(),
-          if (!isMobile) ...[
-            const SizedBox(width: 8),
-            const VerticalDivider(indent: 20, endIndent: 20),
-            const SizedBox(width: 24),
-          ] else ...[
-            const SizedBox(width: 8),
-          ],
+          const _SupportButton(isMobile: false),
+          const SizedBox(width: 8),
+          const VerticalDivider(indent: 20, endIndent: 20),
+          const SizedBox(width: 24),
           BlocBuilder<AuthBloc, AuthState>(
             builder: (context, state) {
               String name = 'User';
@@ -1140,8 +1214,8 @@ class _DashboardShellState extends State<DashboardShell> {
                 });
               }
               final displayName = name;
-              final firstLetter = displayName.isNotEmpty
-                  ? displayName[0].toUpperCase()
+              final firstLetter = displayName.characters.isNotEmpty
+                  ? displayName.characters.first.toUpperCase()
                   : 'U';
 
               return PopupMenuButton<String>(
@@ -1155,7 +1229,7 @@ class _DashboardShellState extends State<DashboardShell> {
                       WhatsAppBusinessProfileDialog.show(context, config);
                     }
                   } else if (val == 'logout') {
-                    _showLogoutDialog(context, name);
+                    _showLogoutDialog(context, displayName);
                   }
                 },
                 shape: RoundedRectangleBorder(
@@ -1310,18 +1384,187 @@ class _DashboardShellState extends State<DashboardShell> {
                             )
                           : null,
                     ),
-                    if (!isMobile) ...[
-                      const SizedBox(width: 12),
-                      Text(
-                        displayName.toUpperCase(),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const Icon(Icons.keyboard_arrow_down),
-                    ],
+                    const SizedBox(width: 12),
+                    Text(
+                      displayName.toUpperCase(),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const Icon(Icons.keyboard_arrow_down),
                   ],
                 ),
               );
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMobileHeader() {
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(
+          bottom: BorderSide(color: Colors.grey.shade200, width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Left: Brand Logo only
+          Image.asset(
+            'assets/images/logo.png',
+            height: 22,
+          ),
+
+          // Right: Phone Selector, Support Button, and Profile Avatar
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, authState) {
+                  if (authState is AuthAuthenticated) {
+                    final config =
+                        authState.tenant['whatsappConfig'] as Map<String, dynamic>?;
+                    if (config != null &&
+                        config['accessToken'] != null &&
+                        config['accessToken'].toString().isNotEmpty) {
+                      return _buildHeaderPhoneSelector(config, isMobile: true);
+                    }
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+              const SizedBox(width: 4),
+              const _SupportButton(isMobile: true),
+              const SizedBox(width: 4),
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  String name = 'User';
+                  if (state is AuthAuthenticated) {
+                    final config = state.tenant['whatsappConfig'];
+                    if (config != null &&
+                        config['verifiedName'] != null &&
+                        config['verifiedName'].toString().isNotEmpty) {
+                      name = config['verifiedName'].toString();
+                    } else {
+                      name = state.user;
+                    }
+                  }
+                  final firstLetter = name.characters.isNotEmpty
+                      ? name.characters.first.toUpperCase()
+                      : 'U';
+
+                  return PopupMenuButton<String>(
+                    onSelected: (value) async {
+                      if (value == 'profile') {
+                        _setSelectedIndex(10);
+                      } else if (value == 'logout') {
+                        _showLogoutDialog(context, name);
+                      }
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    itemBuilder: (context) => [
+                      PopupMenuItem<String>(
+                        enabled: false,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: BlocBuilder<AuthBloc, AuthState>(
+                          builder: (context, authState) {
+                            if (authState is! AuthAuthenticated) return const SizedBox.shrink();
+                            final subscription =
+                                authState.tenant['subscription'] as Map<String, dynamic>?;
+                            final expiryDateStr = subscription?['expiryDate'];
+                            if (expiryDateStr == null) return const SizedBox.shrink();
+
+                            final exp = DateTime.parse(expiryDateStr as String);
+                            final daysLeft = exp.difference(DateTime.now()).inDays;
+                            final isExpired = daysLeft < 0;
+                            final color = isExpired ? Colors.red : AppTheme.secondaryColor;
+                            final expStr =
+                                '${exp.day.toString().padLeft(2, '0')}/${exp.month.toString().padLeft(2, '0')}/${exp.year.toString().substring(2)}';
+
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: color.withValues(alpha: 0.2)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    isExpired
+                                        ? Icons.warning_amber_rounded
+                                        : Icons.calendar_month_outlined,
+                                    size: 13,
+                                    color: color,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    isExpired
+                                        ? 'Expired'
+                                        : 'Exp on $expStr ($daysLeft d)',
+                                    style: TextStyle(
+                                      color: color,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const PopupMenuDivider(height: 1),
+                      PopupMenuItem(
+                        value: 'profile',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person_outline, size: 18),
+                            const SizedBox(width: 8),
+                            Text('Profile ($name)'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'logout',
+                        child: Row(
+                          children: [
+                            Icon(Icons.logout, size: 18, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Logout', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ],
+                    child: CircleAvatar(
+                      radius: 14,
+                      backgroundColor: AppTheme.secondaryColor,
+                      child: Text(
+                        firstLetter,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -1382,7 +1625,8 @@ class _DashboardShellState extends State<DashboardShell> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _SupportButton extends StatelessWidget {
-  const _SupportButton();
+  final bool isMobile;
+  const _SupportButton({this.isMobile = false});
 
   void _showSupportDialog(BuildContext context) {
     showDialog(
@@ -1513,37 +1757,42 @@ class _SupportButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final borderRadiusVal = isMobile ? 100.0 : 10.0;
+    final bgAlpha = isMobile ? 0.05 : 0.08;
+    final borderAlpha = isMobile ? 0.15 : 0.2;
+    final iconSize = isMobile ? 14.0 : 17.0;
+
     return Tooltip(
       message: 'Support',
       child: InkWell(
         onTap: () => _showSupportDialog(context),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(borderRadiusVal),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 12, vertical: isMobile ? 5 : 8),
           decoration: BoxDecoration(
-            color: AppTheme.secondaryColor.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: AppTheme.secondaryColor.withValues(alpha: 0.2),
-            ),
+            color: AppTheme.secondaryColor.withValues(alpha: bgAlpha),
+            borderRadius: BorderRadius.circular(borderRadiusVal),
+            border: Border.all(color: AppTheme.secondaryColor.withValues(alpha: borderAlpha)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
+              Icon(
                 Icons.headset_mic_rounded,
-                size: 17,
+                size: iconSize,
                 color: AppTheme.secondaryColor,
               ),
-              const SizedBox(width: 6),
-              const Text(
-                'Support',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.secondaryColor,
+              if (!isMobile) ...[
+                const SizedBox(width: 6),
+                const Text(
+                  'Support',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.secondaryColor,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),

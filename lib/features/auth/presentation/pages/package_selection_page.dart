@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:js_interop';
 import 'package:iFloraBuzz/core/js/razorpay_interop.dart';
 import 'package:flutter/material.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
@@ -26,8 +25,6 @@ class _PackageSelectionPageState extends State<PackageSelectionPage> {
   bool _isLoading = true;
   bool _isPaying = false;
   String? _razorpayKey;
-
-  Completer<Map<String, String>?>? _paymentCompleter;
 
   @override
   void initState() {
@@ -91,35 +88,15 @@ class _PackageSelectionPageState extends State<PackageSelectionPage> {
           orderData = await repo.createPanelOrder(planId: plan.id);
         }
 
-        _paymentCompleter = Completer<Map<String, String>?>();
-
-        final options = {
-          'key': _razorpayKey ?? '',
-          'amount': orderData['amount'],
-          'currency': orderData['currency'] ?? 'INR',
-          'name': 'Send-O Panel',
-          'description': '${plan.name} - ${plan.durationLabel} Access',
-          'order_id': orderData['id'],
-          'theme': {'color': '#075E54'},
-        }.jsify()! as JSObject;
-
-        final callback = ((JSAny? paymentId, JSAny? orderId, JSAny? signature) {
-          if (_paymentCompleter == null || _paymentCompleter!.isCompleted) return;
-          final pid = paymentId?.dartify()?.toString() ?? '';
-          if (pid.isEmpty) {
-            _paymentCompleter!.complete(null);
-          } else {
-            _paymentCompleter!.complete({
-              'paymentId': pid,
-              'orderId': orderId?.dartify()?.toString() ?? '',
-              'signature': signature?.dartify()?.toString() ?? '',
-            });
-          }
-        }.toJS);
-
-        openRazorpay(options, callback);
-
-        final result = await _paymentCompleter!.future;
+        final result = await launchRazorpayPayment(
+          context: context,
+          key: _razorpayKey ?? '',
+          amount: (orderData['amount'] as num?)?.toInt() ?? 0,
+          currency: orderData['currency'] ?? 'INR',
+          orderId: orderData['id']?.toString() ?? '',
+          planName: plan.name,
+          planDurationLabel: plan.durationLabel,
+        );
         if (result == null) {
           if (mounted) setState(() => _isPaying = false);
           return;

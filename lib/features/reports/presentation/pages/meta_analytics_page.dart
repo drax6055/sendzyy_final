@@ -1,7 +1,6 @@
 import 'dart:ui' as ui;
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -120,8 +119,11 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
     });
 
     try {
-      final startUnix = _getUnixTimestamp(_dateRange.start);
-      final endUnix = _getUnixTimestamp(_dateRange.end);
+      final startDate = DateTime(_dateRange.start.year, _dateRange.start.month, _dateRange.start.day, 0, 0, 0);
+      final endDate = DateTime(_dateRange.end.year, _dateRange.end.month, _dateRange.end.day, 23, 59, 59);
+
+      final startUnix = _getUnixTimestamp(startDate);
+      final endUnix = _getUnixTimestamp(endDate);
       final granularity = _selectedGranularity;
 
       // 1. Get WABA ID and access token from AuthBloc
@@ -563,168 +565,343 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
 
   Widget _buildTopHeaderPanel() {
     final dateFormat = DateFormat('dd MMM yyyy');
-    return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title and export
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Meta Analytics Insights',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.secondaryColor,
-                    ),
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 750;
+
+        if (isMobile) {
+          return Container(
+            color: Colors.white,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Meta Analytics Insights',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.secondaryColor,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Direct delivery, pricing, and volume stats from Meta Developer Account',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _fetchAnalyticsData,
-                    icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text('Sync with Meta'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueGrey,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    onPressed: _rawDataPoints.isEmpty ? null : _exportCSV,
-                    icon: const Icon(Icons.download_rounded, size: 16),
-                    label: const Text('Export CSV'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          
-          // Tab segment and Filters Row
-          Row(
-            children: [
-              // Segmented Tab switcher
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F3F5),
-                  borderRadius: BorderRadius.circular(10),
                 ),
-                padding: const EdgeInsets.all(4),
-                child: TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  dividerColor: Colors.transparent,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicator: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 1)),
-                    ],
-                  ),
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  labelColor: AppTheme.secondaryColor,
-                  unselectedLabelColor: Colors.grey.shade600,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                  tabs: const [
-                    Tab(text: 'Performance overview'),
-                    Tab(text: 'Message pricing'),
+                const SizedBox(height: 2),
+                Text(
+                  'Direct delivery, pricing, and volume stats from Meta',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 12),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _fetchAnalyticsData,
+                        icon: const Icon(Icons.refresh, size: 14),
+                        label: const Text('Sync Meta', style: TextStyle(fontSize: 12)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueGrey,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _rawDataPoints.isEmpty ? null : _exportCSV,
+                        icon: const Icon(Icons.download_rounded, size: 14),
+                        label: const Text('Export CSV', style: TextStyle(fontSize: 12)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              const Spacer(),
+                const SizedBox(height: 12),
 
-              // Filters
-              _buildFilterDropdown(
-                value: _selectedPhone,
-                items: _phoneNumbers,
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _selectedPhone = val);
-                    _fetchAnalyticsData();
-                  }
-                },
+                // Tab Switcher
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F3F5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: TabBar(
+                    controller: _tabController,
+                    isScrollable: false,
+                    dividerColor: Colors.transparent,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicator: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 1)),
+                      ],
+                    ),
+                    labelPadding: const EdgeInsets.symmetric(vertical: 8),
+                    labelColor: AppTheme.secondaryColor,
+                    unselectedLabelColor: Colors.grey.shade600,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                    tabs: const [
+                      Tab(text: 'Performance'),
+                      Tab(text: 'Pricing'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Filters Grid on Mobile (2 rows of 2 columns)
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildFilterDropdown(
+                        value: _selectedPhone,
+                        items: _phoneNumbers,
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedPhone = val);
+                            _fetchAnalyticsData();
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildFilterDropdown(
+                        value: _selectedCountry,
+                        items: _countryCodes,
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedCountry = val);
+                            _fetchAnalyticsData();
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final range = await showCompactDateRangePicker(
+                            context: context,
+                            initialDateRange: _dateRange,
+                            firstDate: DateTime(2022),
+                            lastDate: DateTime.now(),
+                          );
+                          if (range != null) {
+                            setState(() => _dateRange = range);
+                            _fetchAnalyticsData();
+                          }
+                        },
+                        icon: const Icon(Icons.date_range_rounded, size: 14, color: AppTheme.secondaryColor),
+                        label: Text(
+                          '${dateFormat.format(_dateRange.start)} - ${dateFormat.format(_dateRange.end)}',
+                          style: const TextStyle(color: Colors.black87, fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          side: BorderSide(color: Colors.grey.shade300),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildFilterDropdown(
+                        value: _selectedGranularity,
+                        items: const ['DAILY', 'MONTHLY'],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedGranularity = val);
+                            _fetchAnalyticsData();
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Container(
+          color: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title and export
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Meta Analytics Insights',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.secondaryColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Direct delivery, pricing, and volume stats from Meta Developer Account',
+                        style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _fetchAnalyticsData,
+                        icon: const Icon(Icons.refresh, size: 16),
+                        label: const Text('Sync with Meta'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueGrey,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: _rawDataPoints.isEmpty ? null : _exportCSV,
+                        icon: const Icon(Icons.download_rounded, size: 16),
+                        label: const Text('Export CSV'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              _buildFilterDropdown(
-                value: _selectedCountry,
-                items: _countryCodes,
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _selectedCountry = val);
-                    _fetchAnalyticsData();
-                  }
-                },
-              ),
-              const SizedBox(width: 8),
+              const SizedBox(height: 20),
               
-              // Date Range Button
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final range = await showCompactDateRangePicker(
-                    context: context,
-                    initialDateRange: _dateRange,
-                    firstDate: DateTime(2022),
-                    lastDate: DateTime.now(),
-                  );
-                  if (range != null) {
-                    setState(() => _dateRange = range);
-                    _fetchAnalyticsData();
-                  }
-                },
-                icon: const Icon(Icons.date_range_rounded, size: 16, color: AppTheme.secondaryColor),
-                label: Text(
-                  '${dateFormat.format(_dateRange.start)} - ${dateFormat.format(_dateRange.end)}',
-                  style: const TextStyle(color: Colors.black87, fontSize: 12),
-                ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  side: BorderSide(color: Colors.grey.shade300),
-                ),
-              ),
-              const SizedBox(width: 8),
+              // Tab segment and Filters Row
+              Row(
+                children: [
+                  // Segmented Tab switcher
+                  Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F3F5),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    padding: const EdgeInsets.all(4),
+                    child: TabBar(
+                      controller: _tabController,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      dividerColor: Colors.transparent,
+                      indicatorSize: TabBarIndicatorSize.tab,
+                      indicator: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 1)),
+                        ],
+                      ),
+                      labelPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      labelColor: AppTheme.secondaryColor,
+                      unselectedLabelColor: Colors.grey.shade600,
+                      labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                      tabs: const [
+                        Tab(text: 'Performance overview'),
+                        Tab(text: 'Message pricing'),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
 
-              // Granularity Dropdown
-              _buildFilterDropdown(
-                value: _selectedGranularity,
-                items: const ['DAILY', 'MONTHLY'],
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _selectedGranularity = val);
-                    _fetchAnalyticsData();
-                  }
-                },
+                  // Filters
+                  _buildFilterDropdown(
+                    value: _selectedPhone,
+                    items: _phoneNumbers,
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _selectedPhone = val);
+                        _fetchAnalyticsData();
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  _buildFilterDropdown(
+                    value: _selectedCountry,
+                    items: _countryCodes,
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _selectedCountry = val);
+                        _fetchAnalyticsData();
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  
+                  // Date Range Button
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final range = await showCompactDateRangePicker(
+                        context: context,
+                        initialDateRange: _dateRange,
+                        firstDate: DateTime(2022),
+                        lastDate: DateTime.now(),
+                      );
+                      if (range != null) {
+                        setState(() => _dateRange = range);
+                        _fetchAnalyticsData();
+                      }
+                    },
+                    icon: const Icon(Icons.date_range_rounded, size: 16, color: AppTheme.secondaryColor),
+                    label: Text(
+                      '${dateFormat.format(_dateRange.start)} - ${dateFormat.format(_dateRange.end)}',
+                      style: const TextStyle(color: Colors.black87, fontSize: 12),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      side: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Granularity Dropdown
+                  _buildFilterDropdown(
+                    value: _selectedGranularity,
+                    items: const ['DAILY', 'MONTHLY'],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() => _selectedGranularity = val);
+                        _fetchAnalyticsData();
+                      }
+                    },
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -740,11 +917,12 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey.shade300),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: 44,
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: items.contains(value) ? value : items.first,
+          isExpanded: true,
           dropdownColor: Colors.white,
           items: items.map((item) {
             final displayText = item == 'DAILY'
@@ -754,7 +932,11 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
                     : (isPhoneDropdown ? _getPhoneLabel(item) : item));
             return DropdownMenuItem<String>(
               value: item,
-              child: Text(displayText, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+              child: Text(
+                displayText,
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
+                overflow: TextOverflow.ellipsis,
+              ),
             );
           }).toList(),
           onChanged: onChanged,
@@ -812,65 +994,77 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
       catService += cats['service'] as int? ?? 0;
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildInfoBanner('Note: All insights data is approximate and may differ from what\'s shown on your invoices due to small variations in data processing.'),
-          const SizedBox(height: 24),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 750;
 
-          Row(
+        final card1 = _buildDetailsGridCard(
+          title: 'All messages',
+          rows: [
+            _buildDetailRow('Messages sent', totalSent.toString(), Colors.purple.shade300),
+            _buildDetailRow('Messages delivered', totalDelivered.toString(), Colors.teal),
+            _buildDetailRow('Messages received', totalReceived.toString(), Colors.brown.shade300),
+          ],
+        );
+
+        final card2 = _buildDetailsGridCard(
+          title: 'Messages delivered',
+          subtitleValue: totalDelivered.toString(),
+          rows: [
+            _buildDetailRow('Marketing', catMarketing.toString(), Colors.green),
+            _buildDetailRow('Marketing - lite', catMarketingLite.toString(), Colors.greenAccent),
+            _buildDetailRow('Utility', catUtility.toString(), Colors.blue),
+            _buildDetailRow('Authentication', catAuth.toString(), Colors.orange),
+            _buildDetailRow('Authentication - international', catAuthIntl.toString(), Colors.deepOrange),
+            _buildDetailRow('Service', catService.toString(), Colors.pinkAccent),
+          ],
+        );
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(isMobile ? 16.0 : 32.0),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _buildDetailsGridCard(
-                  title: 'All messages',
-                  rows: [
-                    _buildDetailRow('Messages sent', totalSent.toString(), Colors.purple.shade300),
-                    _buildDetailRow('Messages delivered', totalDelivered.toString(), Colors.teal),
-                    _buildDetailRow('Messages received', totalReceived.toString(), Colors.brown.shade300),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
+              _buildInfoBanner('Note: All insights data is approximate and may differ from what\'s shown on your invoices due to small variations in data processing.'),
+              const SizedBox(height: 24),
 
-              Expanded(
-                child: _buildDetailsGridCard(
-                  title: 'Messages delivered',
-                  subtitleValue: totalDelivered.toString(),
-                  rows: [
-                    _buildDetailRow('Marketing', catMarketing.toString(), Colors.green),
-                    _buildDetailRow('Marketing - lite', catMarketingLite.toString(), Colors.greenAccent),
-                    _buildDetailRow('Utility', catUtility.toString(), Colors.blue),
-                    _buildDetailRow('Authentication', catAuth.toString(), Colors.orange),
-                    _buildDetailRow('Authentication - international', catAuthIntl.toString(), Colors.deepOrange),
-                    _buildDetailRow('Service', catService.toString(), Colors.pinkAccent),
+              if (isMobile) ...[
+                card1,
+                const SizedBox(height: 16),
+                card2,
+              ] else ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: card1),
+                    const SizedBox(width: 24),
+                    Expanded(child: card2),
                   ],
                 ),
+              ],
+              const SizedBox(height: 24),
+
+              _buildInteractiveChartSection(
+                title: 'Messages delivered',
+                filters: _chart1Filters,
+                linesData: {
+                  'Messages sent': _rawDataPoints.map((d) => (d['sent'] as int? ?? 0).toDouble()).toList(),
+                  'Messages delivered': _rawDataPoints.map((d) => (d['delivered'] as int? ?? 0).toDouble()).toList(),
+                  'Messages received': _rawDataPoints.map((d) => (d['received'] as int? ?? 0).toDouble()).toList(),
+                },
+                colors: {
+                  'Messages sent': Colors.purple.shade400,
+                  'Messages delivered': Colors.teal.shade500,
+                  'Messages received': Colors.brown.shade400,
+                },
+                hoverIndex: _hoverIndexChart1,
+                onHoverChanged: (idx) => setState(() => _hoverIndexChart1 = idx),
+                isMobile: isMobile,
               ),
             ],
           ),
-          const SizedBox(height: 32),
-
-          _buildInteractiveChartSection(
-            title: 'Messages delivered',
-            filters: _chart1Filters,
-            linesData: {
-              'Messages sent': _rawDataPoints.map((d) => (d['sent'] as int? ?? 0).toDouble()).toList(),
-              'Messages delivered': _rawDataPoints.map((d) => (d['delivered'] as int? ?? 0).toDouble()).toList(),
-              'Messages received': _rawDataPoints.map((d) => (d['received'] as int? ?? 0).toDouble()).toList(),
-            },
-            colors: {
-              'Messages sent': Colors.purple.shade400,
-              'Messages delivered': Colors.teal.shade500,
-              'Messages received': Colors.brown.shade400,
-            },
-            hoverIndex: _hoverIndexChart1,
-            onHoverChanged: (idx) => setState(() => _hoverIndexChart1 = idx),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -902,96 +1096,109 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
     totalCharges = costMarketing + costMarketingLite + costUtility + costAuth + costAuthIntl;
     totalFree = freeCustomerService + freeEntryPoint;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildInfoBanner('Note: All insights data is approximate and may differ from what\'s shown on your invoices due to small variations in data processing.'),
-          const SizedBox(height: 24),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 750;
 
-          Row(
+        final card1 = _buildDetailsGridCard(
+          title: 'Approximate total charges',
+          subtitleValue: '₹${totalCharges.toStringAsFixed(2)}',
+          rows: [
+            _buildDetailRow('Marketing', '₹${costMarketing.toStringAsFixed(2)}', Colors.green),
+            _buildDetailRow('Marketing - lite', '₹${costMarketingLite.toStringAsFixed(2)}', Colors.greenAccent),
+            _buildDetailRow('Utility', '₹${costUtility.toStringAsFixed(2)}', Colors.blue),
+            _buildDetailRow('Authentication', '₹${costAuth.toStringAsFixed(2)}', Colors.orange),
+            _buildDetailRow('Authentication - international', '₹${costAuthIntl.toStringAsFixed(2)}', Colors.deepOrange),
+          ],
+        );
+
+        final card2 = _buildDetailsGridCard(
+          title: 'Free messages delivered',
+          subtitleValue: totalFree.toString(),
+          rows: [
+            _buildDetailRow('Free customer service', freeCustomerService.toString(), Colors.teal),
+            _buildDetailRow('Free entry point', freeEntryPoint.toString(), Colors.purple),
+          ],
+        );
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.all(isMobile ? 16.0 : 32.0),
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _buildDetailsGridCard(
-                  title: 'Approximate total charges',
-                  subtitleValue: '₹${totalCharges.toStringAsFixed(2)}',
-                  rows: [
-                    _buildDetailRow('Marketing', '₹${costMarketing.toStringAsFixed(2)}', Colors.green),
-                    _buildDetailRow('Marketing - lite', '₹${costMarketingLite.toStringAsFixed(2)}', Colors.greenAccent),
-                    _buildDetailRow('Utility', '₹${costUtility.toStringAsFixed(2)}', Colors.blue),
-                    _buildDetailRow('Authentication', '₹${costAuth.toStringAsFixed(2)}', Colors.orange),
-                    _buildDetailRow('Authentication - international', '₹${costAuthIntl.toStringAsFixed(2)}', Colors.deepOrange),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 24),
+              _buildInfoBanner('Note: All insights data is approximate and may differ from what\'s shown on your invoices due to small variations in data processing.'),
+              const SizedBox(height: 24),
 
-              Expanded(
-                child: _buildDetailsGridCard(
-                  title: 'Free messages delivered',
-                  subtitleValue: totalFree.toString(),
-                  rows: [
-                    _buildDetailRow('Free customer service', freeCustomerService.toString(), Colors.teal),
-                    _buildDetailRow('Free entry point', freeEntryPoint.toString(), Colors.purple),
+              if (isMobile) ...[
+                card1,
+                const SizedBox(height: 16),
+                card2,
+              ] else ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: card1),
+                    const SizedBox(width: 24),
+                    Expanded(child: card2),
                   ],
                 ),
+              ],
+              const SizedBox(height: 24),
+
+              _buildInteractiveChartSection(
+                title: 'Free messages delivered',
+                filters: _chart2Filters,
+                linesData: {
+                  'Total': _rawDataPoints.map((d) {
+                    final free = d['free_delivered'] ?? {};
+                    return ((free['free_customer_service'] as int? ?? 0) + (free['free_entry_point'] as int? ?? 0)).toDouble();
+                  }).toList(),
+                  'Free customer service': _rawDataPoints.map((d) => ((d['free_delivered'] ?? {})['free_customer_service'] as int? ?? 0).toDouble()).toList(),
+                  'Free entry point': _rawDataPoints.map((d) => ((d['free_delivered'] ?? {})['free_entry_point'] as int? ?? 0).toDouble()).toList(),
+                },
+                colors: {
+                  'Total': Colors.blue.shade600,
+                  'Free customer service': Colors.teal.shade500,
+                  'Free entry point': Colors.purple.shade400,
+                },
+                hoverIndex: _hoverIndexChart2,
+                onHoverChanged: (idx) => setState(() => _hoverIndexChart2 = idx),
+                isMobile: isMobile,
+              ),
+              const SizedBox(height: 24),
+
+              _buildInteractiveChartSection(
+                title: 'Paid messages delivered & approximate total charges',
+                filters: _chart3Filters,
+                linesData: {
+                  'Total Paid': _rawDataPoints.map((d) {
+                    final paid = d['paid_delivered'] ?? {};
+                    return ((paid['marketing'] as int? ?? 0) + (paid['marketing_lite'] as int? ?? 0) + (paid['utility'] as int? ?? 0) + (paid['authentication'] as int? ?? 0) + (paid['authentication_international'] as int? ?? 0)).toDouble();
+                  }).toList(),
+                  'Approximate charges': _rawDataPoints.map((d) {
+                    final costs = d['costs'] ?? {};
+                    return ((costs['marketing'] as num? ?? 0.0) + (costs['marketing_lite'] as num? ?? 0.0) + (costs['utility'] as num? ?? 0.0) + (costs['authentication'] as num? ?? 0.0) + (costs['authentication_international'] as num? ?? 0.0)).toDouble();
+                  }).toList(),
+                  'Marketing': _rawDataPoints.map((d) => ((d['paid_delivered'] ?? {})['marketing'] as int? ?? 0).toDouble()).toList(),
+                  'Utility': _rawDataPoints.map((d) => ((d['paid_delivered'] ?? {})['utility'] as int? ?? 0).toDouble()).toList(),
+                  'Authentication': _rawDataPoints.map((d) => ((d['paid_delivered'] ?? {})['authentication'] as int? ?? 0).toDouble()).toList(),
+                },
+                colors: {
+                  'Total Paid': Colors.teal.shade500,
+                  'Approximate charges': Colors.deepPurple,
+                  'Marketing': Colors.green,
+                  'Utility': Colors.blue,
+                  'Authentication': Colors.orange,
+                },
+                hoverIndex: _hoverIndexChart3,
+                onHoverChanged: (idx) => setState(() => _hoverIndexChart3 = idx),
+                showCostAxis: true,
+                isMobile: isMobile,
               ),
             ],
           ),
-          const SizedBox(height: 32),
-
-          _buildInteractiveChartSection(
-            title: 'Free messages delivered',
-            filters: _chart2Filters,
-            linesData: {
-              'Total': _rawDataPoints.map((d) {
-                final free = d['free_delivered'] ?? {};
-                return ((free['free_customer_service'] as int? ?? 0) + (free['free_entry_point'] as int? ?? 0)).toDouble();
-              }).toList(),
-              'Free customer service': _rawDataPoints.map((d) => ((d['free_delivered'] ?? {})['free_customer_service'] as int? ?? 0).toDouble()).toList(),
-              'Free entry point': _rawDataPoints.map((d) => ((d['free_delivered'] ?? {})['free_entry_point'] as int? ?? 0).toDouble()).toList(),
-            },
-            colors: {
-              'Total': Colors.blue.shade600,
-              'Free customer service': Colors.teal.shade500,
-              'Free entry point': Colors.purple.shade400,
-            },
-            hoverIndex: _hoverIndexChart2,
-            onHoverChanged: (idx) => setState(() => _hoverIndexChart2 = idx),
-          ),
-          const SizedBox(height: 32),
-
-          _buildInteractiveChartSection(
-            title: 'Paid messages delivered and approximate total charges',
-            filters: _chart3Filters,
-            linesData: {
-              'Total Paid': _rawDataPoints.map((d) {
-                final paid = d['paid_delivered'] ?? {};
-                return ((paid['marketing'] as int? ?? 0) + (paid['marketing_lite'] as int? ?? 0) + (paid['utility'] as int? ?? 0) + (paid['authentication'] as int? ?? 0) + (paid['authentication_international'] as int? ?? 0)).toDouble();
-              }).toList(),
-              'Approximate charges': _rawDataPoints.map((d) {
-                final costs = d['costs'] ?? {};
-                return ((costs['marketing'] as num? ?? 0.0) + (costs['marketing_lite'] as num? ?? 0.0) + (costs['utility'] as num? ?? 0.0) + (costs['authentication'] as num? ?? 0.0) + (costs['authentication_international'] as num? ?? 0.0)).toDouble();
-              }).toList(),
-              'Marketing': _rawDataPoints.map((d) => ((d['paid_delivered'] ?? {})['marketing'] as int? ?? 0).toDouble()).toList(),
-              'Utility': _rawDataPoints.map((d) => ((d['paid_delivered'] ?? {})['utility'] as int? ?? 0).toDouble()).toList(),
-              'Authentication': _rawDataPoints.map((d) => ((d['paid_delivered'] ?? {})['authentication'] as int? ?? 0).toDouble()).toList(),
-            },
-            colors: {
-              'Total Paid': Colors.teal.shade500,
-              'Approximate charges': Colors.deepPurple,
-              'Marketing': Colors.green,
-              'Utility': Colors.blue,
-              'Authentication': Colors.orange,
-            },
-            hoverIndex: _hoverIndexChart3,
-            onHoverChanged: (idx) => setState(() => _hoverIndexChart3 = idx),
-            showCostAxis: true,
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -1004,7 +1211,7 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Icon(Icons.info_outline, size: 18, color: Colors.grey.shade700),
@@ -1031,7 +1238,7 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1043,12 +1250,12 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
             const SizedBox(height: 8),
             Text(
               subtitleValue,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.secondaryColor),
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: AppTheme.secondaryColor),
             ),
           ],
-          const SizedBox(height: 20),
-          const Divider(height: 1, color: Color(0xFFF0F2F5)),
           const SizedBox(height: 16),
+          const Divider(height: 1, color: Color(0xFFF0F2F5)),
+          const SizedBox(height: 12),
           ...rows,
         ],
       ),
@@ -1089,6 +1296,7 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
     required int? hoverIndex,
     required ValueChanged<int?> onHoverChanged,
     bool showCostAxis = false,
+    bool isMobile = false,
   }) {
     final dates = _rawDataPoints.map((d) {
       final start = d['start'] ?? 0;
@@ -1106,21 +1314,30 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.secondaryColor),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: isMobile ? 14 : 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.secondaryColor,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
               _buildChartFilterButton(filters),
             ],
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 20),
 
           Stack(
             clipBehavior: Clip.none,
@@ -1128,33 +1345,36 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
               LayoutBuilder(
                 builder: (context, constraints) {
                   final chartWidth = constraints.maxWidth - 50.0 - (showCostAxis ? 60.0 : 20.0);
-                  
-                  return MouseRegion(
-                    onHover: (event) {
-                      final localX = event.localPosition.dx;
-                      final relativeX = localX - 50.0;
-                      if (dates.isNotEmpty && relativeX >= 0 && relativeX <= chartWidth) {
-                        final stepX = dates.length > 1 ? chartWidth / (dates.length - 1) : chartWidth;
-                        final idx = (relativeX / stepX).round().clamp(0, dates.length - 1);
-                        onHoverChanged(idx);
-                      } else {
-                        onHoverChanged(null);
-                      }
-                    },
-                    onExit: (event) {
+
+                  void handlePoint(Offset localPosition) {
+                    final relativeX = localPosition.dx - 50.0;
+                    if (dates.isNotEmpty && relativeX >= 0 && relativeX <= chartWidth) {
+                      final stepX = dates.length > 1 ? chartWidth / (dates.length - 1) : chartWidth;
+                      final idx = (relativeX / stepX).round().clamp(0, dates.length - 1);
+                      onHoverChanged(idx);
+                    } else {
                       onHoverChanged(null);
-                    },
-                    child: SizedBox(
-                      height: 260,
-                      width: double.infinity,
-                      child: CustomPaint(
-                        painter: _LineChartPainter(
-                          dates: dates,
-                          linesData: linesData,
-                          colors: colors,
-                          activeKeys: activeKeys,
-                          hoverIndex: hoverIndex,
-                          showCostAxis: showCostAxis,
+                    }
+                  }
+                  
+                  return GestureDetector(
+                    onTapDown: (details) => handlePoint(details.localPosition),
+                    onPanUpdate: (details) => handlePoint(details.localPosition),
+                    child: MouseRegion(
+                      onHover: (event) => handlePoint(event.localPosition),
+                      onExit: (event) => onHoverChanged(null),
+                      child: SizedBox(
+                        height: 240,
+                        width: double.infinity,
+                        child: CustomPaint(
+                          painter: _LineChartPainter(
+                            dates: dates,
+                            linesData: linesData,
+                            colors: colors,
+                            activeKeys: activeKeys,
+                            hoverIndex: hoverIndex,
+                            showCostAxis: showCostAxis,
+                          ),
                         ),
                       ),
                     ),

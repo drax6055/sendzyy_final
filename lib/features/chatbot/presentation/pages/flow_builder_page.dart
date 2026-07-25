@@ -6,6 +6,7 @@ import 'package:iFloraBuzz/features/chatbot/data/models/flow_graph.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/widgets/flow_canvas_widget.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/widgets/node_palette_widget.dart';
+import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/widgets/properties_panel_widget.dart';
 
 class FlowBuilderPage extends StatefulWidget {
@@ -23,6 +24,7 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
   // Two-step selection for connecting nodes
   String? _firstSelectedNodeId;
   String? _secondSelectedNodeId;
+
 
   // Undo/redo stacks store JSON snapshots
   final List<Map<String, dynamic>> _undoStack = [];
@@ -404,6 +406,110 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
     super.dispose();
   }
 
+  void _showMobilePaletteBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Container(
+          height: 350,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('Add Node', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const Divider(),
+              Expanded(
+                child: ListView(
+                  children: [
+                    _buildMobileNodeTile(ctx, FlowNodeType.message, 'Message', Icons.chat_bubble_outline, Colors.blue),
+                    _buildMobileNodeTile(ctx, FlowNodeType.question, 'Question', Icons.help_outline, Colors.purple),
+                    _buildMobileNodeTile(ctx, FlowNodeType.quickReply, 'Quick Reply', Icons.reply_outlined, Colors.teal),
+                    _buildMobileNodeTile(ctx, FlowNodeType.listMessage, 'List Message', Icons.list_alt_outlined, Colors.indigo),
+                    _buildMobileNodeTile(ctx, FlowNodeType.condition, 'Condition', Icons.call_split_outlined, Colors.orange),
+                    _buildMobileNodeTile(ctx, FlowNodeType.action, 'Action', Icons.bolt_outlined, Colors.amber),
+                    _buildMobileNodeTile(ctx, FlowNodeType.end, 'End', Icons.stop_circle_outlined, Colors.red),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMobileNodeTile(BuildContext ctx, FlowNodeType type, String label, IconData icon, Color color) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+        child: Icon(icon, color: color, size: 20),
+      ),
+      title: Text(label, style: TextStyle(fontWeight: FontWeight.w600, color: color)),
+      trailing: const Icon(Icons.add, size: 20),
+      onTap: () {
+        Navigator.pop(ctx);
+        _addNode(type, const Offset(120, 180));
+      },
+    );
+  }
+
+  void _showMobilePropertiesBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            height: MediaQuery.of(ctx).size.height * 0.65,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    const Text('Node Properties', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                Expanded(
+                  child: PropertiesPanelWidget(
+                    selectedNode: _selectedNode,
+                    onNodeDataChanged: (newData) {
+                      _updateNodeData(newData);
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditMode = widget.chatbot != null;
@@ -422,27 +528,31 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(isEditMode ? 'Edit Chatbot' : 'New Chatbot'),
+          title: Text(
+            isEditMode ? 'Edit Chatbot' : 'New Chatbot',
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          titleSpacing: 0,
           actions: [
             IconButton(
-              icon: const Icon(Icons.undo,color: Colors.white),
+              icon: const Icon(Icons.undo, color: Colors.white, size: 20),
               tooltip: 'Undo',
               onPressed: _undoStack.isEmpty ? null : _undo,
             ),
             IconButton(
-              icon: const Icon(Icons.redo,color: Colors.white),
+              icon: const Icon(Icons.redo, color: Colors.white, size: 20),
               tooltip: 'Redo',
               onPressed: _redoStack.isEmpty ? null : _redo,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             if (_isSaving)
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Center(
                   child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   ),
                 ),
               )
@@ -451,50 +561,182 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
                 padding: const EdgeInsets.only(right: 8),
                 child: ElevatedButton.icon(
                   onPressed: _save,
-                  icon: const Icon(Icons.save, size: 18),
-                  label: const Text('Save Chatbot'),
+                  icon: const Icon(Icons.save, size: 16),
+                  label: const Text('Save', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.teal,
+                    backgroundColor: Colors.teal.shade700,
                     foregroundColor: Colors.white,
-                    minimumSize: const Size(0, 36),
+                    minimumSize: const Size(0, 34),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
               ),
           ],
         ),
-        body: Column(
-          children: [
-            _buildToolbar(canConnect),
-            Expanded(
-              child: Row(
-                children: [
-                  const NodePaletteWidget(),
-                  FlowCanvasWidget(
-                    graph: _graph,
-                    firstSelectedNodeId: _firstSelectedNodeId,
-                    secondSelectedNodeId: _secondSelectedNodeId,
-                    onNodeSelected: _onNodeSelected,
-                    onDropNode: _addNode,
-                    onNodeMoved: _moveNode,
-                    onNodeDelete: _deleteNode,
-                    onEdgeCreated: _addEdge,
-                    onEdgeDelete: _deleteEdge,
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 700;
+
+            return Column(
+              children: [
+                _buildToolbar(canConnect, isMobile),
+                Expanded(
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: isMobile
+                            ? FlowCanvasWidget(
+                                graph: _graph,
+                                firstSelectedNodeId: _firstSelectedNodeId,
+                                secondSelectedNodeId: _secondSelectedNodeId,
+                                onNodeSelected: _onNodeSelected,
+                                onDropNode: _addNode,
+                                onNodeMoved: _moveNode,
+                                onNodeDelete: _deleteNode,
+                                onEdgeCreated: _addEdge,
+                                onEdgeDelete: _deleteEdge,
+                              )
+                            : Row(
+                                children: [
+                                  const NodePaletteWidget(),
+                                  Expanded(
+                                    child: FlowCanvasWidget(
+                                      graph: _graph,
+                                      firstSelectedNodeId: _firstSelectedNodeId,
+                                      secondSelectedNodeId: _secondSelectedNodeId,
+                                      onNodeSelected: _onNodeSelected,
+                                      onDropNode: _addNode,
+                                      onNodeMoved: _moveNode,
+                                      onNodeDelete: _deleteNode,
+                                      onEdgeCreated: _addEdge,
+                                      onEdgeDelete: _deleteEdge,
+                                    ),
+                                  ),
+                                  PropertiesPanelWidget(
+                                    selectedNode: _selectedNode,
+                                    onNodeDataChanged: _updateNodeData,
+                                  ),
+                                ],
+                              ),
+                      ),
+                      if (isMobile) ...[
+                        Positioned(
+                          left: 16,
+                          bottom: 16,
+                          child: FloatingActionButton.extended(
+                            heroTag: 'fab_palette',
+                            onPressed: _showMobilePaletteBottomSheet,
+                            icon: const Icon(Icons.add, color: Colors.white, size: 20),
+                            label: const Text('Add Node', style: TextStyle(color: Colors.white)),
+                            backgroundColor: AppTheme.primaryColor,
+                          ),
+                        ),
+                        if (_selectedNode != null)
+                          Positioned(
+                            right: 16,
+                            bottom: 16,
+                            child: FloatingActionButton.extended(
+                              heroTag: 'fab_properties',
+                              onPressed: _showMobilePropertiesBottomSheet,
+                              icon: const Icon(Icons.tune_rounded, color: Colors.white, size: 20),
+                              label: const Text('Properties', style: TextStyle(color: Colors.white)),
+                              backgroundColor: AppTheme.secondaryColor,
+                            ),
+                          ),
+                      ],
+                    ],
                   ),
-                  PropertiesPanelWidget(
-                    selectedNode: _selectedNode,
-                    onNodeDataChanged: _updateNodeData,
-                  ),
-                ],
-              ),
-            ),
-          ],
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildToolbar(bool canConnect) {
+  Widget _buildToolbar(bool canConnect, bool isMobile) {
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+        ),
+        child: Column(
+          children: [
+            // Line 1: Chatbot Name and Keyword input aligned in same row
+            Row(
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: TextField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      hintText: 'Chatbot Name',
+                      labelText: 'Name',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    ),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  flex: 6,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ..._keywords.map(
+                          (kw) => Padding(
+                            padding: const EdgeInsets.only(right: 3),
+                            child: Chip(
+                              label: Text(kw, style: const TextStyle(fontSize: 10)),
+                              deleteIcon: const Icon(Icons.close, size: 12),
+                              onDeleted: () => _removeKeyword(kw),
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              padding: EdgeInsets.zero,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 110,
+                          child: TextField(
+                            controller: _keywordInputController,
+                            decoration: const InputDecoration(
+                              hintText: 'Add keyword...',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            ),
+                            style: const TextStyle(fontSize: 12),
+                            onSubmitted: _addKeyword,
+                            onChanged: (v) {
+                              if (v.endsWith(',')) _addKeyword(v);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            // Line 2: Connection bar (Select Node 1 -> Select Node 2 -> Connect)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: _buildConnectSection(canConnect),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(

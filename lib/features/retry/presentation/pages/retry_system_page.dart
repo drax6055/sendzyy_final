@@ -12,43 +12,48 @@ class RetrySystemPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AppTheme.backgroundColor,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Page header ──────────────────────────────────────────────
-            Row(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 750;
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(isMobile ? 16 : 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.replay_circle_filled_outlined,
-                      color: AppTheme.secondaryColor, size: 22),
-                ),
-                const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // ── Page header ──────────────────────────────────────────────
+                Row(
                   children: [
-                    Text(
-                      'Retry System',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.secondaryColor,
-                          ),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.replay_circle_filled_outlined,
+                          color: AppTheme.secondaryColor, size: 22),
                     ),
-                    const Text(
-                      'Configure retry phases and monitor system health',
-                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Retry System',
+                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.secondaryColor,
+                                ),
+                          ),
+                          const Text(
+                            'Configure retry phases and monitor system health',
+                            style: TextStyle(fontSize: 13, color: Colors.grey),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
             // ── Two-column layout ────────────────────────────────────────
             LayoutBuilder(
@@ -107,8 +112,10 @@ class RetrySystemPage extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
+      );
+    },
+  ),
+);
   }
 
   Widget _sectionLabel(String title, IconData icon, Color color) {

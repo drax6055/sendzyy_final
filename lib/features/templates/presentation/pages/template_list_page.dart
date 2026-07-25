@@ -57,7 +57,10 @@ class _TemplateListPageState extends State<TemplateListPage> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
     return Scaffold(
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Navigator.push(
@@ -74,132 +77,219 @@ class _TemplateListPageState extends State<TemplateListPage> {
             return const Center(child: CircularProgressIndicator());
           } else if (state is TemplateLoaded) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
+              padding: EdgeInsets.all(isMobile ? 16 : 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Message Templates',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.secondaryColor,
+                  isMobile
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Templates',
+                                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.secondaryColor,
+                                      ),
+                                ),
+                                IconButton(
+                                  onPressed: () => context.read<TemplateBloc>().add(FetchTemplates()),
+                                  icon: const Icon(Icons.refresh_rounded, color: AppTheme.secondaryColor),
+                                  tooltip: 'Sync with Meta',
+                                ),
+                              ],
                             ),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: TextField(
-                            controller: _searchController,
-                            onChanged: (val) {
-                              context.read<TemplateBloc>().add(
-                                SearchTemplates(val),
-                              );
-                              setState(() {});
-                            },
-
-                            decoration: InputDecoration(
-                              hintText: 'Search templates...',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(30),
-                                borderSide: BorderSide.none,
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _searchController,
+                              onChanged: (val) {
+                                context.read<TemplateBloc>().add(SearchTemplates(val));
+                                setState(() {});
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'Search templates...',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade100,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                suffixIcon: _searchController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear, size: 18),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          context.read<TemplateBloc>().add(SearchTemplates(''));
+                                          setState(() {});
+                                        },
+                                      )
+                                    : Icon(Icons.search, color: Colors.grey.shade400, size: 20),
                               ),
-                              filled: true,
-                              fillColor: Colors.grey.shade100,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
-                              ),
-                              suffixIcon: _searchController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear, size: 18),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        context.read<TemplateBloc>().add(
-                                          SearchTemplates(''),
-                                        );
-                                        setState(() {});
-                                      },
-                                    )
-                                  : Icon(
-                                      Icons.search,
-                                      color: Colors.grey.shade400,
-                                      size: 20,
+                            ),
+                          ],
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Message Templates',
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.secondaryColor,
+                                  ),
+                            ),
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                                child: TextField(
+                                  controller: _searchController,
+                                  onChanged: (val) {
+                                    context.read<TemplateBloc>().add(SearchTemplates(val));
+                                    setState(() {});
+                                  },
+                                  decoration: InputDecoration(
+                                    hintText: 'Search templates...',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                      borderSide: BorderSide.none,
                                     ),
+                                    filled: true,
+                                    fillColor: Colors.grey.shade100,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                    suffixIcon: _searchController.text.isNotEmpty
+                                        ? IconButton(
+                                            icon: const Icon(Icons.clear, size: 18),
+                                            onPressed: () {
+                                              _searchController.clear();
+                                              context.read<TemplateBloc>().add(SearchTemplates(''));
+                                              setState(() {});
+                                            },
+                                          )
+                                        : Icon(Icons.search, color: Colors.grey.shade400, size: 20),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                            ElevatedButton.icon(
+                              onPressed: () => context.read<TemplateBloc>().add(FetchTemplates()),
+                              icon: const Icon(Icons.refresh),
+                              label: const Text('Sync with Meta'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blueGrey,
+                                minimumSize: const Size(150, 45),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () =>
-                            context.read<TemplateBloc>().add(FetchTemplates()),
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Sync with Meta'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueGrey,
-                          minimumSize: const Size(150, 45),
-                        ),
-                      ),
-                    ],
-                  ),
 
                   const SizedBox(height: 16),
 
                   // Category filter chips
-                  Wrap(
-                    spacing: 8,
-                    children: _categories.map((cat) {
-                      final isSelected = cat == 'ALL'
-                          ? state.selectedCategory == null
-                          : state.selectedCategory == cat;
-                      return FilterChip(
-                        label: Text(
-                          cat == 'ALL' ? 'All' : _categoryLabel(cat),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            color: isSelected ? Colors.white : Colors.black87,
+                  isMobile
+                      ? SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: _categories.map((cat) {
+                              final isSelected = cat == 'ALL'
+                                  ? state.selectedCategory == null
+                                  : state.selectedCategory == cat;
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: FilterChip(
+                                  label: Text(
+                                    cat == 'ALL' ? 'All' : _categoryLabel(cat),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                      color: isSelected ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                  selected: isSelected,
+                                  onSelected: (_) {
+                                    context.read<TemplateBloc>().add(
+                                          FilterByCategory(cat == 'ALL' ? null : cat),
+                                        );
+                                  },
+                                  selectedColor: AppTheme.primaryColor,
+                                  checkmarkColor: Colors.white,
+                                  backgroundColor: Colors.grey.shade100,
+                                  side: BorderSide(
+                                    color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
+                                  ),
+                                  showCheckmark: false,
+                                ),
+                              );
+                            }).toList(),
                           ),
+                        )
+                      : Wrap(
+                          spacing: 8,
+                          children: _categories.map((cat) {
+                            final isSelected = cat == 'ALL'
+                                ? state.selectedCategory == null
+                                : state.selectedCategory == cat;
+                            return FilterChip(
+                              label: Text(
+                                cat == 'ALL' ? 'All' : _categoryLabel(cat),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                  color: isSelected ? Colors.white : Colors.black87,
+                                ),
+                              ),
+                              selected: isSelected,
+                              onSelected: (_) {
+                                context.read<TemplateBloc>().add(
+                                      FilterByCategory(cat == 'ALL' ? null : cat),
+                                    );
+                              },
+                              selectedColor: AppTheme.primaryColor,
+                              checkmarkColor: Colors.white,
+                              backgroundColor: Colors.grey.shade100,
+                              side: BorderSide(
+                                color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
+                              ),
+                              showCheckmark: false,
+                            );
+                          }).toList(),
                         ),
-                        selected: isSelected,
-                        onSelected: (_) {
-                          context.read<TemplateBloc>().add(
-                            FilterByCategory(cat == 'ALL' ? null : cat),
-                          );
-                        },
-                        selectedColor: AppTheme.primaryColor,
-                        checkmarkColor: Colors.white,
-                        backgroundColor: Colors.grey.shade100,
-                        side: BorderSide(
-                          color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
-                        ),
-                        showCheckmark: false,
-                      );
-                    }).toList(),
-                  ),
 
                   const SizedBox(height: 24),
                   state.filteredTemplates.isEmpty
-                      ? const Center(child: Text('No templates found.'))
-                      : GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          gridDelegate:
-                              const SliverGridDelegateWithMaxCrossAxisExtent(
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40.0),
+                            child: Text('No templates found.'),
+                          ),
+                        )
+                      : isMobile
+                          ? Column(
+                              children: state.filteredTemplates.map((template) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 12.0),
+                                  child: _buildTemplateCard(context, template),
+                                );
+                              }).toList(),
+                            )
+                          : GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                                 maxCrossAxisExtent: 400,
                                 crossAxisSpacing: 16,
                                 mainAxisSpacing: 16,
                                 mainAxisExtent: 220,
                               ),
-                          itemCount: state.filteredTemplates.length,
-                          itemBuilder: (context, index) {
-                            final template = state.filteredTemplates[index];
-                            return _buildTemplateCard(context, template);
-                          },
-                        ),
+                              itemCount: state.filteredTemplates.length,
+                              itemBuilder: (context, index) {
+                                final template = state.filteredTemplates[index];
+                                return _buildTemplateCard(context, template);
+                              },
+                            ),
                 ],
               ),
             );
@@ -261,6 +351,7 @@ class _TemplateListPageState extends State<TemplateListPage> {
     BuildContext context,
     Map<String, dynamic> template,
   ) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
     final name = template['name'] ?? 'Unknown';
     final status = template['status'] ?? 'UNKNOWN';
     final category = template['category'] ?? 'MARKETING';
@@ -281,7 +372,7 @@ class _TemplateListPageState extends State<TemplateListPage> {
 
     final isAuth = category == 'AUTHENTICATION';
 
-    return Card(
+    final card = Card(
       elevation: 2,
       shadowColor: Colors.black12,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -346,14 +437,21 @@ class _TemplateListPageState extends State<TemplateListPage> {
               ],
             ),
             const Divider(height: 16),
-            Expanded(
-              child: Text(
-                bodyText,
-                style: const TextStyle(fontSize: 13, color: Colors.black87),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            isMobile
+                ? Text(
+                    bodyText,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  )
+                : Expanded(
+                    child: Text(
+                      bodyText,
+                      style: const TextStyle(fontSize: 13, color: Colors.black87),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -415,6 +513,8 @@ class _TemplateListPageState extends State<TemplateListPage> {
         ),
       ),
     );
+
+    return card;
   }
 
   void _showTemplatePreview(
@@ -444,6 +544,62 @@ class _TemplateListPageState extends State<TemplateListPage> {
         buttons = btns.map((b) => Map<String, dynamic>.from(b)).toList();
       }
     }
+
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
+    if (isMobile) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => Material(
+          color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          clipBehavior: Clip.antiAlias,
+          child: Container(
+            height: MediaQuery.of(context).size.height * 0.85,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+            children: [
+              Container(
+                height: 4,
+                width: 40,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Template Preview',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: WhatsAppPreview(
+                  headerText: header,
+                  bodyText: body ?? '',
+                  footerText: footer,
+                  mediaType: mediaType,
+                  buttons: buttons,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return;
+  }
 
     showDialog(
       context: context,
@@ -561,7 +717,9 @@ class _RejectionDetailsDialogState extends State<RejectionDetailsDialog> {
         ],
       ),
       content: SizedBox(
-        width: 500,
+        width: MediaQuery.of(context).size.width < 600
+            ? MediaQuery.of(context).size.width * 0.85
+            : 500,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

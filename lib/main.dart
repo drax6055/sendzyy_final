@@ -12,7 +12,7 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/package_selection_page.dart';
 import 'features/dashboard/presentation/pages/dashboard_shell.dart';
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import 'features/chat/data/services/socket_service.dart';
 import 'package:iFloraBuzz/features/admin/presentation/pages/update_message_page.dart';
 

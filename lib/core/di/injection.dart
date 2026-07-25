@@ -1,6 +1,5 @@
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
-import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:iFloraBuzz/core/services/encryption_service.dart';
@@ -50,18 +49,6 @@ Future<void> init() async {
         },
       ),
     );
-
-    // dio.interceptors.add(
-    //   PrettyDioLogger(
-    //     requestHeader: true,
-    //     requestBody: true,
-    //     responseBody: true,
-    //     responseHeader: false,
-    //     error: true,
-    //     compact: true,
-    //     maxWidth: 90,
-    //   ),
-    // );
     return dio;
   });
 

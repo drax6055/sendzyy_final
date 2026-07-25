@@ -93,12 +93,16 @@ class _CompactDateRangeDialogState extends State<_CompactDateRangeDialog> {
     final daysInMonth = DateUtils.getDaysInMonth(month.year, month.month);
     final startWeekday = first.weekday % 7; // Sunday = 0
     final result = <DateTime?>[];
-    for (var i = 0; i < startWeekday; i++) result.add(null);
+    for (var i = 0; i < startWeekday; i++) {
+      result.add(null);
+    }
     for (var d = 1; d <= daysInMonth; d++) {
       result.add(DateTime(month.year, month.month, d));
     }
     // Pad to complete last row
-    while (result.length % 7 != 0) result.add(null);
+    while (result.length % 7 != 0) {
+      result.add(null);
+    }
     return result;
   }
 
@@ -111,209 +115,219 @@ class _CompactDateRangeDialogState extends State<_CompactDateRangeDialog> {
   @override
   Widget build(BuildContext context) {
     final days = _buildDays(_focusedMonth);
-    const cellSize = 50.0;
     const weekdays = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
     return Dialog(
       alignment: Alignment.center,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 80, vertical: 40),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        width: 480,
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title row
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Select Date Range',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: () => Navigator.pop(context),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            // Selected range hint
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: (_start != null && _end != null)
-                    ? AppTheme.primaryColor.withValues(alpha: 0.08)
-                    : Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(8),
+        constraints: const BoxConstraints(maxWidth: 400),
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Select Date Range',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(context),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
               ),
-              child: Text(
-                _hintText,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
+              const SizedBox(height: 6),
+              // Selected range hint
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
                   color: (_start != null && _end != null)
-                      ? AppTheme.primaryColor
-                      : Colors.grey.shade500,
+                      ? AppTheme.primaryColor.withValues(alpha: 0.08)
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                textAlign: TextAlign.center,
+                child: Text(
+                  _hintText,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: (_start != null && _end != null)
+                        ? AppTheme.primaryColor
+                        : Colors.grey.shade500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            // Month navigation
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _NavButton(
-                  icon: Icons.chevron_left,
-                  onTap: () => setState(() {
-                    _focusedMonth =
-                        DateTime(_focusedMonth.year, _focusedMonth.month - 1);
-                  }),
-                ),
-                Text(
-                  DateFormat('MMMM yyyy').format(_focusedMonth),
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-                _NavButton(
-                  icon: Icons.chevron_right,
-                  onTap: () => setState(() {
-                    _focusedMonth =
-                        DateTime(_focusedMonth.year, _focusedMonth.month + 1);
-                  }),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            // Weekday headers
-            Row(
-              children: weekdays
-                  .map((d) => SizedBox(
-                        width: cellSize,
-                        height: 28,
-                        child: Center(
-                          child: Text(
-                            d,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey,
+              const SizedBox(height: 16),
+              // Month navigation
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _NavButton(
+                    icon: Icons.chevron_left,
+                    onTap: () => setState(() {
+                      _focusedMonth =
+                          DateTime(_focusedMonth.year, _focusedMonth.month - 1);
+                    }),
+                  ),
+                  Text(
+                    DateFormat('MMMM yyyy').format(_focusedMonth),
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                  ),
+                  _NavButton(
+                    icon: Icons.chevron_right,
+                    onTap: () => setState(() {
+                      _focusedMonth =
+                          DateTime(_focusedMonth.year, _focusedMonth.month + 1);
+                    }),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Weekday headers
+              Row(
+                children: weekdays
+                    .map((d) => Expanded(
+                          child: SizedBox(
+                            height: 28,
+                            child: Center(
+                              child: Text(
+                                d,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                      ))
-                  .toList(),
-            ),
-            // Calendar grid
-            ...List.generate(days.length ~/ 7, (row) {
-              return Row(
-                children: List.generate(7, (col) {
-                  final day = days[row * 7 + col];
-                  if (day == null) {
-                    return SizedBox(width: cellSize, height: cellSize);
-                  }
-                  final isStart = _isStart(day);
-                  final isEnd = _isEnd(day);
-                  final inRange = _isInRange(day);
-                  final disabled = _isOutsideBounds(day);
-                  final isSelected = isStart || isEnd;
+                        ))
+                    .toList(),
+              ),
+              // Calendar grid
+              ...List.generate(days.length ~/ 7, (row) {
+                return Row(
+                  children: List.generate(7, (col) {
+                    final day = days[row * 7 + col];
+                    if (day == null) {
+                      return const Expanded(
+                        child: SizedBox(height: 40),
+                      );
+                    }
+                    final isStart = _isStart(day);
+                    final isEnd = _isEnd(day);
+                    final inRange = _isInRange(day);
+                    final disabled = _isOutsideBounds(day);
+                    final isSelected = isStart || isEnd;
 
-                  Color textColor = Colors.black87;
-                  if (isSelected) textColor = Colors.white;
-                  else if (inRange) textColor = AppTheme.primaryColor;
-                  else if (disabled) textColor = Colors.grey.shade300;
+                    Color textColor = Colors.black87;
+                    if (isSelected) {
+                      textColor = Colors.white;
+                    } else if (inRange) {
+                      textColor = AppTheme.primaryColor;
+                    } else if (disabled) {
+                      textColor = Colors.grey.shade300;
+                    }
 
-                  return GestureDetector(
-                    onTap: disabled ? null : () => _onDayTap(day),
-                    child: Container(
-                      width: cellSize,
-                      height: cellSize,
-                      decoration: inRange && !isSelected
-                          ? BoxDecoration(
-                              color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                            )
-                          : null,
-                      child: Center(
+                    return Expanded(
+                      child: GestureDetector(
+                        onTap: disabled ? null : () => _onDayTap(day),
                         child: Container(
-                          width: 42,
-                          height: 42,
-                          decoration: isSelected
+                          height: 40,
+                          decoration: inRange && !isSelected
                               ? BoxDecoration(
-                                  color: AppTheme.primaryColor,
-                                  shape: BoxShape.circle,
+                                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
                                 )
                               : null,
                           child: Center(
-                            child: Text(
-                              '${day.day}',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.normal,
-                                color: textColor,
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: isSelected
+                                  ? BoxDecoration(
+                                      color: AppTheme.primaryColor,
+                                      shape: BoxShape.circle,
+                                    )
+                                  : null,
+                              child: Center(
+                                child: Text(
+                                  '${day.day}',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.normal,
+                                    color: textColor,
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
+                    );
+                  }),
+                );
+              }),
+              const SizedBox(height: 16),
+              // Quick presets
+              Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: [
+                  _PresetChip(label: 'Today', onTap: () => _applyPreset(0, 0)),
+                  _PresetChip(label: 'Last 7 days', onTap: () => _applyPreset(6, 0)),
+                  _PresetChip(label: 'Last 30 days', onTap: () => _applyPreset(29, 0)),
+                  _PresetChip(label: 'This month', onTap: _applyThisMonth),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Action buttons
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => setState(() {
+                        _start = null;
+                        _end = null;
+                      }),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('Clear'),
                     ),
-                  );
-                }),
-              );
-            }),
-            const SizedBox(height: 16),
-            // Quick presets
-            Wrap(
-              spacing: 8,
-              children: [
-                _PresetChip(label: 'Today', onTap: () => _applyPreset(0, 0)),
-                _PresetChip(label: 'Last 7 days', onTap: () => _applyPreset(6, 0)),
-                _PresetChip(label: 'Last 30 days', onTap: () => _applyPreset(29, 0)),
-                _PresetChip(label: 'This month', onTap: _applyThisMonth),
-              ],
-            ),
-            const SizedBox(height: 16),
-            // Action buttons
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => setState(() {
-                      _start = null;
-                      _end = null;
-                    }),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: const Text('Clear'),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: (_start != null && _end != null)
-                        ? () => Navigator.pop(
-                            context, DateTimeRange(start: _start!, end: _end!))
-                        : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: (_start != null && _end != null)
+                          ? () => Navigator.pop(
+                              context, DateTimeRange(start: _start!, end: _end!))
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('Apply'),
                     ),
-                    child: const Text('Apply'),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

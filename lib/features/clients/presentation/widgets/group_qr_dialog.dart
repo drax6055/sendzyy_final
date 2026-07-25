@@ -1,6 +1,10 @@
 // ignore: avoid_web_libraries_in_flutter
 import 'dart:convert';
-import 'dart:html' as html;
+import 'dart:io' as io;
+import 'package:universal_html/html.dart' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -71,20 +75,36 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
       );
       final jpegBytes = img.encodeJpg(imgFrame, quality: 95);
 
-      final blob = html.Blob([jpegBytes], 'image/jpeg');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      html.AnchorElement(href: url)
-        ..setAttribute('download', 'group_registration_qr_${widget.group.name}.jpg')
-        ..click();
-      html.Url.revokeObjectUrl(url);
+      if (kIsWeb) {
+        final blob = html.Blob([jpegBytes], 'image/jpeg');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        html.AnchorElement(href: url)
+          ..setAttribute('download', 'group_registration_qr_${widget.group.name}.jpg')
+          ..click();
+        html.Url.revokeObjectUrl(url);
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('QR downloaded as JPG'),
-            backgroundColor: Colors.green,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('QR downloaded as JPG'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        final dir = await getTemporaryDirectory();
+        final file = io.File('${dir.path}/group_registration_qr_${widget.group.name}.jpg');
+        await file.writeAsBytes(jpegBytes);
+        await OpenFile.open(file.path);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('QR saved locally'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {

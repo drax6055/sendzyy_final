@@ -292,19 +292,25 @@ class _ContactRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(icon, color: Colors.white70, size: 18),
         const SizedBox(width: 12),
-        Text(
-          '$label: ',
-          style: const TextStyle(color: Colors.white70, fontSize: 14),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: const TextStyle(fontSize: 13.5, color: Colors.white70),
+              children: [
+                TextSpan(text: '$label: '),
+                TextSpan(
+                  text: value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],

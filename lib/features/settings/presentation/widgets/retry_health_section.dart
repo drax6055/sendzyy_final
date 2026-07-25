@@ -356,6 +356,7 @@ class _RetryHealthSectionState extends State<RetryHealthSection> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.deepPurple,
                 foregroundColor: Colors.white,
+                minimumSize: Size.zero,
                 padding: const EdgeInsets.symmetric(
                     horizontal: 16, vertical: 12),
                 shape: RoundedRectangleBorder(

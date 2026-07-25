@@ -221,12 +221,12 @@ class _ChatbotListPageState extends State<ChatbotListPage> {
       return Scaffold(
         backgroundColor: Colors.transparent,
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 450,
-                padding: const EdgeInsets.all(32),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 450),
+              child: Container(
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -277,7 +277,7 @@ class _ChatbotListPageState extends State<ChatbotListPage> {
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       );
@@ -301,38 +301,45 @@ class _ChatbotListPageState extends State<ChatbotListPage> {
             tooltip: 'New Chatbot',
             child: const Icon(Icons.add, color: Colors.white),
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final isMobile = constraints.maxWidth < 600;
+
+              return Padding(
+                padding: EdgeInsets.all(isMobile ? 16.0 : 32.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Chatbots',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.secondaryColor,
+                                fontSize: isMobile ? 22 : null,
+                              ),
+                        ),
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: () => setState(() => _isUnlocked = false),
+                          icon: const Icon(Icons.lock_rounded, size: 16),
+                          label: const Text('Lock'),
+                          style: TextButton.styleFrom(foregroundColor: Colors.black45),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
                     Text(
-                      'Chatbots',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.secondaryColor,
-                          ),
+                      'Manage your automated WhatsApp chatbot flows',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                     ),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: () => setState(() => _isUnlocked = false),
-                      icon: const Icon(Icons.lock_rounded, size: 16),
-                      label: const Text('Lock'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.black45),
-                    ),
+                    const SizedBox(height: 20),
+                    Expanded(child: _buildBody(context, state)),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Manage your automated WhatsApp chatbot flows',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                ),
-                const SizedBox(height: 24),
-                Expanded(child: _buildBody(context, state)),
-              ],
-            ),
+              );
+            },
           ),
         );
       },
@@ -507,54 +514,109 @@ class _ChatbotCard extends StatelessWidget {
   }
 
   Widget _buildCardHeader(BuildContext context) {
-    return Row(
-      children: [
-        // Bot icon
-        Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: const Icon(Icons.smart_toy_rounded, color: AppTheme.primaryColor, size: 22),
-        ),
-        const SizedBox(width: 12),
-        // Name + status badge
-        Expanded(
-          child: Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isSmall = constraints.maxWidth < 480;
+
+        if (isSmall) {
+          return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                chatbot.name,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.smart_toy_rounded, color: AppTheme.primaryColor, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      chatbot.name,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Switch(
+                    value: chatbot.isActive,
+                    onChanged: onToggleActive,
+                    activeThumbColor: AppTheme.primaryColor,
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              _buildStatusBadge(),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildStatusBadge(),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    tooltip: 'Edit',
+                    onPressed: onEdit,
+                    color: Colors.grey.shade600,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 20),
+                    tooltip: 'Delete',
+                    onPressed: onDelete,
+                    color: Colors.redAccent,
+                  ),
+                ],
+              ),
             ],
-          ),
-        ),
-        // Edit icon
-        IconButton(
-          icon: const Icon(Icons.edit_outlined, size: 20),
-          tooltip: 'Edit',
-          onPressed: onEdit,
-          color: Colors.grey.shade600,
-        ),
-        // Delete icon
-        IconButton(
-          icon: const Icon(Icons.delete_outline, size: 20),
-          tooltip: 'Delete',
-          onPressed: onDelete,
-          color: Colors.redAccent,
-        ),
-        // Active toggle
-        Switch(
-          value: chatbot.isActive,
-          onChanged: onToggleActive,
-          activeColor: AppTheme.primaryColor,
-        ),
-      ],
+          );
+        }
+
+        return Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.smart_toy_rounded, color: AppTheme.primaryColor, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    chatbot.name,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 4),
+                  _buildStatusBadge(),
+                ],
+              ),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 20),
+              tooltip: 'Edit',
+              onPressed: onEdit,
+              color: Colors.grey.shade600,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20),
+              tooltip: 'Delete',
+              onPressed: onDelete,
+              color: Colors.redAccent,
+            ),
+            Switch(
+              value: chatbot.isActive,
+              onChanged: onToggleActive,
+              activeThumbColor: AppTheme.primaryColor,
+            ),
+          ],
+        );
+      },
     );
   }
 

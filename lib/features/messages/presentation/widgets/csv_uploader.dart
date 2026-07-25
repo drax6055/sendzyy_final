@@ -1,5 +1,9 @@
 import 'dart:convert';
-import 'dart:html' as html;
+import 'dart:io' as io;
+import 'package:universal_html/html.dart' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
@@ -13,17 +17,30 @@ class CsvUploader extends StatelessWidget {
 
   const CsvUploader({super.key, required this.onParsed});
 
-  void _downloadSample() {
+  void _downloadSample(BuildContext context) async {
     const csv = 
         '919876543210,John,Hello,Acme Corp\n'
         '919123456789,Jane,Hi,Example Ltd\n'
         '917890123456,Bob,Hey,Bob Enterprises\n';
-    final blob = html.Blob([csv], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', 'sample_campaign.csv')
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    if (kIsWeb) {
+      final blob = html.Blob([csv], 'text/csv');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)
+        ..setAttribute('download', 'sample_campaign.csv')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    } else {
+      try {
+        final dir = await getTemporaryDirectory();
+        final file = io.File('${dir.path}/sample_campaign.csv');
+        await file.writeAsString(csv);
+        await OpenFile.open(file.path);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not download sample: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _pickFile(BuildContext context) async {
@@ -90,6 +107,99 @@ class CsvUploader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
+    if (isMobile) {
+      return Column(
+        children: [
+          InkWell(
+            onTap: () => _pickFile(context),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE8F5E9).withValues(alpha: 0.35),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: const Color(0xFFC8E6C9).withValues(alpha: 0.6),
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    height: 54,
+                    width: 54,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.cloud_upload_rounded,
+                      size: 26,
+                      color: Color(0xFF2E7D32),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Upload CSV File',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Color(0xFF1B5E20),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Supported format: .csv only',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: const Text(
+                      'Columns: mobile, {{1}}, {{2}}...',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: () => _downloadSample(context),
+            icon: const Icon(Icons.download_rounded, size: 16, color: Color(0xFF2E7D32)),
+            label: const Text(
+              'Download Sample CSV',
+              style: TextStyle(
+                color: Color(0xFF2E7D32),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -144,7 +254,7 @@ class CsvUploader extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         GestureDetector(
-          onTap: _downloadSample,
+          onTap: () => _downloadSample(context),
           child: const Text(
             'Download sample CSV',
             style: TextStyle(

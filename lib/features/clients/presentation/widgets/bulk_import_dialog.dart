@@ -1,4 +1,8 @@
-import 'dart:html' as html;
+import 'dart:io' as io;
+import 'package:universal_html/html.dart' as html;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:path_provider/path_provider.dart';
+import 'package:open_file/open_file.dart';
 
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
@@ -20,17 +24,30 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
   String? _error;
   bool _isImporting = false;
 
-  void _downloadSample() {
+  void _downloadSample() async {
     const csv = 'name,mobile,company,email,venue,remark\n'
         'John Doe,919876543210,Acme Corp,john@acme.com,Main Street Store,VIP customer\n'
         'Jane Smith,919123456789,,jane@example.com,Wedding Expo 2025,\n'
         'Bob Kumar,917890123456,Bob Enterprises,,City Mall,Referred by John\n';
-    final blob = html.Blob([csv], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', 'sample_clients.csv')
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    if (kIsWeb) {
+      final blob = html.Blob([csv], 'text/csv');
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      html.AnchorElement(href: url)
+        ..setAttribute('download', 'sample_clients.csv')
+        ..click();
+      html.Url.revokeObjectUrl(url);
+    } else {
+      try {
+        final dir = await getTemporaryDirectory();
+        final file = io.File('${dir.path}/sample_clients.csv');
+        await file.writeAsString(csv);
+        await OpenFile.open(file.path);
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not download sample: $e')),
+        );
+      }
+    }
   }
 
   Future<void> _pickFile() async {

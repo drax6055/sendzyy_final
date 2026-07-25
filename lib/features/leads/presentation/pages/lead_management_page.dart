@@ -266,74 +266,126 @@ class _LeadManagementPageState extends State<LeadManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(isMobile ? 12 : 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Row 1: title + filters
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  'Leads',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                      ),
-                ),
-                 const SizedBox(width: 10),
-                Expanded(
-                  child: _FilterBar(
-                  sourceFilter: _sourceFilter,
-                  statusFilter: _statusFilter,
-                  dateRange: _dateRange,
-                  searchCtrl: _searchCtrl,
-                  onSourceChanged: (v) {
-                    setState(() => _sourceFilter = v);
-                    _applyFilters();
-                  },
-                  onStatusChanged: (v) {
-                    setState(() => _statusFilter = v);
-                    _applyFilters();
-                  },
-                  onDateRangeChanged: (r) {
-                    setState(() => _dateRange = r);
-                    _applyFilters();
-                  },
-                  onSearchChanged: (_) => _applyFilters(),
-                  onClearDate: () {
-                    setState(() => _dateRange = null);
-                    _applyFilters();
-                  },
-                ),
-                ),
-              ],
-            ),
+            // Header & Filters
+            if (isMobile) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Leads',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.secondaryColor,
+                          fontSize: 22,
+                        ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded, color: AppTheme.secondaryColor),
+                    onPressed: () => _fetchLeads(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _FilterBar(
+                sourceFilter: _sourceFilter,
+                statusFilter: _statusFilter,
+                dateRange: _dateRange,
+                searchCtrl: _searchCtrl,
+                onSourceChanged: (v) {
+                  setState(() => _sourceFilter = v);
+                  _applyFilters();
+                },
+                onStatusChanged: (v) {
+                  setState(() => _statusFilter = v);
+                  _applyFilters();
+                },
+                onDateRangeChanged: (r) {
+                  setState(() => _dateRange = r);
+                  _applyFilters();
+                },
+                onSearchChanged: (_) => _applyFilters(),
+                onClearDate: () {
+                  setState(() => _dateRange = null);
+                  _applyFilters();
+                },
+              ),
+            ] else ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Leads',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.secondaryColor,
+                        ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _FilterBar(
+                      sourceFilter: _sourceFilter,
+                      statusFilter: _statusFilter,
+                      dateRange: _dateRange,
+                      searchCtrl: _searchCtrl,
+                      onSourceChanged: (v) {
+                        setState(() => _sourceFilter = v);
+                        _applyFilters();
+                      },
+                      onStatusChanged: (v) {
+                        setState(() => _statusFilter = v);
+                        _applyFilters();
+                      },
+                      onDateRangeChanged: (r) {
+                        setState(() => _dateRange = r);
+                        _applyFilters();
+                      },
+                      onSearchChanged: (_) => _applyFilters(),
+                      onClearDate: () {
+                        setState(() => _dateRange = null);
+                        _applyFilters();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 10),
             // Row 2: status chips
             _StatusCountsRow(leads: _leads),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // Analytics summary + chart
             if (_analytics != null) ...[
               _SummaryRow(analytics: _analytics!),
               const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _BarChart(analytics: _analytics!)),
-                  const SizedBox(width: 16),
-                  SizedBox(width: 220, child: _FunnelWidget(analytics: _analytics!)),
-                ],
-              ),
-              const SizedBox(height: 20),
+              if (isMobile) ...[
+                _BarChart(analytics: _analytics!),
+                const SizedBox(height: 12),
+                _FunnelWidget(analytics: _analytics!),
+              ] else ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _BarChart(analytics: _analytics!)),
+                    const SizedBox(width: 16),
+                    SizedBox(width: 220, child: _FunnelWidget(analytics: _analytics!)),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 16),
             ],
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
 
             // List
             Expanded(child: _buildBody()),
@@ -434,6 +486,99 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
+    if (isMobile) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: searchCtrl,
+            onChanged: onSearchChanged,
+            decoration: InputDecoration(
+              hintText: 'Search name or mobile...',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(30),
+                borderSide: BorderSide.none,
+              ),
+              filled: true,
+              fillColor: Colors.grey.shade100,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              suffixIcon: searchCtrl.text.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear, size: 18),
+                      onPressed: () {
+                        searchCtrl.clear();
+                        onSearchChanged('');
+                      },
+                    )
+                  : Icon(Icons.search, color: Colors.grey.shade400, size: 20),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 135,
+                  child: DropdownButtonFormField<String>(
+                    value: sourceFilter,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'all', child: Text('All Sources', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: 'shopify', child: Text('Shopify', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: 'wordpress', child: Text('WordPress', style: TextStyle(fontSize: 13))),
+                    ],
+                    onChanged: (v) => onSourceChanged(v ?? 'all'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 140,
+                  child: DropdownButtonFormField<String>(
+                    value: statusFilter,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'all', child: Text('All Statuses', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: 'new', child: Text('New', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: 'contacted', child: Text('Contacted', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: 'converted', child: Text('Converted', style: TextStyle(fontSize: 13))),
+                      DropdownMenuItem(value: 'failed', child: Text('Failed', style: TextStyle(fontSize: 13))),
+                    ],
+                    onChanged: (v) => onStatusChanged(v ?? 'all'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _DateRangeButton(
+                  dateRange: dateRange,
+                  onChanged: onDateRangeChanged,
+                  onClear: onClearDate,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
     return Row(
       children: [
         // Search - expanded to fill available space
@@ -517,9 +662,6 @@ class _FilterBar extends StatelessWidget {
           onChanged: onDateRangeChanged,
           onClear: onClearDate,
         ),
-        const SizedBox(width: 8),
-        // Search
-
       ],
     );
   }
@@ -592,9 +734,12 @@ class _LeadRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
+      color: Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(color: Colors.grey.shade200),
@@ -603,104 +748,209 @@ class _LeadRow extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Row(
-            children: [
-              // Avatar
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.1),
-                child: Text(
-                  lead.name.isNotEmpty ? lead.name[0].toUpperCase() : '?',
-                  style: const TextStyle(
-                    color: AppTheme.secondaryColor,
-                    fontWeight: FontWeight.bold,
-                  ),
+          padding: EdgeInsets.all(isMobile ? 12 : 16),
+          child: isMobile ? _buildMobileLayout(context) : _buildDesktopLayout(context),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMobileLayout(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header Row: Avatar + Name/Mobile/Duplicate + Timestamp
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.1),
+              child: Text(
+                lead.name.isNotEmpty ? lead.name[0].toUpperCase() : '?',
+                style: const TextStyle(
+                  color: AppTheme.secondaryColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
                 ),
               ),
-              const SizedBox(width: 12),
-
-              // Name + mobile
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
                           lead.name.isNotEmpty ? lead.name : 'Unknown',
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        if (lead.isDuplicate) ...[
-                          const SizedBox(width: 6),
-                          _Badge(label: 'Duplicate', color: Colors.orange),
-                        ],
+                      ),
+                      if (lead.isDuplicate) ...[
+                        const SizedBox(width: 6),
+                        _Badge(label: 'Duplicate', color: Colors.orange),
                       ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      lead.mobileNumber,
-                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    lead.mobileNumber,
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ],
               ),
-
-              // Source badge
+            ),
+            const SizedBox(width: 8),
+            Text(
+              DateFormat('dd MMM yy\nHH:mm').format(lead.createdAt.toLocal()),
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+              textAlign: TextAlign.right,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Badges & Actions Row: Source + Form Name + Status Dropdown
+        Row(
+          children: [
+            _SourceBadge(source: lead.source),
+            if (lead.formName.isNotEmpty) ...[
+              const SizedBox(width: 8),
               Expanded(
-                flex: 2,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: _SourceBadge(source: lead.source),
-                ),
-              ),
-
-              // Form name
-              Expanded(
-                flex: 2,
                 child: Text(
-                  lead.formName.isNotEmpty ? lead.formName : '—',
+                  lead.formName,
                   style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
+            ] else
+              const Spacer(),
+            const SizedBox(width: 8),
+            _StatusDropdown(
+              status: lead.status,
+              onChanged: onStatusChanged,
+            ),
+          ],
+        ),
+        // Message preview (if any)
+        if (lead.message.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              lead.message,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
 
-              // Message
-              Expanded(
-                flex: 3,
-                child: lead.message.isNotEmpty
-                    ? Text(
-                        lead.message,
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                      )
-                    : Text('—', style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+  Widget _buildDesktopLayout(BuildContext context) {
+    return Row(
+      children: [
+        // Avatar
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.1),
+          child: Text(
+            lead.name.isNotEmpty ? lead.name[0].toUpperCase() : '?',
+            style: const TextStyle(
+              color: AppTheme.secondaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+
+        // Name + mobile
+        Expanded(
+          flex: 3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    lead.name.isNotEmpty ? lead.name : 'Unknown',
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  if (lead.isDuplicate) ...[
+                    const SizedBox(width: 6),
+                    _Badge(label: 'Duplicate', color: Colors.orange),
+                  ],
+                ],
               ),
-
-              // Status dropdown
-              Expanded(
-                flex: 2,
-                child: _StatusDropdown(
-                  status: lead.status,
-                  onChanged: onStatusChanged,
-                ),
-              ),
-
-              // Timestamp
-              Expanded(
-                flex: 2,
-                child: Text(
-                  DateFormat('dd MMM yy\nHH:mm').format(lead.createdAt.toLocal()),
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                  textAlign: TextAlign.right,
-                ),
+              const SizedBox(height: 2),
+              Text(
+                lead.mobileNumber,
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
               ),
             ],
           ),
         ),
-      ),
+
+        // Source badge
+        Expanded(
+          flex: 2,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: _SourceBadge(source: lead.source),
+          ),
+        ),
+
+        // Form name
+        Expanded(
+          flex: 2,
+          child: Text(
+            lead.formName.isNotEmpty ? lead.formName : '—',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+
+        // Message
+        Expanded(
+          flex: 3,
+          child: lead.message.isNotEmpty
+              ? Text(
+                  lead.message,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                )
+              : Text('—', style: TextStyle(fontSize: 12, color: Colors.grey.shade400)),
+        ),
+
+        // Status dropdown
+        Expanded(
+          flex: 2,
+          child: _StatusDropdown(
+            status: lead.status,
+            onChanged: onStatusChanged,
+          ),
+        ),
+
+        // Timestamp
+        Expanded(
+          flex: 2,
+          child: Text(
+            DateFormat('dd MMM yy\nHH:mm').format(lead.createdAt.toLocal()),
+            style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -1022,18 +1272,22 @@ class _StatusCountsRow extends StatelessWidget {
       counts[l.status] = (counts[l.status] ?? 0) + 1;
     }
 
-    return Row(
-      children: [
-        _CountChip(label: 'New', count: counts['new']!, color: Colors.blue),
-        const SizedBox(width: 8),
-        _CountChip(label: 'Contacted', count: counts['contacted']!, color: Colors.orange),
-        const SizedBox(width: 8),
-        _CountChip(label: 'Converted', count: counts['converted']!, color: Colors.green),
-        const SizedBox(width: 8),
-        _CountChip(label: 'Failed', count: counts['failed']!, color: Colors.red),
-        const SizedBox(width: 8),
-        _CountChip(label: 'Total', count: leads.length, color: AppTheme.secondaryColor),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          _CountChip(label: 'New', count: counts['new']!, color: Colors.blue),
+          const SizedBox(width: 8),
+          _CountChip(label: 'Contacted', count: counts['contacted']!, color: Colors.orange),
+          const SizedBox(width: 8),
+          _CountChip(label: 'Converted', count: counts['converted']!, color: Colors.green),
+          const SizedBox(width: 8),
+          _CountChip(label: 'Failed', count: counts['failed']!, color: Colors.red),
+          const SizedBox(width: 8),
+          _CountChip(label: 'Total', count: leads.length, color: AppTheme.secondaryColor),
+        ],
+      ),
     );
   }
 }
@@ -1078,18 +1332,40 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 768;
+
+    final cards = [
+      _StatCard(label: 'Total Leads', value: '${analytics.totalLeads}', icon: Icons.contacts_rounded, color: AppTheme.secondaryColor),
+      _StatCard(label: 'Today', value: '${analytics.leadsToday}', icon: Icons.today_rounded, color: Colors.blue),
+      _StatCard(label: 'This Week', value: '${analytics.leadsThisWeek}', icon: Icons.date_range_rounded, color: Colors.purple),
+      _StatCard(label: 'Shopify', value: '${analytics.shopifyCount}', icon: Icons.shopping_bag_rounded, color: Colors.green),
+      _StatCard(label: 'WordPress', value: '${analytics.wordpressCount}', icon: Icons.language_rounded, color: Colors.blue.shade700),
+    ];
+
+    if (isMobile) {
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: cards
+              .map((c) => Padding(
+                    padding: const EdgeInsets.only(right: 12),
+                    child: SizedBox(width: 140, child: c),
+                  ))
+              .toList(),
+        ),
+      );
+    }
+
     return Row(
-      children: [
-        _StatCard(label: 'Total Leads', value: '${analytics.totalLeads}', icon: Icons.contacts_rounded, color: AppTheme.secondaryColor),
-        const SizedBox(width: 12),
-        _StatCard(label: 'Today', value: '${analytics.leadsToday}', icon: Icons.today_rounded, color: Colors.blue),
-        const SizedBox(width: 12),
-        _StatCard(label: 'This Week', value: '${analytics.leadsThisWeek}', icon: Icons.date_range_rounded, color: Colors.purple),
-        const SizedBox(width: 12),
-        _StatCard(label: 'Shopify', value: '${analytics.shopifyCount}', icon: Icons.shopping_bag_rounded, color: Colors.green),
-        const SizedBox(width: 12),
-        _StatCard(label: 'WordPress', value: '${analytics.wordpressCount}', icon: Icons.language_rounded, color: Colors.blue.shade700),
-      ],
+      children: cards
+          .map((c) => Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: c,
+                ),
+              ))
+          .toList(),
     );
   }
 }
@@ -1103,34 +1379,44 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.shade200),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(icon, color: color, size: 18),
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
             ),
-            const SizedBox(width: 10),
-            Column(
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: color)),
-                Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                Text(
+                  value,
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: color),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

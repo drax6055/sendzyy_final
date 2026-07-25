@@ -422,8 +422,8 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text('Set Up Client Auto-Message', style: TextStyle(fontWeight: FontWeight.bold)),
           content: SingleChildScrollView(
-            child: SizedBox(
-              width: 400,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -725,12 +725,12 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
       return Scaffold(
         backgroundColor: Colors.transparent,
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 450,
-                padding: const EdgeInsets.all(32),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 450),
+              child: Container(
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -777,7 +777,7 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       );
@@ -785,80 +785,92 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Integrations',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                      ),
-                ),
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: () => setState(() => _isUnlocked = false),
-                  icon: const Icon(Icons.lock_rounded, size: 16),
-                  label: const Text('Lock'),
-                  style: TextButton.styleFrom(foregroundColor: Colors.black45),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            _WebhookSection(
-              webhookUrl: _webhookUrl,
-              secret: _displaySecret,
-              loadingSecret: _loadingSecret,
-              onRegenerate: _regenerateSecret,
-            ),
-            const SizedBox(height: 24),
-            Row(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 750;
+
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(isMobile ? 16.0 : 32.0),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _ShopifyCard(
-                    webhookUrl: _webhookUrl,
-                    secret: _displaySecret,
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      'Integrations',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.secondaryColor,
+                            fontSize: isMobile ? 22 : null,
+                          ),
+                    ),
+                    const Spacer(),
+                    TextButton.icon(
+                      onPressed: () => setState(() => _isUnlocked = false),
+                      icon: const Icon(Icons.lock_rounded, size: 16),
+                      label: const Text('Lock'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.black45),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _WordPressCard(
+                const SizedBox(height: 20),
+                _WebhookSection(
+                  webhookUrl: _webhookUrl,
+                  secret: _displaySecret,
+                  loadingSecret: _loadingSecret,
+                  onRegenerate: _regenerateSecret,
+                ),
+                const SizedBox(height: 20),
+                if (isMobile) ...[
+                  _ShopifyCard(
                     webhookUrl: _webhookUrl,
                     secret: _displaySecret,
                   ),
+                  const SizedBox(height: 20),
+                  _WordPressCard(
+                    webhookUrl: _webhookUrl,
+                    secret: _displaySecret,
+                  ),
+                ] else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _ShopifyCard(
+                          webhookUrl: _webhookUrl,
+                          secret: _displaySecret,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _WordPressCard(
+                          webhookUrl: _webhookUrl,
+                          secret: _displaySecret,
+                        ),
+                      ),
+                    ],
+                  ),
+                const SizedBox(height: 20),
+                _TriggersSection(
+                  triggers: _triggers,
+                  loading: _loadingTriggers,
+                  onAdd: () => _openAddTriggerForm(),
+                  onEdit: (t) => _openAddTriggerForm(existing: t),
+                  onToggle: _toggleTrigger,
+                  onDelete: _deleteTrigger,
+                ),
+                const SizedBox(height: 20),
+                _ClientAutoMessageSection(
+                  trigger: _clientTrigger,
+                  loading: _clientTriggerLoading,
+                  onSetUp: _openClientTriggerPicker,
+                  onToggle: _toggleClientTrigger,
+                  onDelete: _deleteClientTrigger,
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            _TriggersSection(
-              triggers: _triggers,
-              loading: _loadingTriggers,
-              onAdd: () => _openAddTriggerForm(),
-              onEdit: (t) => _openAddTriggerForm(existing: t),
-              onToggle: _toggleTrigger,
-              onDelete: _deleteTrigger,
-            ),
-            const SizedBox(height: 24),
-            _ClientAutoMessageSection(
-              trigger: _clientTrigger,
-              loading: _clientTriggerLoading,
-              onSetUp: _openClientTriggerPicker,
-              onToggle: _toggleClientTrigger,
-              onDelete: _deleteClientTrigger,
-            ),
-            // const SizedBox(height: 24),
-            // _OpenAIKeySection(
-            //   tenantId: _tenantId,
-            //   dio: _dio,
-            //   onToast: _showToast,
-            // ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -883,6 +895,10 @@ class _WebhookSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final secretText = loadingSecret
+        ? ''
+        : (secret.isEmpty ? 'No secret configured — click Generate' : secret);
+
     return _Card(
       title: 'Webhook Configuration',
       icon: Icons.webhook_rounded,
@@ -891,23 +907,11 @@ class _WebhookSection extends StatelessWidget {
         children: [
           const Text('Webhook URL', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           const SizedBox(height: 6),
-          TextField(
-            readOnly: true,
-            controller: TextEditingController(text: webhookUrl),
-            style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: Colors.grey.shade300),
-              ),
-            ),
+          _buildBox(
+            context: context,
+            text: webhookUrl,
+            copyTooltip: 'Copy Webhook URL',
+            successMsg: 'Webhook URL copied to clipboard',
           ),
           const SizedBox(height: 16),
           const Text('Webhook Secret', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
@@ -915,31 +919,13 @@ class _WebhookSection extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  readOnly: true,
-                  controller: TextEditingController(
-                    text: loadingSecret ? '' : (secret.isEmpty ? 'No secret configured — click Regenerate' : secret),
-                  ),
-                  style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: Colors.grey.shade100,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide(color: Colors.grey.shade300),
-                    ),
-                    suffixIcon: loadingSecret
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                          )
-                        : null,
-                  ),
+                child: _buildBox(
+                  context: context,
+                  text: secretText,
+                  copyTooltip: 'Copy Webhook Secret',
+                  successMsg: 'Webhook Secret copied to clipboard',
+                  isLoading: loadingSecret,
+                  isPlaceholder: secret.isEmpty && !loadingSecret,
                 ),
               ),
               if (!loadingSecret && secret.isEmpty) ...[
@@ -956,6 +942,70 @@ class _WebhookSection extends StatelessWidget {
               ],
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBox({
+    required BuildContext context,
+    required String text,
+    required String copyTooltip,
+    required String successMsg,
+    bool isLoading = false,
+    bool isPlaceholder = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontFamily: 'monospace',
+                  color: isPlaceholder ? Colors.black45 : Colors.black87,
+                ),
+              ),
+            ),
+          ),
+          if (isLoading)
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else if (!isPlaceholder && text.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            InkWell(
+              borderRadius: BorderRadius.circular(4),
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: text));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(successMsg),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+              child: const Padding(
+                padding: EdgeInsets.all(2),
+                child: Icon(
+                  Icons.copy_rounded,
+                  size: 18,
+                  color: AppTheme.secondaryColor,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1040,6 +1090,25 @@ document.addEventListener("DOMContentLoaded", function () {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Liquid Script', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              TextButton.icon(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: snippet));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Liquid Script copied to clipboard'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy_rounded, size: 15),
+                label: const Text('Copy', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.secondaryColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 6),
@@ -1052,7 +1121,7 @@ document.addEventListener("DOMContentLoaded", function () {
             ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: SelectableText(
+              child: Text(
                 snippet,
                 style: const TextStyle(
                   fontSize: 11.5,
@@ -1154,7 +1223,31 @@ add_action('wpcf7_before_send_mail', function(\$contact_form) {
               ),
             ),
           const SizedBox(height: 12),
-          const Text('PHP Snippet', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('PHP Snippet', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              TextButton.icon(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: displaySnippet));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('PHP Snippet copied to clipboard'),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.copy_rounded, size: 15),
+                label: const Text('Copy', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.secondaryColor,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Container(
             width: double.infinity,
@@ -1163,13 +1256,16 @@ add_action('wpcf7_before_send_mail', function(\$contact_form) {
               color: const Color(0xFF1E1E1E),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: SelectableText(
-              displaySnippet,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 11,
-                color: Color(0xFFD4D4D4),
-                height: 1.5,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Text(
+                displaySnippet,
+                style: const TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  color: Color(0xFFD4D4D4),
+                  height: 1.5,
+                ),
               ),
             ),
           ),
@@ -1486,10 +1582,12 @@ class _TriggerFormDialogState extends State<_TriggerFormDialog> {
   Widget build(BuildContext context) {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: 480,
-        padding: const EdgeInsets.all(28),
-        child: Form(
+      child: SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Form(
           key: _formKey,
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1626,7 +1724,9 @@ class _TriggerFormDialogState extends State<_TriggerFormDialog> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 
   InputDecoration _inputDecoration(String hint) => InputDecoration(
