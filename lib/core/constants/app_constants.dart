@@ -24,9 +24,13 @@ class AppConstants {
     return value;
   }
 
-  // Local BASEURL-----------------------------------------------------
-
-  static String get baseUrl => dotenv.env['BASE_URL'] ?? '';
+  static String get baseUrl {
+    final url = dotenv.env['BASE_URL'] ?? '';
+    if (url.isEmpty) {
+      return 'https://appapi.sendzyy.com';
+    }
+    return url;
+  }
 
   // Storage Keys
   static const String keyAccessToken = 'access_token';
