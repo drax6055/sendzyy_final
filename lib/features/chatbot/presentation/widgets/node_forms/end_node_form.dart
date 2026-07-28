@@ -18,7 +18,7 @@ class EndNodeForm extends StatelessWidget {
                 'This node ends the conversation.',
                 style: TextStyle(fontSize: 14),
               ),
-            ),
+            ),  
           ],
         ),
       ),

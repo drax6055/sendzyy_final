@@ -15,6 +15,8 @@ import 'dart:html' as html;
 import 'features/chat/data/services/socket_service.dart';
 import 'package:iFloraBuzz/features/admin/presentation/pages/update_message_page.dart';
 
+import 'package:iFloraBuzz/features/notifications/presentation/bloc/notification_bloc.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
@@ -70,6 +72,7 @@ class _MyAppState extends State<MyApp> {
           create: (context) =>
               di.getIt<ReportBloc>()..add(FetchReportHistory()),
         ),
+        BlocProvider(create: (context) => di.getIt<NotificationBloc>()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
@@ -92,6 +95,15 @@ class _MyAppState extends State<MyApp> {
               _authBloc.add(SubscriptionExpiryCheckRequested());
               // Re-fetch templates now that we have a valid auth token
               context.read<TemplateBloc>().add(FetchTemplates());
+
+              final tenantId = state.tenant['id']?.toString() ??
+                  state.tenant['_id']?.toString() ??
+                  '';
+              if (tenantId.isNotEmpty) {
+                context.read<NotificationBloc>().add(
+                      RefreshUnreadCountEvent(tenantId: tenantId),
+                    );
+              }
             }
             if (state is AuthSubscriptionExpired) {
               // Show expiry dialog on top of whatever screen is showing

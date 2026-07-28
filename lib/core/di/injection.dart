@@ -19,6 +19,10 @@ import 'package:iFloraBuzz/features/clients/presentation/bloc/group_bloc.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/retry_repository.dart';
 import '../constants/app_constants.dart';
 
+import 'package:iFloraBuzz/features/notifications/data/datasources/notification_remote_datasource.dart';
+import 'package:iFloraBuzz/features/notifications/data/repositories/notification_repository.dart';
+import 'package:iFloraBuzz/features/notifications/presentation/bloc/notification_bloc.dart';
+
 final getIt = GetIt.instance;
 
 Future<void> init() async {
@@ -78,6 +82,10 @@ Future<void> init() async {
   getIt.registerLazySingleton(() => GroupRepository(getIt()));
   getIt.registerLazySingleton(() => RetryRepository(getIt()));
 
+  // Notifications Data Layer
+  getIt.registerLazySingleton(() => NotificationRemoteDataSource(dio: getIt()));
+  getIt.registerLazySingleton(() => NotificationRepository(remoteDataSource: getIt()));
+
   // Services
   getIt.registerLazySingleton(() => EncryptionService());
   getIt.registerLazySingleton(() => SocketService());
@@ -105,4 +113,7 @@ Future<void> init() async {
 
   // Features - Groups
   getIt.registerFactory(() => GroupsBloc(getIt()));
+
+  // Features - Notifications
+  getIt.registerFactory(() => NotificationBloc(repository: getIt()));
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/auth/presentation/widgets/api_config_dialog.dart';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
@@ -185,24 +185,7 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  void _showManualConfig(BuildContext context, {String? wabaId, String? phoneNumberId}) async {
-    final result = await showDialog(
-      context: context,
-      builder: (context) => ApiConfigDialog(
-        initialWabaId: wabaId,
-        initialPhoneNumberId: phoneNumberId,
-      ),
-    );
-    if (result == true) {
-      if (mounted) {
-        context.read<TemplateBloc>().add(FetchTemplates());
-        context.read<AuthBloc>().add(AuthCheckRequested());
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Meta Account Connected Successfully')),
-        );
-      }
-    }
-  }
+
 
   @override
   void dispose() {
@@ -373,13 +356,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
                 OnboardingChecklistWidget(
                   onSetupWhatsApp: () {
-                    if (isConnected) {
-                      _showManualConfig(
-                        context,
-                        wabaId: state.tenant['whatsappConfig']['businessAccountId']?.toString(),
-                        phoneNumberId: state.tenant['whatsappConfig']['phoneNumberId']?.toString(),
-                      );
-                    } else {
+                    if (!isConnected) {
                       _connectMeta();
                     }
                   },
@@ -1754,11 +1731,13 @@ class _SettingsPageState extends State<SettingsPage> {
           },
         );
 
-        // If we have no code but have WABA/phone IDs, skip token exchange and go manual config
+        // If we have no code but have WABA/phone IDs, proceed with embedded signup
         if ((code == null || code.isEmpty) && (wabaId != null || phoneNumberId != null)) {
           setState(() => _isConnecting = false);
           if (mounted) {
-            _showManualConfig(context, wabaId: wabaId, phoneNumberId: phoneNumberId);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Meta signup incomplete. Please try again or contact support.')),
+            );
           }
           return;
         }
@@ -1789,15 +1768,15 @@ class _SettingsPageState extends State<SettingsPage> {
               const SnackBar(content: Text('Meta Account Connected Successfully!')),
             );
           } else {
-            // Token saved but IDs missing — open config dialog pre-filled
-            _showManualConfig(
-              context,
-              wabaId: serverWabaId ?? wabaId,
-              phoneNumberId: serverPhoneId ?? phoneNumberId,
+            // Token saved but IDs missing — show error
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Connection partially completed. Please reconnect your Meta account.')),
             );
           }
         } else if (mounted) {
-          _showManualConfig(context, wabaId: wabaId, phoneNumberId: phoneNumberId);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to connect Meta account. Please try again.')),
+          );
         }
       } else if (result.status == 'cancelled') {
         // User cancelled — do nothing
@@ -1825,16 +1804,9 @@ class _SettingsPageState extends State<SettingsPage> {
               content: const Text(
                 'The Meta/Facebook SDK script was blocked from loading. '
                 'This is usually caused by an ad-blocker, privacy extension, or firewall. '
-                'Please disable your ad-blocker for this site and try again, or configure manually.',
+                'Please disable your ad-blocker for this site and try again.',
               ),
               actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    _showManualConfig(context);
-                  },
-                  child: const Text('Configure Manually'),
-                ),
                 ElevatedButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: const Text('OK'),
@@ -1849,7 +1821,12 @@ class _SettingsPageState extends State<SettingsPage> {
           sessionId: result.sessionId,
           data: {'status': result.status},
         );
-        if (mounted) _showManualConfig(context);
+        setState(() => _isConnecting = false);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Meta signup failed. Please try again.')),
+          );
+        }
       }
     } catch (e) {
       setState(() => _isConnecting = false);
@@ -1857,11 +1834,173 @@ class _SettingsPageState extends State<SettingsPage> {
         eventName: 'FATAL_ERROR_FRONTEND',
         data: {'error': e.toString()},
       );
-      if (mounted) _showManualConfig(context);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error connecting Meta account: $e')),
+        );
+      }
     }
   }
 
   bool _isRegisteringPhone = false;
+
+  void _showRegisterPhoneErrorDialog({
+    required BuildContext context,
+    required String title,
+    required String errorDetail,
+    bool isNetworkError = false,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Container(
+          padding: const EdgeInsets.all(28),
+          width: 460,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.phone_disabled_rounded, color: Colors.red, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          'Phone number could not be registered with Meta',
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+
+              // Error detail box
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Error Detail',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.red, letterSpacing: 0.5),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      errorDetail,
+                      style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.5),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Tips
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.lightbulb_outline, size: 14, color: Colors.orange),
+                        SizedBox(width: 6),
+                        Text(
+                          'What to try',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.orange, letterSpacing: 0.5),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ...[ 
+                      if (isNetworkError)
+                        'Check your internet connection and try again.'
+                      else
+                        'Ensure your phone number is verified and approved by Meta.',
+                      'Make sure your Access Token has the required permissions.',
+                      'If the error persists, disconnect and reconnect your Meta account.',
+                    ].map((tip) => Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 4),
+                            child: Icon(Icons.circle, size: 5, color: Colors.orange),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(tip, style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4))),
+                        ],
+                      ),
+                    )),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Actions
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Dismiss', style: TextStyle(color: Colors.grey)),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _registerPhoneWithMeta();
+                    },
+                    icon: const Icon(Icons.refresh_rounded, size: 16),
+                    label: const Text('Retry'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Future<void> _registerPhoneWithMeta() async {
     setState(() => _isRegisteringPhone = true);
@@ -1871,40 +2010,49 @@ class _SettingsPageState extends State<SettingsPage> {
 
       if (res != null && res['success'] == true) {
         if (mounted) {
+          // 1. Refresh the auth state so the DB-stored qualityRating is picked up.
           context.read<AuthBloc>().add(AuthCheckRequested());
+
+          // 2. Force the phone-numbers list to re-fetch from Meta so the
+          //    quality_rating badge updates immediately without a page reload.
+          //    Resetting _fetchedWabaId causes the build() watcher to call
+          //    _fetchPhoneNumbers() on the next frame.
+          setState(() {
+            _fetchedWabaId = null;
+            _phoneNumbers = [];
+          });
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Phone number registered successfully with Meta Cloud API! Status is now CONNECTED.'),
+              content: Text('✅ Phone number registered successfully! Status is now CONNECTED.'),
               backgroundColor: Colors.green,
+              duration: Duration(seconds: 4),
             ),
           );
         }
       } else {
-        final errDetail = res?['error'] ?? res?['details'] ?? 'Registration failed';
+        // API returned a failure response
+        final errDetail = res?['error'] ?? res?['details'] ?? res?['message'] ?? 'Registration failed. Please try again.';
         if (mounted) {
-          showDialog(
+          _showRegisterPhoneErrorDialog(
             context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Row(
-                children: [
-                  Icon(Icons.error_outline, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Registration Failed'),
-                ],
-              ),
-              content: Text('Meta API Error: ${errDetail.toString()}'),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-              ],
-            ),
+            title: 'Registration Failed',
+            errorDetail: errDetail.toString(),
           );
         }
       }
     } catch (e) {
+      // Network / unexpected exception
       if (mounted) {
         setState(() => _isRegisteringPhone = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}')),
+        final isNetwork = e.toString().toLowerCase().contains('socket') ||
+            e.toString().toLowerCase().contains('connection') ||
+            e.toString().toLowerCase().contains('timeout');
+        _showRegisterPhoneErrorDialog(
+          context: context,
+          title: isNetwork ? 'Network Error' : 'Unexpected Error',
+          errorDetail: e.toString(),
+          isNetworkError: isNetwork,
         );
       }
     }
@@ -1977,37 +2125,97 @@ class _SettingsPageState extends State<SettingsPage> {
               const Divider(height: 32),
               _buildDetailRow('Throughput', config['throughputLevel'] ?? ''),
             ],
-            const SizedBox(height: 25),
-            Wrap(
-              spacing: 16,
-              runSpacing: 12,
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _isRegisteringPhone ? null : _registerPhoneWithMeta,
-                  icon: _isRegisteringPhone 
-                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Icon(Icons.verified_user_rounded, color: Colors.white),
-                  label: Text(
-                    _isRegisteringPhone ? 'Registering Phone...' : 'Register Phone Number (Fix Error 141000)',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            // Register Phone button — only shown when phone is NOT connected
+            Builder(builder: (context) {
+              final activePhoneId = config['phoneNumberId']?.toString();
+              // Look up the status from the fetched phone numbers list
+              String? phoneStatus;
+              if (_phoneNumbers.isNotEmpty && activePhoneId != null) {
+                final activePhone = _phoneNumbers.firstWhere(
+                  (p) => p['id']?.toString() == activePhoneId,
+                  orElse: () => <String, dynamic>{},
+                );
+                phoneStatus = activePhone['status']?.toString().toUpperCase();
+              }
+              // Also fallback to config stored status if available
+              phoneStatus ??= config['phoneStatus']?.toString().toUpperCase();
+
+              final isConnected = phoneStatus == 'CONNECTED';
+
+              if (isConnected) return const SizedBox.shrink();
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 25),
+                  // Status warning banner
+                  if (phoneStatus != null && phoneStatus != 'CONNECTED') ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.orange.withValues(alpha: 0.35)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Phone status: $phoneStatus — Messages may fail with error 141000. '
+                              'Tap below to register the phone number with Meta Cloud API.',
+                              style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.info_outline_rounded, color: Colors.blueAccent, size: 18),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'If you are seeing error 141000, tap below to register your phone number with Meta Cloud API.',
+                              style: TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  ElevatedButton.icon(
+                    onPressed: _isRegisteringPhone ? null : _registerPhoneWithMeta,
+                    icon: _isRegisteringPhone
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Icon(Icons.verified_user_rounded, color: Colors.white),
+                    label: Text(
+                      _isRegisteringPhone ? 'Registering Phone...' : 'Register Phone Number (Fix Error 141000)',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      minimumSize: const Size(double.infinity, 52),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _showManualConfig(context),
-                  icon: const Icon(Icons.edit_note),
-                  label: const Text('Update Connection Settings'),
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
-            ),
+                ],
+              );
+            }),
           ],
         ),
       ),

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/pages/login_page.dart';
-import 'package:iFloraBuzz/features/auth/presentation/widgets/api_config_dialog.dart';
+
 import 'package:dio/dio.dart';
 import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
@@ -28,6 +28,8 @@ import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
 import 'package:iFloraBuzz/core/widgets/password_verification_dialog.dart';
 import 'package:iFloraBuzz/features/settings/presentation/widgets/whatsapp_business_profile_dialog.dart';
+import 'package:iFloraBuzz/features/notifications/presentation/widgets/notification_bell_icon.dart';
+import 'package:iFloraBuzz/features/notifications/presentation/bloc/notification_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardShell extends StatefulWidget {
@@ -1008,46 +1010,23 @@ class _DashboardShellState extends State<DashboardShell> {
               return const SizedBox.shrink();
             },
           ),
-          const SizedBox(width: 12),
+
+          // Notification Bell Icon with Badge Count
           BlocBuilder<AuthBloc, AuthState>(
             builder: (context, authState) {
-              // Show settings gear only when phoneNumberId or businessAccountId is missing
-              final bool configIncomplete = () {
-                if (authState is AuthAuthenticated) {
-                  final config =
-                      authState.tenant['whatsappConfig']
-                          as Map<String, dynamic>?;
-                  final phoneId = config?['phoneNumberId']?.toString() ?? '';
-                  final wabaId = config?['businessAccountId']?.toString() ?? '';
-                  return phoneId.isEmpty || wabaId.isEmpty;
+              if (authState is AuthAuthenticated) {
+                final tenantId = authState.tenant['id']?.toString() ??
+                    authState.tenant['_id']?.toString() ??
+                    '';
+                if (tenantId.isNotEmpty) {
+                  return NotificationBellIcon(tenantId: tenantId);
                 }
-                return false;
-              }();
-
-              if (!configIncomplete) return const SizedBox.shrink();
-
-              return IconButton(
-                icon: const Icon(Icons.settings_outlined, color: Colors.grey),
-                onPressed: () async {
-                  final result = await showDialog(
-                    context: context,
-                    builder: (context) => const ApiConfigDialog(),
-                  );
-                  if (result == true && context.mounted) {
-                    context.read<AuthBloc>().add(AuthCheckRequested());
-                    context.read<TemplateBloc>().add(FetchTemplates());
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('API Configuration Updated'),
-                      ),
-                    );
-                  }
-                },
-                tooltip: 'API Configuration',
-              );
+              }
+              return const SizedBox.shrink();
             },
           ),
           const SizedBox(width: 8),
+
           // Support button
           _SupportButton(),
           const SizedBox(width: 8),

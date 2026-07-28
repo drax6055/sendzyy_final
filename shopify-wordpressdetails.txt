@@ -84,7 +84,7 @@ Action	Send WhatsApp Template or Start Chatbot
 Template	Select an approved template
 When a new lead arrives matching the trigger, a WhatsApp message fires automatically and the lead status updates to contacted.
 
-Key things to double-check:
+Key things to double-check:  
 
 Your backend is publicly reachable (not localhost)
 The X-Webhook-Secret header value matches exactly what was generated in Step 2
