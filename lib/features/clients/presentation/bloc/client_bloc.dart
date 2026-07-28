@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
-import 'package:iFloraBuzz/features/clients/data/models/paginated_clients.dart';
 import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
 
 // Events

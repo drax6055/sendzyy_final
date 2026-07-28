@@ -15,7 +15,6 @@ import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
 import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
 import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
-import 'package:iFloraBuzz/features/clients/presentation/bloc/client_bloc.dart';
 import 'package:iFloraBuzz/features/clients/presentation/bloc/group_bloc.dart';
 import 'package:flutter_native_contact_picker/flutter_native_contact_picker.dart';
 import 'package:flutter_native_contact_picker/model/contact.dart' as npc;

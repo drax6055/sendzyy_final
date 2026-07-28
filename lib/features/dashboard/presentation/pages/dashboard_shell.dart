@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/pages/login_page.dart';
-import 'package:iFloraBuzz/features/auth/presentation/widgets/api_config_dialog.dart';
+
 import 'package:dio/dio.dart';
 import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
@@ -28,6 +28,8 @@ import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
 import 'package:iFloraBuzz/core/widgets/password_verification_dialog.dart';
 import 'package:iFloraBuzz/features/settings/presentation/widgets/whatsapp_business_profile_dialog.dart';
+import 'package:iFloraBuzz/features/notifications/presentation/widgets/notification_bell_icon.dart';
+import 'package:iFloraBuzz/features/notifications/presentation/bloc/notification_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardShell extends StatefulWidget {
@@ -1249,7 +1251,22 @@ class _DashboardShellState extends State<DashboardShell> {
               return const SizedBox.shrink();
             },
           ),
+          // Notification Bell Icon with Badge Count
+          BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, authState) {
+              if (authState is AuthAuthenticated) {
+                final tenantId = authState.tenant['id']?.toString() ??
+                    authState.tenant['_id']?.toString() ??
+                    '';
+                if (tenantId.isNotEmpty) {
+                  return NotificationBellIcon(tenantId: tenantId);
+                }
+              }
+              return const SizedBox.shrink();
+            },
+          ),
           const SizedBox(width: 8),
+
           // Support button
           const _SupportButton(isMobile: false),
           const SizedBox(width: 8),

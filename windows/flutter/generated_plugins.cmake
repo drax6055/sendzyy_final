@@ -4,7 +4,11 @@
 
 list(APPEND FLUTTER_PLUGIN_LIST
   emoji_picker_flutter
+<<<<<<< HEAD
   flutter_secure_storage_windows
+=======
+  firebase_core
+>>>>>>> d6b303895cfb98144db67dae9a81a29ccbde15b5
   printing
 )
 

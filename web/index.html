@@ -278,6 +278,22 @@
       rzp1.open();
     }
   </script>
+  <!-- Firebase JS SDK & Service Worker Registration -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-messaging-compat.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('/firebase-messaging-sw.js')
+          .then(function (registration) {
+            console.log('[Firebase SW] Service worker registered successfully:', registration.scope);
+          })
+          .catch(function (err) {
+            console.error('[Firebase SW] Service worker registration failed:', err);
+          });
+      });
+    }
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 
