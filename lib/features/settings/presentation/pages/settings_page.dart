@@ -1753,9 +1753,6 @@ class _SettingsPageState extends State<SettingsPage> {
       );
 
       if (result == null) {
-        if (mounted) {
-          _showManualConfig(context);
-        }
         return;
       }
 
@@ -2257,7 +2254,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         SizedBox(
                           width: isMobile ? double.infinity : null,
                           child: OutlinedButton.icon(
-                            onPressed: () => _showManualConfig(context),
+                            onPressed: _connectMeta,
                             icon: const Icon(Icons.edit_note),
                             label: const Text('Update Connection Settings'),
                             style: OutlinedButton.styleFrom(
