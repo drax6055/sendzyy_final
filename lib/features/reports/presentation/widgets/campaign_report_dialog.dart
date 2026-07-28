@@ -478,7 +478,7 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
   ) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.06),
           borderRadius: BorderRadius.circular(10),
@@ -489,15 +489,29 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
           children: [
             Icon(icon, size: 18, color: color),
             const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: color,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                value,
+                maxLines: 1,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: color,
+                ),
               ),
             ),
-            Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+            const SizedBox(height: 2),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ),
           ],
         ),
       ),
@@ -600,14 +614,21 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
               ),
           ] else ...[
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                _statPill('Sent', successCount + failureCount, Colors.blue),
-                const SizedBox(width: 8),
-                _statPill('Delivered', successCount, Colors.green),
-                const SizedBox(width: 8),
-                _statPill('Failed', failureCount, Colors.red),
-                const Spacer(),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _statPill('Sent', successCount + failureCount, Colors.blue),
+                    _statPill('Delivered', successCount, Colors.green),
+                    _statPill('Failed', failureCount, Colors.red),
+                  ],
+                ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -817,14 +838,13 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              child: Row(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   _statChip('Sent', sentCount, Colors.blue),
-                  const SizedBox(width: 8),
                   _statChip('Delivered', deliveredCount, Colors.green),
-                  const SizedBox(width: 8),
                   _statChip('Read', readCount, Colors.orange),
-                  const SizedBox(width: 8),
                   _statChip('Failed', failedCount, Colors.red),
                 ],
               ),

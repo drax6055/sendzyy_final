@@ -79,7 +79,9 @@ class _MultiContactPickerDialogState extends State<MultiContactPickerDialog> {
         return;
       }
 
-      final contacts = await FlutterContacts.getAll();
+      final contacts = await FlutterContacts.getAll(
+        properties: {ContactProperty.name, ContactProperty.phone},
+      );
 
       final List<ContactItem> items = [];
       for (final contact in contacts) {
@@ -165,9 +167,11 @@ class _MultiContactPickerDialogState extends State<MultiContactPickerDialog> {
       } else {
         _filteredContactItems = _allContactItems.where((item) {
           final displayName = (item.contact.displayName ?? '').toLowerCase();
+          final labelName = _getPhoneLabel(item.phone).toLowerCase();
           final nameMatch = displayName.contains(query);
           final phoneMatch = item.normalizedNumber.contains(query) || item.phone.number.contains(query);
-          return nameMatch || phoneMatch;
+          final labelMatch = labelName.contains(query);
+          return nameMatch || phoneMatch || labelMatch;
         }).toList();
       }
     });
@@ -208,6 +212,20 @@ class _MultiContactPickerDialogState extends State<MultiContactPickerDialog> {
     } else {
       return parts[0][0].toUpperCase();
     }
+  }
+
+  String _getPhoneLabel(Phone phone) {
+    if (phone.label.customLabel != null && phone.label.customLabel!.trim().isNotEmpty) {
+      return phone.label.customLabel!.trim();
+    }
+    final name = phone.label.label.name;
+    if (name.isEmpty) return '';
+    if (name == 'iPhone') return 'iPhone';
+    final formatted = name.replaceAllMapped(
+      RegExp(r'([A-Z])'),
+      (match) => ' ${match.group(0)}',
+    );
+    return formatted[0].toUpperCase() + formatted.substring(1).trim();
   }
 
   @override
@@ -536,6 +554,7 @@ class _MultiContactPickerDialogState extends State<MultiContactPickerDialog> {
         final item = _filteredContactItems[index];
         final isSelected = _selectedNumbers.contains(item.normalizedNumber);
         final displayName = item.contact.displayName ?? '';
+        final phoneLabel = _getPhoneLabel(item.phone);
         final avatarColor = _getAvatarColor(displayName);
         final initials = _getInitials(displayName);
 
@@ -554,12 +573,44 @@ class _MultiContactPickerDialogState extends State<MultiContactPickerDialog> {
               }
             });
           },
-          title: Text(
-            displayName.isNotEmpty ? displayName : 'Unknown',
-            style: TextStyle(
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-              fontSize: 15,
-            ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  displayName.isNotEmpty ? displayName : 'Unknown',
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                    fontSize: 15,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (phoneLabel.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppTheme.primaryColor.withValues(alpha: 0.12)
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppTheme.primaryColor.withValues(alpha: 0.3)
+                          : Colors.grey.shade300,
+                    ),
+                  ),
+                  child: Text(
+                    phoneLabel,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected ? AppTheme.primaryColor : Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
           subtitle: Text(
             item.phone.number,

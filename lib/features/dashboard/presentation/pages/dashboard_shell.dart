@@ -511,7 +511,7 @@ class _DashboardShellState extends State<DashboardShell> {
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected ? AppTheme.secondaryColor : Colors.grey.shade600,
                         ),
-                      ),
+                      ), 
                     ],
                   ),
                 ),
@@ -530,7 +530,7 @@ class _DashboardShellState extends State<DashboardShell> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        InkWell(
+        InkWell(                                                                                                                                            
           onTap: () {
             setState(() {
               _isSettingsExpanded = !_isSettingsExpanded;
@@ -546,6 +546,8 @@ class _DashboardShellState extends State<DashboardShell> {
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
+
+
             child: Row(
               children: [
                 const Icon(
@@ -885,7 +887,7 @@ class _DashboardShellState extends State<DashboardShell> {
         accessToken != null &&
         wabaId.isNotEmpty &&
         accessToken.isNotEmpty &&
-        (_headerWabaId != wabaId || _headerPhoneNumbers.isEmpty) &&
+        (_headerWabaId != wabaId || _headerPhoneNumbers.length < 2) &&
         !_loadingHeaderPhoneNumbers) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _fetchHeaderPhoneNumbers(wabaId, accessToken);
@@ -928,21 +930,77 @@ class _DashboardShellState extends State<DashboardShell> {
     final List<Map<String, dynamic>> itemsList = [];
     final Set<String> seenIds = {};
 
-    for (final p in _headerPhoneNumbers) {
-      final id = p['id']?.toString();
-      if (id != null && id.isNotEmpty && !seenIds.contains(id)) {
-        seenIds.add(id);
-        itemsList.add(p);
+    void addPhoneItem(dynamic item) {
+      if (item == null) return;
+      if (item is Map) {
+        final map = Map<String, dynamic>.from(item);
+        final id = map['id']?.toString() ??
+            map['phoneNumberId']?.toString() ??
+            map['phone_number_id']?.toString();
+        if (id != null && id.isNotEmpty && !seenIds.contains(id)) {
+          seenIds.add(id);
+          itemsList.add({
+            'id': id,
+            'display_phone_number': map['display_phone_number']?.toString() ??
+                map['displayPhone']?.toString() ??
+                map['phoneNumber']?.toString() ??
+                map['phone_number']?.toString() ??
+                id,
+            'verified_name': map['verified_name']?.toString() ??
+                map['verifiedName']?.toString() ??
+                config['verifiedName']?.toString() ??
+                '',
+            'quality_rating': map['quality_rating']?.toString() ??
+                map['qualityRating']?.toString() ??
+                'GREEN',
+            'throughput': map['throughput'],
+          });
+        }
+      } else if (item is String && item.isNotEmpty && !seenIds.contains(item)) {
+        seenIds.add(item);
+        itemsList.add({
+          'id': item,
+          'display_phone_number': item,
+          'verified_name': config['verifiedName']?.toString() ?? '',
+          'quality_rating': 'GREEN',
+        });
       }
     }
 
-    if (!seenIds.contains(currentPhoneId)) {
-      itemsList.insert(0, {
+    // 1. Add active phone number from current config
+    if (currentPhoneId.isNotEmpty) {
+      addPhoneItem({
         'id': currentPhoneId,
-        'display_phone_number': config['displayPhone'] ?? 'Active Number',
+        'display_phone_number': config['displayPhone'] ??
+            config['display_phone_number'] ??
+            config['phoneNumber'] ??
+            'Active Number',
         'verified_name': config['verifiedName'] ?? 'Verified Name',
         'quality_rating': config['qualityRating'] ?? 'GREEN',
       });
+    }
+
+    // 2. Add phone numbers fetched from Meta Graph API
+    for (final p in _headerPhoneNumbers) {
+      addPhoneItem(p);
+    }
+
+    // 3. Add any additional phone numbers saved in tenant config
+    final rawConfigLists = [
+      config['phoneNumbers'],
+      config['availablePhoneNumbers'],
+      config['phone_numbers'],
+      config['allPhoneNumbers'],
+      config['numbers'],
+      config['phoneList'],
+    ];
+
+    for (final listObj in rawConfigLists) {
+      if (listObj is List) {
+        for (final item in listObj) {
+          addPhoneItem(item);
+        }
+      }
     }
 
     return Container(

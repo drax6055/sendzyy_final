@@ -1018,6 +1018,7 @@ class WhatsAppRepository {
         '${AppConstants.metaGraphUrl}/$wabaId/phone_numbers',
         queryParameters: {
           'fields': 'id,display_phone_number,verified_name,code_verification_status,quality_rating,platform_type,throughput,webhook_configuration',
+          'limit': 100,
           'access_token': accessToken,
         },
       );
