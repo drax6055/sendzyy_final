@@ -5,3 +5,4 @@ void registerWebPlatformView(String viewId, dynamic element) {
   // ignore: undefined_prefixed_name
   ui_web.platformViewRegistry.registerViewFactory(viewId, (int viewId) => element);
 }
+

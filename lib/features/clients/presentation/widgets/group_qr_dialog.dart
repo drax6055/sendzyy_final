@@ -11,9 +11,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:image/image.dart' as img;
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:iFloraBuzz/core/constants/app_constants.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
+import 'package:sendzyy/core/constants/app_constants.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/clients/data/models/group_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class GroupQrDialog extends StatefulWidget {
@@ -375,3 +375,4 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
     );
   }
 }
+

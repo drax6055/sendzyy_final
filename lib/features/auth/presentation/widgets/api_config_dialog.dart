@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/core/constants/app_constants.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/core/constants/app_constants.dart';
 
 class ApiConfigDialog extends StatefulWidget {
   final String? initialWabaId;
@@ -247,3 +247,4 @@ class _ApiConfigDialogState extends State<ApiConfigDialog> {
     );
   }
 }
+

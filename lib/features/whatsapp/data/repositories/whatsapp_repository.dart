@@ -2,12 +2,12 @@ import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:iFloraBuzz/core/constants/app_constants.dart';
+import 'package:sendzyy/core/constants/app_constants.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io';
 import 'dart:convert';
-import 'package:iFloraBuzz/features/credits/data/models/panel_plan.dart';
-import 'package:iFloraBuzz/features/templates/data/models/app_entry.dart';
+import 'package:sendzyy/features/credits/data/models/panel_plan.dart';
+import 'package:sendzyy/features/templates/data/models/app_entry.dart';
 
 class WhatsAppRepository {
   final Dio _dio;
@@ -1012,6 +1012,29 @@ class WhatsAppRepository {
     required String wabaId,
     required String accessToken,
   }) async {
+    // 1. Try backend proxy first — works on all platforms (mobile + web)
+    try {
+      final response = await _dio.get(
+        '/whatsapp-phone-numbers',
+        queryParameters: {'wabaId': wabaId},
+      );
+      if (response.statusCode == 200) {
+        final dynamic body = response.data;
+        List<dynamic>? dataList;
+        if (body is Map && body['data'] is List) {
+          dataList = body['data'] as List<dynamic>;
+        } else if (body is List) {
+          dataList = body;
+        }
+        if (dataList != null && dataList.isNotEmpty) {
+          return dataList.cast<Map<String, dynamic>>();
+        }
+      }
+    } catch (_) {
+      // Backend proxy not available — fall through to direct Meta API call
+    }
+
+    // 2. Fallback: Direct Meta Graph API call (works on web, may fail on mobile)
     try {
       final dio = Dio(); // Use a clean Dio instance to avoid custom application headers
       final response = await dio.get(
@@ -1173,4 +1196,5 @@ class WhatsAppRepository {
     }
   }
 }
+
 

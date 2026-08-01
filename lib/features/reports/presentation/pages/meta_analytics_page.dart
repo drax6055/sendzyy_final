@@ -6,12 +6,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:csv/csv.dart';
 import 'package:dio/dio.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/core/widgets/compact_date_range_picker.dart';
-import 'package:iFloraBuzz/core/constants/app_constants.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/core/widgets/compact_date_range_picker.dart';
+import 'package:sendzyy/core/constants/app_constants.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 
 class MetaAnalyticsPage extends StatefulWidget {
   const MetaAnalyticsPage({super.key});
@@ -1675,3 +1675,4 @@ class _LineChartPainter extends CustomPainter {
         oldDelegate.linesData != linesData;
   }
 }
+

@@ -1,26 +1,26 @@
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
-import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
+import 'package:sendzyy/features/chat/data/services/socket_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:iFloraBuzz/core/services/encryption_service.dart';
-import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
-import 'package:iFloraBuzz/features/messages/presentation/bloc/message_bloc.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
-import 'package:iFloraBuzz/features/reports/presentation/bloc/report_bloc.dart';
-import 'package:iFloraBuzz/features/chat/presentation/bloc/chat_bloc.dart';
-import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
-import 'package:iFloraBuzz/features/clients/presentation/bloc/client_bloc.dart';
-import 'package:iFloraBuzz/features/chatbot/data/repositories/chatbot_repository.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart';
-import 'package:iFloraBuzz/features/clients/data/repositories/group_repository.dart';
-import 'package:iFloraBuzz/features/clients/presentation/bloc/group_bloc.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/retry_repository.dart';
+import 'package:sendzyy/core/services/encryption_service.dart';
+import 'package:sendzyy/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:sendzyy/features/templates/presentation/bloc/template_bloc.dart';
+import 'package:sendzyy/features/messages/presentation/bloc/message_bloc.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/features/reports/presentation/bloc/report_bloc.dart';
+import 'package:sendzyy/features/chat/presentation/bloc/chat_bloc.dart';
+import 'package:sendzyy/features/clients/data/repositories/client_repository.dart';
+import 'package:sendzyy/features/clients/presentation/bloc/client_bloc.dart';
+import 'package:sendzyy/features/chatbot/data/repositories/chatbot_repository.dart';
+import 'package:sendzyy/features/chatbot/presentation/bloc/chatbot_bloc.dart';
+import 'package:sendzyy/features/clients/data/repositories/group_repository.dart';
+import 'package:sendzyy/features/clients/presentation/bloc/group_bloc.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/retry_repository.dart';
 import '../constants/app_constants.dart';
 
-import 'package:iFloraBuzz/features/notifications/data/datasources/notification_remote_datasource.dart';
-import 'package:iFloraBuzz/features/notifications/data/repositories/notification_repository.dart';
-import 'package:iFloraBuzz/features/notifications/presentation/bloc/notification_bloc.dart';
+import 'package:sendzyy/features/notifications/data/datasources/notification_remote_datasource.dart';
+import 'package:sendzyy/features/notifications/data/repositories/notification_repository.dart';
+import 'package:sendzyy/features/notifications/presentation/bloc/notification_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -104,3 +104,4 @@ Future<void> init() async {
   // Features - Notifications
   getIt.registerFactory(() => NotificationBloc(repository: getIt()));
 }
+

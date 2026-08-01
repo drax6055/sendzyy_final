@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
+import 'package:sendzyy/features/clients/data/models/group_model.dart';
 
 class GroupRepository {
   final Dio _dio;
@@ -89,3 +89,4 @@ class GroupRepository {
     }
   }
 }
+

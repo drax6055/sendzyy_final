@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
 
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
@@ -317,3 +317,4 @@ class _ContactRow extends StatelessWidget {
     );
   }
 }
+

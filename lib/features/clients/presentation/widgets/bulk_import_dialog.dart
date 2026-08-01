@@ -8,9 +8,9 @@ import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
-import 'package:iFloraBuzz/features/clients/presentation/bloc/client_bloc.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/clients/data/models/client_model.dart';
+import 'package:sendzyy/features/clients/presentation/bloc/client_bloc.dart';
 
 class BulkImportDialog extends StatefulWidget {
   const BulkImportDialog({super.key});
@@ -272,3 +272,4 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
 extension on String {
   String? get nullIfEmpty => isEmpty ? null : this;
 }
+

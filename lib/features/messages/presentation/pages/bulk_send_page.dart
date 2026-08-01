@@ -1,22 +1,22 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
-import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
-import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
-import 'package:iFloraBuzz/features/clients/presentation/bloc/group_bloc.dart';
-import 'package:iFloraBuzz/features/clients/presentation/widgets/group_selection_dialog.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/features/clients/data/models/client_model.dart';
+import 'package:sendzyy/features/clients/data/models/group_model.dart';
+import 'package:sendzyy/features/clients/data/repositories/client_repository.dart';
+import 'package:sendzyy/features/clients/presentation/bloc/group_bloc.dart';
+import 'package:sendzyy/features/clients/presentation/widgets/group_selection_dialog.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/messages/presentation/bloc/message_bloc.dart';
-import 'package:iFloraBuzz/features/messages/presentation/widgets/csv_uploader.dart';
-import 'package:iFloraBuzz/features/messages/presentation/widgets/client_selection_dialog.dart';
-import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/templates/presentation/widgets/whatsapp_preview.dart';
-import 'package:iFloraBuzz/features/messages/presentation/widgets/campaign_result_dialog.dart';
-import 'package:iFloraBuzz/core/widgets/multi_contact_picker_dialog.dart';
+import 'package:sendzyy/features/messages/presentation/bloc/message_bloc.dart';
+import 'package:sendzyy/features/messages/presentation/widgets/csv_uploader.dart';
+import 'package:sendzyy/features/messages/presentation/widgets/client_selection_dialog.dart';
+import 'package:sendzyy/features/templates/presentation/bloc/template_bloc.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/templates/presentation/widgets/whatsapp_preview.dart';
+import 'package:sendzyy/features/messages/presentation/widgets/campaign_result_dialog.dart';
+import 'package:sendzyy/core/widgets/multi_contact_picker_dialog.dart';
 
 class BulkSendPage extends StatefulWidget {
   const BulkSendPage({super.key});
@@ -1816,3 +1816,4 @@ class _BulkSendPageState extends State<BulkSendPage> {
     }
   }
 }
+

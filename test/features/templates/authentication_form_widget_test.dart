@@ -3,7 +3,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iFloraBuzz/features/templates/data/models/auth_form_state.dart';
+import 'package:sendzyy/features/templates/data/models/auth_form_state.dart';
 
 // ---------------------------------------------------------------------------
 // Property 5: App_Setup section visibility follows delivery type
@@ -192,3 +192,4 @@ void main() {
     );
   });
 }
+

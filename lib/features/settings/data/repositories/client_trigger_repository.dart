@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:iFloraBuzz/features/settings/data/models/client_trigger_model.dart';
+import 'package:sendzyy/features/settings/data/models/client_trigger_model.dart';
 
 class ClientTriggerRepository {
   final Dio _dio;
@@ -85,3 +85,4 @@ class ClientTriggerRepository {
     }
   }
 }
+

@@ -3,13 +3,13 @@ import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:iFloraBuzz/core/constants/app_constants.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/core/utils/media_validator.dart';
-import 'package:iFloraBuzz/features/settings/data/models/client_trigger_model.dart';
-import 'package:iFloraBuzz/features/settings/data/repositories/client_trigger_repository.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/core/constants/app_constants.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/core/utils/media_validator.dart';
+import 'package:sendzyy/features/settings/data/models/client_trigger_model.dart';
+import 'package:sendzyy/features/settings/data/repositories/client_trigger_repository.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ---------------------------------------------------------------------------
@@ -2204,3 +2204,4 @@ class _SmallBadge extends StatelessWidget {
     );
   }
 }
+

@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
-import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
+import 'package:sendzyy/features/clients/data/models/client_model.dart';
+import 'package:sendzyy/features/clients/data/repositories/client_repository.dart';
 
 // Events
 abstract class ClientsEvent {}
@@ -179,3 +179,4 @@ class ClientsBloc extends Bloc<ClientsEvent, ClientsState> {
     }
   }
 }
+

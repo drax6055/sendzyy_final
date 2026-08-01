@@ -95,3 +95,4 @@ class NotificationBellIcon extends StatelessWidget {
     return count.toString();
   }
 }
+

@@ -7,10 +7,10 @@ import 'package:open_file/open_file.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
-import 'package:iFloraBuzz/features/messages/data/models/recipient_data.dart';
+import 'package:sendzyy/features/messages/data/models/recipient_data.dart';
 
 // Re-export so existing imports of csv_uploader.dart continue to work.
-export 'package:iFloraBuzz/features/messages/data/models/recipient_data.dart';
+export 'package:sendzyy/features/messages/data/models/recipient_data.dart';
 
 class CsvUploader extends StatelessWidget {
   final Function(List<RecipientData> parsed, {required int invalidCount, required int duplicateCount}) onParsed;
@@ -268,3 +268,4 @@ class CsvUploader extends StatelessWidget {
     );
   }
 }
+

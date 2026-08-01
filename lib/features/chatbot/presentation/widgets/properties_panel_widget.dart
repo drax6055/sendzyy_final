@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/features/chatbot/data/models/flow_graph.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/widgets/node_forms/action_node_form.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/widgets/node_forms/condition_node_form.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/widgets/node_forms/end_node_form.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/widgets/node_forms/list_message_node_form.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/widgets/node_forms/message_node_form.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/widgets/node_forms/question_node_form.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/widgets/node_forms/quick_reply_node_form.dart';
+import 'package:sendzyy/features/chatbot/data/models/flow_graph.dart';
+import 'package:sendzyy/features/chatbot/presentation/widgets/node_forms/action_node_form.dart';
+import 'package:sendzyy/features/chatbot/presentation/widgets/node_forms/condition_node_form.dart';
+import 'package:sendzyy/features/chatbot/presentation/widgets/node_forms/end_node_form.dart';
+import 'package:sendzyy/features/chatbot/presentation/widgets/node_forms/list_message_node_form.dart';
+import 'package:sendzyy/features/chatbot/presentation/widgets/node_forms/message_node_form.dart';
+import 'package:sendzyy/features/chatbot/presentation/widgets/node_forms/question_node_form.dart';
+import 'package:sendzyy/features/chatbot/presentation/widgets/node_forms/quick_reply_node_form.dart';
 
 class PropertiesPanelWidget extends StatelessWidget {
   final FlowNode? selectedNode;
@@ -127,3 +127,4 @@ class PropertiesPanelWidget extends StatelessWidget {
     }
   }
 }
+

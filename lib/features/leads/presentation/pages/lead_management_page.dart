@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/core/widgets/compact_date_range_picker.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/core/widgets/compact_date_range_picker.dart';
 
 // ---------------------------------------------------------------------------
 // Data model
@@ -1694,3 +1694,4 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
+

@@ -20,3 +20,4 @@ class EncryptionService {
     return decrypted;
   }
 }
+

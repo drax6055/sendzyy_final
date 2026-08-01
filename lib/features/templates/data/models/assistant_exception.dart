@@ -4,3 +4,4 @@ class AssistantException implements Exception {
 
   const AssistantException(this.message, {this.isKeyNotConfigured = false});
 }
+

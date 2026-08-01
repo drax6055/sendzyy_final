@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
-import 'package:iFloraBuzz/features/clients/data/repositories/group_repository.dart';
+import 'package:sendzyy/features/clients/data/models/group_model.dart';
+import 'package:sendzyy/features/clients/data/repositories/group_repository.dart';
 
 // Events
 abstract class GroupsEvent {}
@@ -98,3 +98,4 @@ class GroupsBloc extends Bloc<GroupsEvent, GroupsState> {
     }
   }
 }
+

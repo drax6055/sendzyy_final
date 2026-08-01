@@ -20,3 +20,4 @@ class MetaSignupResult {
     this.businessPortfolioId,
   });
 }
+

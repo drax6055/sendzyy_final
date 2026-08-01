@@ -1,8 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/messages/data/models/recipient_data.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/features/messages/data/models/recipient_data.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 
 // Events
 abstract class MessageEvent extends Equatable {
@@ -116,3 +116,4 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     });
   }
 }
+

@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'package:iFloraBuzz/core/js/razorpay_interop.dart';
+import 'package:sendzyy/core/js/razorpay_interop.dart';
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/auth/presentation/pages/login_page.dart';
-import 'package:iFloraBuzz/features/credits/data/models/panel_plan.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/auth/presentation/pages/login_page.dart';
+import 'package:sendzyy/features/credits/data/models/panel_plan.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 import 'package:dio/dio.dart';
 
 class PackageSelectionPage extends StatefulWidget {
@@ -482,3 +482,4 @@ class _FeatureRow extends StatelessWidget {
     );
   }
 }
+

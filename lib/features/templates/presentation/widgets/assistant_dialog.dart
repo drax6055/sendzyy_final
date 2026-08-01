@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/templates/data/models/assistant_exception.dart';
-import 'package:iFloraBuzz/features/templates/data/models/generated_template.dart';
-import 'package:iFloraBuzz/features/templates/data/services/template_assistant_service.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/templates/data/models/assistant_exception.dart';
+import 'package:sendzyy/features/templates/data/models/generated_template.dart';
+import 'package:sendzyy/features/templates/data/services/template_assistant_service.dart';
 
 class AssistantDialog extends StatefulWidget {
   final void Function(String body, String? header, String? footer) onApply;
@@ -396,3 +396,4 @@ class _AssistantDialogState extends State<AssistantDialog> {
     );
   }
 }
+

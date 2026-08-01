@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
 
 class CategorySelectorWidget extends StatelessWidget {
   final String selectedCategory;
@@ -135,3 +135,4 @@ class _CategoryCard extends StatelessWidget {
     );
   }
 }
+

@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/chatbot/data/models/chatbot_model.dart';
-import 'package:iFloraBuzz/features/chatbot/data/repositories/chatbot_repository.dart';
+import 'package:sendzyy/features/chatbot/data/models/chatbot_model.dart';
+import 'package:sendzyy/features/chatbot/data/repositories/chatbot_repository.dart';
 
 // Events
 abstract class ChatbotEvent {}
@@ -176,3 +176,4 @@ class ChatbotBloc extends Bloc<ChatbotEvent, ChatbotState> {
     }
   }
 }
+

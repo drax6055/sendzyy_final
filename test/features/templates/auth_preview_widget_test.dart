@@ -3,8 +3,8 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iFloraBuzz/features/templates/data/models/app_entry.dart';
-import 'package:iFloraBuzz/features/templates/data/models/auth_form_state.dart';
+import 'package:sendzyy/features/templates/data/models/app_entry.dart';
+import 'package:sendzyy/features/templates/data/models/auth_form_state.dart';
 
 // ---------------------------------------------------------------------------
 // Pure helper — mirrors AuthPreviewWidget._buildBodyText() exactly.
@@ -337,3 +337,4 @@ void main() {
     );
   });
 }
+

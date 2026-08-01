@@ -34,3 +34,4 @@ class PanelPlan {
         panelDays: (json['panelDays'] as num?)?.toInt() ?? 365,
       );
 }
+

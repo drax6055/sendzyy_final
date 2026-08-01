@@ -15,3 +15,4 @@ class GeneratedTemplate {
         footer: json['footer'] as String?,
       );
 }
+

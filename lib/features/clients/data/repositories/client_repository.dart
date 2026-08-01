@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
-import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
-import 'package:iFloraBuzz/features/clients/data/models/paginated_clients.dart';
+import 'package:sendzyy/features/clients/data/models/client_model.dart';
+import 'package:sendzyy/features/clients/data/models/paginated_clients.dart';
 
 class ClientRepository {
   final Dio _dio;
@@ -153,3 +153,4 @@ class ClientRepository {
     }
   }
 }
+

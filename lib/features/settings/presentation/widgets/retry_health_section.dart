@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/retry_repository.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/retry_repository.dart';
 import 'package:intl/intl.dart';
 
 /// Expandable settings tile showing retry system health metrics and
@@ -605,3 +605,4 @@ class _RetryHealthSectionState extends State<RetryHealthSection> {
     }
   }
 }
+

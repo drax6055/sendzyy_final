@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/templates/presentation/widgets/whatsapp_preview.dart';
-import 'package:iFloraBuzz/features/templates/presentation/pages/create_template_page.dart';
-import 'package:iFloraBuzz/features/templates/presentation/pages/test_template_page.dart' show TestTemplateDialog;
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
+import 'package:sendzyy/features/templates/presentation/bloc/template_bloc.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/templates/presentation/widgets/whatsapp_preview.dart';
+import 'package:sendzyy/features/templates/presentation/pages/create_template_page.dart';
+import 'package:sendzyy/features/templates/presentation/pages/test_template_page.dart' show TestTemplateDialog;
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/features/chat/data/services/socket_service.dart';
 import 'package:dio/dio.dart';
 
 class TemplateListPage extends StatefulWidget {
@@ -811,3 +811,4 @@ class _RejectionDetailsDialogState extends State<RejectionDetailsDialog> {
     );
   }
 }
+

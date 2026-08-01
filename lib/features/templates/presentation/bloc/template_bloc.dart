@@ -1,8 +1,8 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/templates/data/models/app_entry.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/features/templates/data/models/app_entry.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 
 // Events
 abstract class TemplateEvent extends Equatable {
@@ -231,3 +231,4 @@ class TemplateBloc extends Bloc<TemplateEvent, TemplateState> {
     });
   }
 }
+

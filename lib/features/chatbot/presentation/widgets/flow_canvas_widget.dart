@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/features/chatbot/data/models/flow_graph.dart';
+import 'package:sendzyy/features/chatbot/data/models/flow_graph.dart';
 
 const double kNodeWidth = 200;
 const double kNodeHeight = 80;
@@ -529,3 +529,4 @@ class _EdgePainter extends CustomPainter {
   @override
   bool shouldRepaint(_EdgePainter oldDelegate) => true;
 }
+

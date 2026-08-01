@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
+import 'package:sendzyy/core/di/injection.dart';
 
 
 class UpdateMessagePage extends StatefulWidget {
@@ -335,3 +335,4 @@ class _UpdateMessagePageState extends State<UpdateMessagePage> {
     );
   }
 }
+

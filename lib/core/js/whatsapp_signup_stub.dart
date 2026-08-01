@@ -5,3 +5,4 @@ Future<MetaSignupResult?> launchWhatsAppSignupFlow(String appId, String configId
   // Meta signup popup is not supported on mobile platforms
   return null;
 }
+

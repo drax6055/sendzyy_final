@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
 
 /// Shows a compact inline date-range picker dialog.
 Future<DateTimeRange?> showCompactDateRangePicker({
@@ -394,3 +394,4 @@ class _PresetChip extends StatelessWidget {
     );
   }
 }
+

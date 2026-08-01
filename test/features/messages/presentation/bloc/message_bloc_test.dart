@@ -12,9 +12,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:iFloraBuzz/features/messages/presentation/bloc/message_bloc.dart';
-import 'package:iFloraBuzz/features/messages/data/models/recipient_data.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/features/messages/presentation/bloc/message_bloc.dart';
+import 'package:sendzyy/features/messages/data/models/recipient_data.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Fake repository — records call order and controls send/completePhase1 behaviour
@@ -253,3 +253,4 @@ void main() {
     );
   });
 }
+

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
 
 class MessageValidityPeriodWidget extends StatefulWidget {
   final bool enabled;
@@ -172,3 +172,4 @@ class _ValidityOption {
 
   const _ValidityOption({required this.label, required this.seconds});
 }
+

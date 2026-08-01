@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/retry_repository.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/retry_repository.dart';
 
 /// Expandable settings tile that lets admins view and update the
 /// multi-phase retry configuration.
@@ -657,3 +657,4 @@ class _CircleActionButton extends StatelessWidget {
     );
   }
 }
+

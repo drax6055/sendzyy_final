@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/features/chatbot/data/models/flow_graph.dart';
+import 'package:sendzyy/features/chatbot/data/models/flow_graph.dart';
 
 const _operators = ['==', '!=', 'contains', 'not contains', '>', '<', 'is empty', 'is not empty'];
 
@@ -269,3 +269,4 @@ class _RuleTile extends StatelessWidget {
     );
   }
 }
+

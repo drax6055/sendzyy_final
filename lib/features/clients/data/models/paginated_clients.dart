@@ -1,4 +1,4 @@
-import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
+import 'package:sendzyy/features/clients/data/models/client_model.dart';
 
 class PaginatedClients {
   final List<ClientModel> clients;
@@ -26,3 +26,4 @@ class PaginatedClients {
     );
   }
 }
+

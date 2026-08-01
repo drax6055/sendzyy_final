@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
-import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
-import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/clients/data/models/client_model.dart';
+import 'package:sendzyy/features/clients/data/models/group_model.dart';
+import 'package:sendzyy/features/clients/data/repositories/client_repository.dart';
 
 class ViewGroupClientsDialog extends StatefulWidget {
   final GroupModel group;
@@ -178,3 +178,4 @@ class _ViewGroupClientsDialogState extends State<ViewGroupClientsDialog> {
     );
   }
 }
+

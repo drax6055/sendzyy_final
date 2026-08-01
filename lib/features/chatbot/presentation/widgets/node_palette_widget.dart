@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/features/chatbot/data/models/flow_graph.dart';
+import 'package:sendzyy/features/chatbot/data/models/flow_graph.dart';
 
 class NodePaletteWidget extends StatelessWidget {
   const NodePaletteWidget({super.key});
@@ -102,3 +102,4 @@ class _DraggableTile extends StatelessWidget {
     );
   }
 }
+

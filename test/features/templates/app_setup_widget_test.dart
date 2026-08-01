@@ -3,7 +3,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iFloraBuzz/features/templates/data/models/app_entry.dart';
+import 'package:sendzyy/features/templates/data/models/app_entry.dart';
 
 // ---------------------------------------------------------------------------
 // Pure validator extracted from _AppEntryRowState (authentication_form_widget.dart)
@@ -174,3 +174,4 @@ void main() {
     );
   });
 }
+

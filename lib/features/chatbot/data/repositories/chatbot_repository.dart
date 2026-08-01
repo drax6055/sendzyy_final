@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:iFloraBuzz/features/chatbot/data/models/chatbot_model.dart';
+import 'package:sendzyy/features/chatbot/data/models/chatbot_model.dart';
 
 class ChatbotRepository {
   final Dio _dio;
@@ -126,3 +126,4 @@ class ChatbotRepository {
     return e.message;
   }
 }
+

@@ -3,8 +3,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
-import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
-import 'package:iFloraBuzz/core/constants/app_constants.dart';
+import 'package:sendzyy/features/chat/data/services/socket_service.dart';
+import 'package:sendzyy/core/constants/app_constants.dart';
 
 // Events
 abstract class AuthEvent extends Equatable {
@@ -292,3 +292,4 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     return '${dt.day}/${dt.month}/${dt.year}';
   }
 }
+

@@ -33,3 +33,4 @@ class GroupModel {
         'clientIds': clientIds,
       };
 }
+

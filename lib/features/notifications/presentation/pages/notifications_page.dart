@@ -325,3 +325,4 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return DateFormat('MMM d').format(dt);
   }
 }
+

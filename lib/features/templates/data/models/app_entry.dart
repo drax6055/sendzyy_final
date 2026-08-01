@@ -32,3 +32,4 @@ class AppEntry {
   String toString() =>
       'AppEntry(packageName: $packageName, signatureHash: $signatureHash)';
 }
+

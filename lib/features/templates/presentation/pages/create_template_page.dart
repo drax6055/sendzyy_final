@@ -3,16 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/foundation.dart' as foundation;
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/templates/data/models/auth_form_state.dart';
-import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
-import 'package:iFloraBuzz/features/templates/presentation/widgets/auth_preview_widget.dart';
-import 'package:iFloraBuzz/features/templates/presentation/widgets/authentication_form_widget.dart';
-import 'package:iFloraBuzz/features/templates/presentation/widgets/category_selector_widget.dart';
-import 'package:iFloraBuzz/features/templates/presentation/widgets/message_validity_period_widget.dart';
-import 'package:iFloraBuzz/features/templates/presentation/widgets/whatsapp_preview.dart';
-import 'package:iFloraBuzz/core/utils/media_validator.dart';
-import 'package:iFloraBuzz/features/templates/presentation/widgets/assistant_dialog.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/templates/data/models/auth_form_state.dart';
+import 'package:sendzyy/features/templates/presentation/bloc/template_bloc.dart';
+import 'package:sendzyy/features/templates/presentation/widgets/auth_preview_widget.dart';
+import 'package:sendzyy/features/templates/presentation/widgets/authentication_form_widget.dart';
+import 'package:sendzyy/features/templates/presentation/widgets/category_selector_widget.dart';
+import 'package:sendzyy/features/templates/presentation/widgets/message_validity_period_widget.dart';
+import 'package:sendzyy/features/templates/presentation/widgets/whatsapp_preview.dart';
+import 'package:sendzyy/core/utils/media_validator.dart';
+import 'package:sendzyy/features/templates/presentation/widgets/assistant_dialog.dart';
 
 class CreateTemplatePage extends StatefulWidget {
   const CreateTemplatePage({super.key});
@@ -1395,3 +1395,4 @@ class StickyPreview extends StatelessWidget {
     );
   }
 }
+

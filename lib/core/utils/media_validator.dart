@@ -52,3 +52,4 @@ class MediaValidator {
     return name.substring(dotIndex + 1);
   }
 }
+

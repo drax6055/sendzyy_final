@@ -6,11 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/chatbot/data/models/chatbot_model.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/pages/flow_builder_page.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/chatbot/data/models/chatbot_model.dart';
+import 'package:sendzyy/features/chatbot/presentation/bloc/chatbot_bloc.dart';
+import 'package:sendzyy/features/chatbot/presentation/pages/flow_builder_page.dart';
 
 class ChatbotListPage extends StatefulWidget {
   const ChatbotListPage({super.key});
@@ -916,3 +916,4 @@ class _BarChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(_BarChartPainter oldDelegate) => oldDelegate.analytics != analytics;
 }
+

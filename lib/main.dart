@@ -3,10 +3,10 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
-import 'package:iFloraBuzz/features/messages/presentation/bloc/message_bloc.dart';
-import 'package:iFloraBuzz/features/reports/presentation/bloc/report_bloc.dart';
+import 'package:sendzyy/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:sendzyy/features/templates/presentation/bloc/template_bloc.dart';
+import 'package:sendzyy/features/messages/presentation/bloc/message_bloc.dart';
+import 'package:sendzyy/features/reports/presentation/bloc/report_bloc.dart';
 import 'core/di/injection.dart' as di;
 import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
@@ -14,9 +14,9 @@ import 'features/auth/presentation/pages/package_selection_page.dart';
 import 'features/dashboard/presentation/pages/dashboard_shell.dart';
 import 'package:universal_html/html.dart' as html;
 import 'features/chat/data/services/socket_service.dart';
-import 'package:iFloraBuzz/features/admin/presentation/pages/update_message_page.dart';
+import 'package:sendzyy/features/admin/presentation/pages/update_message_page.dart';
 
-import 'package:iFloraBuzz/features/notifications/presentation/bloc/notification_bloc.dart';
+import 'package:sendzyy/features/notifications/presentation/bloc/notification_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -466,3 +466,4 @@ class MyCustomScrollBehavior extends MaterialScrollBehavior {
         PointerDeviceKind.stylus,
       };
 }
+

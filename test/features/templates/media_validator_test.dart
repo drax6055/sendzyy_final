@@ -6,7 +6,7 @@ import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iFloraBuzz/core/utils/media_validator.dart';
+import 'package:sendzyy/core/utils/media_validator.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers — build a PlatformFile with a given name and size (bytes)
@@ -395,3 +395,4 @@ void main() {
     );
   });
 }
+

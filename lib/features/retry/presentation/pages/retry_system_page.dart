@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/settings/presentation/widgets/retry_config_section.dart';
-import 'package:iFloraBuzz/features/settings/presentation/widgets/retry_health_section.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/settings/presentation/widgets/retry_config_section.dart';
+import 'package:sendzyy/features/settings/presentation/widgets/retry_health_section.dart';
 
 /// Full-page view for the Retry System.
 /// Left panel: Phase Configuration. Right panel: System Health & Logs.
@@ -135,3 +135,4 @@ class RetrySystemPage extends StatelessWidget {
     );
   }
 }
+

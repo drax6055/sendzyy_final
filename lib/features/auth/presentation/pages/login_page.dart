@@ -2,12 +2,12 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/dashboard/presentation/pages/dashboard_shell.dart';
-import 'package:iFloraBuzz/features/auth/presentation/pages/register_page.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/dashboard/presentation/pages/dashboard_shell.dart';
+import 'package:sendzyy/features/auth/presentation/pages/register_page.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -803,3 +803,4 @@ class _ForgotPasswordDialogState extends State<ForgotPasswordDialog> {
     );
   }
 }
+

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
+import 'package:sendzyy/features/clients/data/models/group_model.dart';
 
 class GroupCard extends StatelessWidget {
   final GroupModel group;
@@ -117,3 +117,4 @@ class GroupCard extends StatelessWidget {
     );
   }
 }
+

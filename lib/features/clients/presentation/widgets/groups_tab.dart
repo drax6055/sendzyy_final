@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
-import 'package:iFloraBuzz/features/clients/presentation/bloc/client_bloc.dart';
-import 'package:iFloraBuzz/features/clients/presentation/bloc/group_bloc.dart';
-import 'package:iFloraBuzz/features/clients/presentation/widgets/create_group_dialog.dart';
-import 'package:iFloraBuzz/features/clients/presentation/widgets/delete_group_dialog.dart';
-import 'package:iFloraBuzz/features/clients/presentation/widgets/group_card.dart';
-import 'package:iFloraBuzz/features/clients/presentation/widgets/group_qr_dialog.dart';
-import 'package:iFloraBuzz/features/clients/presentation/widgets/view_group_clients_dialog.dart';
+import 'package:sendzyy/features/clients/data/models/group_model.dart';
+import 'package:sendzyy/features/clients/presentation/bloc/client_bloc.dart';
+import 'package:sendzyy/features/clients/presentation/bloc/group_bloc.dart';
+import 'package:sendzyy/features/clients/presentation/widgets/create_group_dialog.dart';
+import 'package:sendzyy/features/clients/presentation/widgets/delete_group_dialog.dart';
+import 'package:sendzyy/features/clients/presentation/widgets/group_card.dart';
+import 'package:sendzyy/features/clients/presentation/widgets/group_qr_dialog.dart';
+import 'package:sendzyy/features/clients/presentation/widgets/view_group_clients_dialog.dart';
 
 class GroupsTab extends StatefulWidget {
   const GroupsTab({super.key});
@@ -212,3 +212,4 @@ class _GroupsTabState extends State<GroupsTab> {
     );
   }
 }
+

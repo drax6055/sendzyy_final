@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
 import 'package:intl/intl.dart';
 
 class CampaignResultDialog extends StatelessWidget {
@@ -90,3 +90,4 @@ class CampaignResultDialog extends StatelessWidget {
     );
   }
 }
+

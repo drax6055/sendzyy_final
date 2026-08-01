@@ -41,3 +41,4 @@ class RecipientData {
     return RecipientData(mobileNumber: normalized, variables: {});
   }
 }
+

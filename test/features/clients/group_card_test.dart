@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
-import 'package:iFloraBuzz/features/clients/presentation/widgets/group_card.dart';
+import 'package:sendzyy/features/clients/data/models/group_model.dart';
+import 'package:sendzyy/features/clients/presentation/widgets/group_card.dart';
 
 GroupModel _makeGroup() => GroupModel(
       id: 'group-1',
@@ -76,3 +76,5 @@ void main() {
     });
   });
 }
+
+  

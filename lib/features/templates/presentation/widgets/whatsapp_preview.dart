@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class WhatsAppPreview extends StatelessWidget {
@@ -420,3 +420,4 @@ class WhatsAppPreview extends StatelessWidget {
     );
   }
 }
+

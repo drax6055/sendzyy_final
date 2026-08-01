@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:iFloraBuzz/core/constants/app_constants.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/features/templates/data/models/assistant_exception.dart';
-import 'package:iFloraBuzz/features/templates/data/models/generated_template.dart';
+import 'package:sendzyy/core/constants/app_constants.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/features/templates/data/models/assistant_exception.dart';
+import 'package:sendzyy/features/templates/data/models/generated_template.dart';
 
 class TemplateAssistantService {
   final Dio _dio = getIt<Dio>();
@@ -44,3 +44,4 @@ class TemplateAssistantService {
     return e.message ?? 'An unexpected error occurred';
   }
 }
+

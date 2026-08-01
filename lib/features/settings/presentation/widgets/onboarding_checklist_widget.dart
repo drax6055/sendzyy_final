@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
 import 'package:dio/dio.dart';
 import 'package:universal_html/html.dart' as html;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -377,3 +377,4 @@ class _OnboardingChecklistWidgetState extends State<OnboardingChecklistWidget> {
     );
   }
 }
+

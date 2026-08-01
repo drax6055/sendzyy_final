@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/features/chatbot/data/models/flow_graph.dart';
+import 'package:sendzyy/features/chatbot/data/models/flow_graph.dart';
 
 class QuestionNodeForm extends StatefulWidget {
   final FlowNode node;
@@ -136,3 +136,4 @@ class _QuestionNodeFormState extends State<QuestionNodeForm> {
     );
   }
 }
+

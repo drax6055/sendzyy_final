@@ -77,3 +77,4 @@ class SocketService {
 
   bool get isConnected => _socket?.connected ?? false;
 }
+

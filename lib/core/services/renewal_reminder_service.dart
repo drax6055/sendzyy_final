@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
 
 /// Checks panel expiry every [checkInterval] and shows a reminder dialog
 /// if expiry is within [warnDays] days. Respects a [snoozeInterval] so the
@@ -195,3 +195,4 @@ class _RenewalReminderDialog extends StatelessWidget {
     );
   }
 }
+

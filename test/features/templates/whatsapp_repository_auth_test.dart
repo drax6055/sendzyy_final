@@ -23,8 +23,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:iFloraBuzz/features/templates/data/models/app_entry.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/features/templates/data/models/app_entry.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 
 // ---------------------------------------------------------------------------
 // Intercepting Dio adapter — captures the last POST body as a decoded Map
@@ -653,3 +653,4 @@ void main() {
     );
   });
 }
+

@@ -1,35 +1,36 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:iFloraBuzz/features/auth/presentation/pages/login_page.dart';
+import 'package:sendzyy/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:sendzyy/features/auth/presentation/pages/login_page.dart';
 
 import 'package:dio/dio.dart';
-import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/messages/presentation/pages/bulk_send_page.dart';
-import 'package:iFloraBuzz/features/templates/presentation/pages/template_list_page.dart';
-import 'package:iFloraBuzz/features/reports/presentation/pages/reports_page.dart';
-import 'package:iFloraBuzz/features/reports/presentation/pages/meta_analytics_page.dart';
-import 'package:iFloraBuzz/features/auth/presentation/pages/package_selection_page.dart';
-import 'package:iFloraBuzz/features/chat/presentation/pages/chat_page.dart';
-import 'package:iFloraBuzz/features/chat/presentation/bloc/chat_bloc.dart';
-import 'package:iFloraBuzz/features/clients/presentation/pages/clients_page.dart';
-import 'package:iFloraBuzz/features/settings/presentation/pages/settings_page.dart';
-import 'package:iFloraBuzz/features/help/presentation/pages/help_page.dart';
-import 'package:iFloraBuzz/features/scheduled/presentation/pages/scheduled_campaigns_page.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/pages/chatbot_list_page.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart';
-import 'package:iFloraBuzz/features/leads/presentation/pages/lead_management_page.dart';
-import 'package:iFloraBuzz/features/integrations/presentation/pages/integration_settings_page.dart';
-import 'package:iFloraBuzz/features/retry/presentation/pages/retry_system_page.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/services/renewal_reminder_service.dart';
-import 'package:iFloraBuzz/core/constants/app_constants.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
-import 'package:iFloraBuzz/core/widgets/password_verification_dialog.dart';
-import 'package:iFloraBuzz/features/settings/presentation/widgets/whatsapp_business_profile_dialog.dart';
-import 'package:iFloraBuzz/features/notifications/presentation/widgets/notification_bell_icon.dart';
-import 'package:iFloraBuzz/features/notifications/presentation/bloc/notification_bloc.dart';
+import 'package:sendzyy/features/templates/presentation/bloc/template_bloc.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/messages/presentation/pages/bulk_send_page.dart';
+import 'package:sendzyy/features/templates/presentation/pages/template_list_page.dart';
+import 'package:sendzyy/features/reports/presentation/pages/reports_page.dart';
+import 'package:sendzyy/features/reports/presentation/pages/meta_analytics_page.dart';
+import 'package:sendzyy/features/auth/presentation/pages/package_selection_page.dart';
+import 'package:sendzyy/features/chat/presentation/pages/chat_page.dart';
+import 'package:sendzyy/features/chat/presentation/bloc/chat_bloc.dart';
+import 'package:sendzyy/features/clients/presentation/pages/clients_page.dart';
+import 'package:sendzyy/features/settings/presentation/pages/settings_page.dart';
+import 'package:sendzyy/features/help/presentation/pages/help_page.dart';
+import 'package:sendzyy/features/scheduled/presentation/pages/scheduled_campaigns_page.dart';
+import 'package:sendzyy/features/chatbot/presentation/pages/chatbot_list_page.dart';
+import 'package:sendzyy/features/chatbot/presentation/bloc/chatbot_bloc.dart';
+import 'package:sendzyy/features/leads/presentation/pages/lead_management_page.dart';
+import 'package:sendzyy/features/integrations/presentation/pages/integration_settings_page.dart';
+import 'package:sendzyy/features/retry/presentation/pages/retry_system_page.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/core/services/renewal_reminder_service.dart';
+import 'package:sendzyy/core/constants/app_constants.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/core/widgets/password_verification_dialog.dart';
+import 'package:sendzyy/features/settings/presentation/widgets/whatsapp_business_profile_dialog.dart';
+import 'package:sendzyy/features/notifications/presentation/widgets/notification_bell_icon.dart';
+import 'package:sendzyy/features/notifications/presentation/bloc/notification_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardShell extends StatefulWidget {
@@ -54,7 +55,7 @@ class _DashboardShellState extends State<DashboardShell> {
   List<Map<String, dynamic>> _headerPhoneNumbers = [];
   bool _loadingHeaderPhoneNumbers = false;
   String? _headerWabaId;
-  bool _fetchedHeaderPhoneNumbers = false;
+  bool _fetchedHeaderPhoneNumbers = false; // true once fetch has been attempted for _headerWabaId
   bool _isHeaderUpdatingPhone = false;
 
   static const _selectedIndexKey = 'dashboard_selected_index';
@@ -65,6 +66,7 @@ class _DashboardShellState extends State<DashboardShell> {
     _restoreSelectedIndex();
     _initReminderService();
     _checkOnboardingStatus();
+    _loadCachedPhoneNumbers();
   }
 
   Future<void> _checkOnboardingStatus() async {
@@ -342,12 +344,15 @@ class _DashboardShellState extends State<DashboardShell> {
       child: Column(
         children: [
           const SizedBox(height: 18),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Image.asset('assets/images/logo.png'),
+          Center(
+            child: Image.asset(
+              'assets/images/logo.png',
+              height: 48,
+              fit: BoxFit.contain,
+            ),
           ),
           const SizedBox(height: 8),
-          const SizedBox(height: 18),
+
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -769,6 +774,30 @@ class _DashboardShellState extends State<DashboardShell> {
       ),
     );
   }
+  static const _cachedPhoneNumbersKey = 'cached_waba_phone_numbers';
+  static const _cachedPhoneWabaKey = 'cached_waba_id_for_phones';
+
+  /// Load phone numbers that were previously saved to SharedPreferences.
+  /// This is essential for mobile where direct Meta API calls may fail.
+  Future<void> _loadCachedPhoneNumbers() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final wabaId = prefs.getString(_cachedPhoneWabaKey);
+      final json = prefs.getString(_cachedPhoneNumbersKey);
+      if (wabaId != null && json != null) {
+        final list = (jsonDecode(json) as List<dynamic>)
+            .cast<Map<String, dynamic>>();
+        if (mounted && list.isNotEmpty) {
+          setState(() {
+            _headerWabaId = wabaId;
+            _headerPhoneNumbers = list;
+            _fetchedHeaderPhoneNumbers = true;
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<void> _fetchHeaderPhoneNumbers(
     String wabaId,
     String accessToken,
@@ -781,12 +810,26 @@ class _DashboardShellState extends State<DashboardShell> {
         wabaId: wabaId,
         accessToken: accessToken,
       );
+      if (numbers != null && numbers.isNotEmpty) {
+        // Persist for future sessions (especially mobile where direct API may fail)
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString(_cachedPhoneWabaKey, wabaId);
+          await prefs.setString(_cachedPhoneNumbersKey, jsonEncode(numbers));
+        } catch (_) {}
+      }
       if (mounted) {
         setState(() {
-          _headerPhoneNumbers = numbers ?? [];
+          _headerPhoneNumbers = numbers ?? _headerPhoneNumbers; // keep cached if API returned null
+          _fetchedHeaderPhoneNumbers = true;
         });
       }
     } catch (_) {
+      if (mounted) {
+        setState(() {
+          _fetchedHeaderPhoneNumbers = true;
+        });
+      }
     } finally {
       _loadingHeaderPhoneNumbers = false;
       if (mounted) {
@@ -885,14 +928,17 @@ class _DashboardShellState extends State<DashboardShell> {
     final accessToken = config['accessToken']?.toString();
     final currentPhoneId = config['phoneNumberId']?.toString();
 
+    // Fetch phone numbers once per WABA ID. Re-fetch if WABA ID changes.
     if (wabaId != null &&
         accessToken != null &&
         wabaId.isNotEmpty &&
         accessToken.isNotEmpty &&
-        (_headerWabaId != wabaId || _headerPhoneNumbers.length < 2) &&
+        (_headerWabaId != wabaId || !_fetchedHeaderPhoneNumbers) &&
         !_loadingHeaderPhoneNumbers) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _fetchHeaderPhoneNumbers(wabaId, accessToken);
+        if (mounted && (_headerWabaId != wabaId || !_fetchedHeaderPhoneNumbers) && !_loadingHeaderPhoneNumbers) {
+          _fetchHeaderPhoneNumbers(wabaId, accessToken);
+        }
       });
     }
 
@@ -1925,3 +1971,4 @@ class _SupportItem extends StatelessWidget {
     );
   }
 }
+

@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/core/di/injection.dart';
 
 /// Shows an "Enter Password" modal dialog to verify user identity before performing protected actions.
 /// Returns `true` if password is verified successfully, `false` otherwise.
@@ -137,3 +137,4 @@ Future<bool> showPasswordVerificationDialog(
 
   return result ?? false;
 }
+

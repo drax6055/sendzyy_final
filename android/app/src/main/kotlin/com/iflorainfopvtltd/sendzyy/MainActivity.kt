@@ -1,4 +1,4 @@
-package com.example.send_o
+package com.iflorainfopvtltd.sendzyy
 
 import io.flutter.embedding.android.FlutterActivity
 

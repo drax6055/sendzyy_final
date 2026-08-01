@@ -1,13 +1,13 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/chatbot/data/models/chatbot_model.dart';
-import 'package:iFloraBuzz/features/chatbot/data/models/flow_graph.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/widgets/flow_canvas_widget.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/widgets/node_palette_widget.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/chatbot/presentation/widgets/properties_panel_widget.dart';
+import 'package:sendzyy/features/chatbot/data/models/chatbot_model.dart';
+import 'package:sendzyy/features/chatbot/data/models/flow_graph.dart';
+import 'package:sendzyy/features/chatbot/presentation/bloc/chatbot_bloc.dart';
+import 'package:sendzyy/features/chatbot/presentation/widgets/flow_canvas_widget.dart';
+import 'package:sendzyy/features/chatbot/presentation/widgets/node_palette_widget.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/chatbot/presentation/widgets/properties_panel_widget.dart';
 
 class FlowBuilderPage extends StatefulWidget {
   final ChatbotModel? chatbot;

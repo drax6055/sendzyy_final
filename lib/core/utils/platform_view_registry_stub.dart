@@ -2,3 +2,4 @@
 void registerWebPlatformView(String viewId, dynamic element) {
   // No-op on mobile
 }
+

@@ -79,3 +79,4 @@ class RetryRepository {
     throw Exception('Failed to fetch logs');
   }
 }
+

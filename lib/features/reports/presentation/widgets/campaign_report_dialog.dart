@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/retry_repository.dart';
-import 'package:iFloraBuzz/features/reports/presentation/utils/pdf_utils.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/retry_repository.dart';
+import 'package:sendzyy/features/reports/presentation/utils/pdf_utils.dart';
 import 'package:intl/intl.dart';
 
 class CampaignReportDialog extends StatefulWidget {
@@ -151,11 +151,16 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: isMobile
+          ? const EdgeInsets.symmetric(horizontal: 12, vertical: 32)
+          : const EdgeInsets.symmetric(horizontal: 40, vertical: 24),
       child: Container(
-        width: 640,
-        constraints: const BoxConstraints(maxHeight: 680),
+        width: isMobile ? screenWidth : 640,
+        constraints: BoxConstraints(maxHeight: isMobile ? screenWidth * 1.6 : 680),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -194,20 +199,23 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
     final showPhaseControls = _hasPhases && _activeTabIndex == 0;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(24, 20, 16, 20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
       decoration: BoxDecoration(
         color: AppTheme.primaryColor.withValues(alpha: 0.05),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            showPhaseControls
-                ? Icons.analytics_outlined
-                : Icons.campaign_outlined,
-            color: AppTheme.secondaryColor,
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              showPhaseControls ? Icons.analytics_outlined : Icons.campaign_outlined,
+              color: AppTheme.secondaryColor,
+              size: 20,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,11 +225,14 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                       ? 'Phase Report - ${c['template'] ?? '-'}'
                       : 'Campaign: ${c['template'] ?? '-'}',
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.secondaryColor,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
+                const SizedBox(height: 2),
                 Text(
                   showPhaseControls
                       ? 'Delivery breakdown by retry phase'
@@ -231,13 +242,10 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                               final dt = DateTime.tryParse(raw)?.toLocal();
                               return dt != null
                                   ? '${dt.year}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}'
-                                  : raw.substring(
-                                      0,
-                                      raw.length >= 16 ? 16 : raw.length,
-                                    );
+                                  : raw.substring(0, raw.length >= 16 ? 16 : raw.length);
                             }()
                           : '',
-                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
               ],
             ),
@@ -247,19 +255,18 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
               icon: const Icon(Icons.refresh, size: 20),
               onPressed: _reloadPhaseReport,
               tooltip: 'Reload Phase Report',
+              padding: const EdgeInsets.all(6),
+              constraints: const BoxConstraints(),
             ),
             _isDownloadingPhaseReport
                 ? const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 14),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
                   )
                 : PopupMenuButton<String>(
                     icon: const Icon(Icons.download_outlined, size: 20),
                     tooltip: 'Export Options',
+                    padding: const EdgeInsets.all(6),
                     onSelected: (value) async {
                       if (value == 'pdf') {
                         _downloadPhasePdf();
@@ -270,23 +277,19 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                     itemBuilder: (context) => [
                       const PopupMenuItem(
                         value: 'pdf',
-                        child: Row(
-                          children: [
-                            Icon(Icons.picture_as_pdf, color: Colors.red, size: 18),
-                            SizedBox(width: 8),
-                            Text('Download PDF'),
-                          ],
-                        ),
+                        child: Row(children: [
+                          Icon(Icons.picture_as_pdf, color: Colors.red, size: 18),
+                          SizedBox(width: 8),
+                          Text('Download PDF'),
+                        ]),
                       ),
                       const PopupMenuItem(
                         value: 'excel',
-                        child: Row(
-                          children: [
-                            Icon(Icons.table_view, color: Colors.green, size: 18),
-                            SizedBox(width: 8),
-                            Text('Download Excel (CSV)'),
-                          ],
-                        ),
+                        child: Row(children: [
+                          Icon(Icons.table_view, color: Colors.green, size: 18),
+                          SizedBox(width: 8),
+                          Text('Download Excel (CSV)'),
+                        ]),
                       ),
                     ],
                   ),
@@ -298,16 +301,13 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                 final isLoaded = snapshot.connectionState == ConnectionState.done;
                 return _isDownloadingCampaignReport
                     ? const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 14),
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
+                        padding: EdgeInsets.symmetric(horizontal: 10),
+                        child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
                       )
                     : PopupMenuButton<String>(
                         icon: const Icon(Icons.download_outlined, size: 20),
                         tooltip: 'Export Options',
+                        padding: const EdgeInsets.all(6),
                         onSelected: isLoaded
                             ? (value) async {
                                 if (value == 'pdf') {
@@ -336,23 +336,19 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                         itemBuilder: (context) => [
                           const PopupMenuItem(
                             value: 'pdf',
-                            child: Row(
-                              children: [
-                                Icon(Icons.picture_as_pdf, color: Colors.red, size: 18),
-                                SizedBox(width: 8),
-                                Text('Download PDF'),
-                              ],
-                            ),
+                            child: Row(children: [
+                              Icon(Icons.picture_as_pdf, color: Colors.red, size: 18),
+                              SizedBox(width: 8),
+                              Text('Download PDF'),
+                            ]),
                           ),
                           const PopupMenuItem(
                             value: 'excel',
-                            child: Row(
-                              children: [
-                                Icon(Icons.table_view, color: Colors.green, size: 18),
-                                SizedBox(width: 8),
-                                Text('Download Excel (CSV)'),
-                              ],
-                            ),
+                            child: Row(children: [
+                              Icon(Icons.table_view, color: Colors.green, size: 18),
+                              SizedBox(width: 8),
+                              Text('Download Excel (CSV)'),
+                            ]),
                           ),
                         ],
                       );
@@ -360,8 +356,10 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
             ),
           ],
           IconButton(
-            icon: const Icon(Icons.close),
+            icon: const Icon(Icons.close, size: 20),
             onPressed: () => Navigator.pop(context),
+            padding: const EdgeInsets.all(6),
+            constraints: const BoxConstraints(),
           ),
         ],
       ),
@@ -478,16 +476,17 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
   ) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withValues(alpha: 0.18)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 18, color: color),
+            Icon(icon, size: 16, color: color),
             const SizedBox(height: 6),
             FittedBox(
               fit: BoxFit.scaleDown,
@@ -497,7 +496,7 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                 maxLines: 1,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  fontSize: 15,
                   color: color,
                 ),
               ),
@@ -509,7 +508,7 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
               child: Text(
                 label,
                 maxLines: 1,
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
               ),
             ),
           ],
@@ -533,20 +532,19 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color:
-              isPending
-                  ? Colors.orange.withValues(alpha: 0.3)
-                  : Colors.grey.withValues(alpha: 0.15),
+          color: isPending
+              ? Colors.orange.withValues(alpha: 0.3)
+              : Colors.grey.withValues(alpha: 0.15),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -554,11 +552,12 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Phase header row
           Row(
             children: [
               Container(
-                width: 32,
-                height: 32,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -569,36 +568,27 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: color,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      phaseLabel,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                    if (intervalHours != null && phaseNum > 1)
-                      Text(
-                        'Interval: ${intervalHours}h after previous phase',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: Colors.grey,
-                        ),
-                      ),
-                  ],
+                child: Text(
+                  phaseLabel,
+                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
               ),
               _phaseBadge(status),
             ],
           ),
+          if (intervalHours != null && phaseNum > 1) ...[
+            const SizedBox(height: 4),
+            Text(
+              'Interval: ${intervalHours}h after previous phase',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+            ),
+          ],
           if (isPending) ...[
             const SizedBox(height: 10),
             if (scheduledAt != null)
@@ -614,57 +604,50 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
               ),
           ] else ...[
             const SizedBox(height: 12),
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 8,
-              runSpacing: 8,
+            // Stat pills row
+            Row(
               children: [
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _statPill('Sent', successCount + failureCount, Colors.blue),
-                    _statPill('Delivered', successCount, Colors.green),
-                    _statPill('Failed', failureCount, Colors.red),
-                  ],
+                _statPill('Sent', successCount + failureCount, Colors.blue),
+                const SizedBox(width: 6),
+                _statPill('Delivered', successCount, Colors.green),
+                const SizedBox(width: 6),
+                _statPill('Failed', failureCount, Colors.red),
+              ],
+            ),
+            const SizedBox(height: 10),
+            // Success rate + progress bar
+            Row(
+              children: [
+                Text(
+                  '${successRate.toStringAsFixed(1)}%',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: _rateColor(successRate),
+                  ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${successRate.toStringAsFixed(1)}%',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: _rateColor(successRate),
-                      ),
-                    ),
-                    const Text(
-                      'success rate',
-                      style: TextStyle(fontSize: 10, color: Colors.grey),
-                    ),
-                  ],
+                const SizedBox(width: 6),
+                Text(
+                  'success rate',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
                 value: successRate / 100,
                 minHeight: 6,
                 backgroundColor: Colors.grey.withValues(alpha: 0.15),
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  _rateColor(successRate),
-                ),
+                valueColor: AlwaysStoppedAnimation<Color>(_rateColor(successRate)),
               ),
             ),
             if (executedAt != null) ...[
               const SizedBox(height: 6),
               Text(
                 'Executed: ${_fmtDateTime(executedAt)}',
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
               ),
             ],
           ],
@@ -1024,3 +1007,4 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
     }
   }
 }
+

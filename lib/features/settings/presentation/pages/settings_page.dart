@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
-import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/features/auth/presentation/pages/login_page.dart';
+import 'package:sendzyy/features/templates/presentation/bloc/template_bloc.dart';
+import 'package:sendzyy/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/features/auth/presentation/pages/login_page.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:iFloraBuzz/core/constants/app_constants.dart';
-import 'package:iFloraBuzz/core/js/whatsapp_signup.dart';
-import 'package:iFloraBuzz/features/settings/presentation/widgets/onboarding_checklist_widget.dart';
-import 'package:iFloraBuzz/features/templates/presentation/pages/create_template_page.dart';
+import 'package:sendzyy/core/constants/app_constants.dart';
+import 'package:sendzyy/core/js/whatsapp_signup.dart';
+import 'package:sendzyy/features/settings/presentation/widgets/onboarding_checklist_widget.dart';
+import 'package:sendzyy/features/templates/presentation/pages/create_template_page.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:iFloraBuzz/core/widgets/password_verification_dialog.dart';
+import 'package:sendzyy/core/widgets/password_verification_dialog.dart';
 
 class SettingsPage extends StatefulWidget {
   final VoidCallback? onRenewPlan;
@@ -318,10 +318,9 @@ class _SettingsPageState extends State<SettingsPage> {
         }
 
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 0),
           color: AppTheme.backgroundColor,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -2106,86 +2105,122 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildConnectedDetailsCard(BuildContext context, Map<String, dynamic> config) {
     final isMobile = MediaQuery.of(context).size.width < 800;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = isMobile ? screenWidth - 32 : double.infinity; // 16px margin each side
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return SizedBox(
+      width: cardWidth,
       child: Container(
-        padding: EdgeInsets.all(isMobile ? 16 : 32),
-        width: double.infinity,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2FAF2), // light cream-green
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFD4EDD4), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Header ──────────────────────────────────────────
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  width: 42,
+                  height: 42,
                   decoration: const BoxDecoration(
                     color: Colors.green,
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.check, color: Colors.white, size: 20),
+                  child: const Icon(Icons.check_rounded, color: Colors.white, size: 22),
                 ),
                 const SizedBox(width: 12),
                 const Expanded(
                   child: Text(
                     'Meta Account Connected',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1B6B2F),
+                    ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
-            if (isMobile) ...[
-              const Text(
-                'Phone Number ID',
-                style: TextStyle(color: Colors.grey, fontSize: 13, fontWeight: FontWeight.bold),
+            const SizedBox(height: 20),
+
+            // ── Phone Number ID ──────────────────────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFD4EDD4)),
               ),
-              const SizedBox(height: 8),
-              _buildActivePhoneSelector(config),
-            ] else ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
                     'Phone Number ID',
-                    style: TextStyle(color: Colors.grey, fontSize: 16),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 340),
-                        child: _buildActivePhoneSelector(config),
-                      ),
+                    style: TextStyle(
+                      color: Color(0xFF888888),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.4,
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  _buildActivePhoneSelector(config),
                 ],
               ),
-            ],
-            const Divider(height: 28),
-            _buildDetailRow('WABA ID', config['businessAccountId'] ?? 'N/A'),
-            const Divider(height: 28),
-            _buildDetailRow('Access Token', '••••••••••••••••${config['accessToken']?.toString().substring((config['accessToken']?.toString().length ?? 4) - 4) ?? ''}'),
-            if ((config['displayPhone'] as String?)?.isNotEmpty == true) ...[
-              const Divider(height: 28),
-              _buildDetailRow('Display Phone', config['displayPhone'] ?? ''),
-            ],
-            if ((config['verifiedName'] as String?)?.isNotEmpty == true) ...[
-              const Divider(height: 28),
-              _buildDetailRow('Verified Name', config['verifiedName'] ?? ''),
-            ],
-            if ((config['qualityRating'] as String?)?.isNotEmpty == true) ...[
-              const Divider(height: 28),
-              _buildQualityRow('Quality Rating', config['qualityRating'] ?? ''),
-            ],
-            if ((config['throughputLevel'] as String?)?.isNotEmpty == true) ...[
-              const Divider(height: 28),
-              _buildDetailRow('Throughput', config['throughputLevel'] ?? ''),
-            ],
-            const SizedBox(height: 24),
-            // Register Phone section when phone is NOT connected
+            ),
+            const SizedBox(height: 16),
+
+            // ── Info Rows ────────────────────────────────────────
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFD4EDD4)),
+              ),
+              child: Column(
+                children: [
+                  _buildInfoRow('WABA ID', config['businessAccountId'] ?? 'N/A'),
+                  _buildRowDivider(),
+                  _buildInfoRow(
+                    'Access Token',
+                    '•••••••••••••${config['accessToken']?.toString().substring(
+                          (config['accessToken']?.toString().length ?? 4) - 4
+                        ) ?? ''}',
+                  ),
+                  if ((config['displayPhone'] as String?)?.isNotEmpty == true) ...[
+                    _buildRowDivider(),
+                    _buildInfoRow('Display Phone', config['displayPhone'] ?? ''),
+                  ],
+                  if ((config['verifiedName'] as String?)?.isNotEmpty == true) ...[
+                    _buildRowDivider(),
+                    _buildInfoRow('Verified Name', config['verifiedName'] ?? ''),
+                  ],
+                  if ((config['qualityRating'] as String?)?.isNotEmpty == true) ...[
+                    _buildRowDivider(),
+                    _buildQualityInfoRow('Quality Rating', config['qualityRating'] ?? ''),
+                  ],
+                  if ((config['throughputLevel'] as String?)?.isNotEmpty == true) ...[
+                    _buildRowDivider(),
+                    _buildThroughputInfoRow('Throughput', config['throughputLevel'] ?? ''),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ── Register / Update buttons ────────────────────────
             Builder(builder: (context) {
               final activePhoneId = config['phoneNumberId']?.toString();
               String? phoneStatus;
@@ -2200,12 +2235,12 @@ class _SettingsPageState extends State<SettingsPage> {
               final isConnected = phoneStatus == 'CONNECTED';
 
               return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (!isConnected && phoneStatus != null) ...[
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
                         color: Colors.orange.withValues(alpha: 0.08),
@@ -2225,45 +2260,40 @@ class _SettingsPageState extends State<SettingsPage> {
                         ],
                       ),
                     ),
+                    SizedBox(
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: _isRegisteringPhone ? null : _registerPhoneWithMeta,
+                        icon: _isRegisteringPhone
+                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Icon(Icons.verified_user_rounded, color: Colors.white, size: 18),
+                        label: Text(
+                          _isRegisteringPhone ? 'Registering Phone...' : 'Register Phone Number',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 15),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          elevation: 0,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                   ],
                   SizedBox(
-                    width: double.infinity,
-                    child: Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: [
-                        if (!isConnected)
-                          SizedBox(
-                            width: isMobile ? double.infinity : null,
-                            child: ElevatedButton.icon(
-                              onPressed: _isRegisteringPhone ? null : _registerPhoneWithMeta,
-                              icon: _isRegisteringPhone
-                                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                                  : const Icon(Icons.verified_user_rounded, color: Colors.white),
-                              label: Text(
-                                _isRegisteringPhone ? 'Registering Phone...' : 'Register Phone Number',
-                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                            ),
-                          ),
-                        SizedBox(
-                          width: isMobile ? double.infinity : null,
-                          child: OutlinedButton.icon(
-                            onPressed: _connectMeta,
-                            icon: const Icon(Icons.edit_note),
-                            label: const Text('Update Connection Settings'),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            ),
-                          ),
-                        ),
-                      ],
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: _connectMeta,
+                      icon: const Icon(Icons.edit_note_rounded, size: 18),
+                      label: const Text(
+                        'Update Connection Settings',
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF1B6B2F),
+                        side: const BorderSide(color: Color(0xFF4CAF50), width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
                     ),
                   ),
                 ],
@@ -2271,6 +2301,151 @@ class _SettingsPageState extends State<SettingsPage> {
             }),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Subtle 1px separator between info rows
+  Widget _buildRowDivider() {
+    return Container(
+      height: 1,
+      margin: const EdgeInsets.symmetric(horizontal: 14),
+      color: const Color(0xFFE8F5E9),
+    );
+  }
+
+  /// Info row with label + bold value inside the white rounded card
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Color(0xFF999999),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: Color(0xFF1A1A1A),
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Quality Rating row with premium pill badge
+  Widget _buildQualityInfoRow(String label, String value) {
+    Color badgeColor;
+    Color bgColor;
+    switch (value.toUpperCase()) {
+      case 'GREEN':
+        badgeColor = const Color(0xFF2E7D32);
+        bgColor = const Color(0xFFE8F5E9);
+        break;
+      case 'YELLOW':
+        badgeColor = const Color(0xFFE65100);
+        bgColor = const Color(0xFFFFF3E0);
+        break;
+      case 'RED':
+        badgeColor = const Color(0xFFC62828);
+        bgColor = const Color(0xFFFFEBEE);
+        break;
+      default:
+        badgeColor = Colors.grey.shade700;
+        bgColor = Colors.grey.shade100;
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 110,
+            child: const Text(
+              'Quality Rating',
+              style: TextStyle(
+                color: Color(0xFF999999),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(color: badgeColor.withValues(alpha: 0.4), width: 1.2),
+            ),
+            child: Text(
+              value.toUpperCase(),
+              style: TextStyle(
+                color: badgeColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Throughput row with subtle neutral pill badge
+  Widget _buildThroughputInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 110,
+            child: const Text(
+              'Throughput',
+              style: TextStyle(
+                color: Color(0xFF999999),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8F5E9),
+              borderRadius: BorderRadius.circular(50),
+              border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.4), width: 1.2),
+            ),
+            child: Text(
+              value.toUpperCase(),
+              style: const TextStyle(
+                color: Color(0xFF2E7D32),
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2463,71 +2638,7 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(color: Colors.grey, fontSize: 14),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
-          ),
-        ),
-      ],
-    );
-  }
 
-  /// Renders quality rating with a color-coded badge (GREEN/YELLOW/RED → colors).
-  Widget _buildQualityRow(String label, String value) {
-    Color badgeColor;
-    switch (value.toUpperCase()) {
-      case 'GREEN':
-        badgeColor = Colors.green;
-        break;
-      case 'YELLOW':
-        badgeColor = Colors.orange;
-        break;
-      case 'RED':
-        badgeColor = Colors.red;
-        break;
-      default:
-        badgeColor = Colors.grey;
-    }
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(color: Colors.grey, fontSize: 14),
-        ),
-        const SizedBox(width: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          decoration: BoxDecoration(
-            color: badgeColor.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: badgeColor.withValues(alpha: 0.4)),
-          ),
-          child: Text(
-            value.toUpperCase(),
-            style: TextStyle(
-              color: badgeColor,
-              fontWeight: FontWeight.bold,
-              fontSize: 11,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildPlaceholderTile(String title, IconData icon, VoidCallback? onTap) {
     return InkWell(
@@ -2758,3 +2869,4 @@ class _PasswordField extends StatelessWidget {
     );
   }
 }
+

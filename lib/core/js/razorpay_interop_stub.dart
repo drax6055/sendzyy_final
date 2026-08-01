@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
 
 /// Stub implementation of launchRazorpayPayment for mobile/desktop.
 Future<Map<String, String>?> launchRazorpayPayment({
@@ -40,3 +40,4 @@ Future<Map<String, String>?> launchRazorpayPayment({
   );
   return result;
 }
+

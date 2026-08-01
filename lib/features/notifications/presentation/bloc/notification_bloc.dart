@@ -259,3 +259,4 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     } catch (_) {}
   }
 }
+

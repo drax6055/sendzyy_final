@@ -3,15 +3,15 @@ import 'dart:convert';
 import 'dart:io' as io;
 import 'package:dio/dio.dart';
 import 'package:universal_html/html.dart' as html;
-import 'package:iFloraBuzz/core/utils/platform_view_registry.dart';
+import 'package:sendzyy/core/utils/platform_view_registry.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:iFloraBuzz/core/constants/app_constants.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/chat/presentation/bloc/chat_bloc.dart';
+import 'package:sendzyy/core/constants/app_constants.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/chat/presentation/bloc/chat_bloc.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
@@ -2238,3 +2238,4 @@ class _WindowTimerWidgetState extends State<_WindowTimerWidget> {
     );
   }
 }
+

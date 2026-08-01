@@ -42,3 +42,4 @@ class AppConstants {
   static const String keyTenantId = 'tenant_id';
   static const String keyCampaigns = 'campaign_history';
 }
+

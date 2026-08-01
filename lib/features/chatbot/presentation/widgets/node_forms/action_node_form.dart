@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/features/chatbot/data/models/flow_graph.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/features/chatbot/data/models/flow_graph.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 
 class ActionNodeForm extends StatefulWidget {
   final FlowNode node;
@@ -543,3 +543,4 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
     );
   }
 }
+

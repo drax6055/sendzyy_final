@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/templates/data/models/auth_form_state.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/templates/data/models/auth_form_state.dart';
 
 class AuthPreviewWidget extends StatelessWidget {
   final AuthFormState state;
@@ -160,3 +160,4 @@ class AuthPreviewWidget extends StatelessWidget {
     return 'Autofill';
   }
 }
+

@@ -5,7 +5,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iFloraBuzz/core/utils/template_validators.dart';
+import 'package:sendzyy/core/utils/template_validators.dart';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -520,3 +520,4 @@ void main() {
     });
   });
 }
+

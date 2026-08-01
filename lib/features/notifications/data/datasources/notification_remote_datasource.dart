@@ -97,3 +97,4 @@ class NotificationRemoteDataSource {
     return response.data['unreadCount'] ?? 0;
   }
 }
+

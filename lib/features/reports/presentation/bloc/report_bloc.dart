@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
+import 'package:sendzyy/features/chat/data/services/socket_service.dart';
 
 // Events
 abstract class ReportEvent extends Equatable {
@@ -128,3 +128,4 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
     return super.close();
   }
 }
+

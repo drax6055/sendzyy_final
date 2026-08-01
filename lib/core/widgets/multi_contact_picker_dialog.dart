@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_native_contact_picker/flutter_native_contact_picker.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
 
 class ContactItem {
   final Contact contact;
@@ -635,3 +635,4 @@ class _MultiContactPickerDialogState extends State<MultiContactPickerDialog> {
     );
   }
 }
+

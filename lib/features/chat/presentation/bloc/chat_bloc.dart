@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
-import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/features/chat/data/services/socket_service.dart';
 import 'package:file_picker/file_picker.dart';
 
 // Events
@@ -216,3 +216,4 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
   /// Uploads media to Meta via the repository proxy.
   Future<String> uploadMedia(PlatformFile file) => _repository.uploadMedia(file);
 }
+

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io' as io;
 import 'package:universal_html/html.dart' as html;
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -10,14 +9,13 @@ import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
-import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
-import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
-import 'package:iFloraBuzz/features/clients/presentation/bloc/group_bloc.dart';
-import 'package:flutter_native_contact_picker/flutter_native_contact_picker.dart';
-import 'package:flutter_native_contact_picker/model/contact.dart' as npc;
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/clients/data/models/client_model.dart';
+import 'package:sendzyy/features/clients/data/models/group_model.dart';
+import 'package:sendzyy/features/clients/data/repositories/client_repository.dart';
+import 'package:sendzyy/features/clients/presentation/bloc/group_bloc.dart';
+import 'package:sendzyy/core/widgets/multi_contact_picker_dialog.dart';
 
 class CreateGroupDialog extends StatefulWidget {
   /// Non-null means edit mode — dialog is pre-populated with existing data.
@@ -38,7 +36,6 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
   String? _bulkError;
   bool _isSubmitting = false;
   bool _isResolving = false;
-  final _contactPicker = FlutterNativeContactPicker();
 
   final List<ClientModel> _clients = [];
   int _currentPage = 1;
@@ -307,77 +304,33 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
       _bulkError = null;
     });
 
-    final List<ClientModel> pickedClients = [];
+    // Use the same beautiful multi-select contact picker as Broadcast
+    final selectedNumbers = await MultiContactPickerDialog.show(context);
+    if (selectedNumbers == null || selectedNumbers.isEmpty) return;
+
+    setState(() {
+      _isResolving = true;
+    });
 
     try {
-      // First try selectContacts() (multi-select system picker UI, supported on iOS)
-      List<npc.Contact>? contacts;
-      try {
-        final List<dynamic>? rawContacts = await _contactPicker.selectContacts();
-        contacts = rawContacts?.cast<npc.Contact>();
-      } catch (e) {
-        // If selectContacts() fails/throws unimplemented, fallback to Android loop
-        contacts = null;
+      // Build ClientModel list from picked phone numbers
+      final List<ClientModel> pickedClients = selectedNumbers.map((number) {
+        // Clean the number — digits only
+        final mobile = number.replaceAll(RegExp(r'[^0-9]'), '');
+        return ClientModel(
+          id: '',
+          tenantId: '',
+          name: number, // Will be resolved/matched by backend
+          mobileNumber: mobile,
+          venue: 'Mobile Contact',
+          createdAt: DateTime.now(),
+        );
+      }).where((c) => c.mobileNumber.isNotEmpty).toList();
+
+      if (pickedClients.isEmpty) {
+        setState(() => _isResolving = false);
+        return;
       }
-
-      if (contacts != null) {
-        // iOS multi-select succeeded
-        for (final contact in contacts) {
-          final name = contact.fullName?.trim() ?? '';
-          final rawMobile = contact.selectedPhoneNumber ?? contact.phoneNumbers?.firstOrNull ?? '';
-          final mobile = rawMobile.replaceAll(RegExp(r'[^0-9]'), '');
-          
-          if (name.isNotEmpty && mobile.isNotEmpty) {
-            pickedClients.add(ClientModel(
-              id: '',
-              tenantId: '',
-              name: name,
-              mobileNumber: mobile,
-              venue: 'Mobile Contact',
-              createdAt: DateTime.now(),
-            ));
-          }
-        }
-      } else {
-        // Fallback: Sequential picking loop (for Android)
-        int count = 0;
-        while (true) {
-          final npc.Contact? contact = await _contactPicker.selectPhoneNumber();
-          if (contact == null) break;
-
-          final name = contact.fullName?.trim() ?? '';
-          final rawMobile = contact.selectedPhoneNumber ?? contact.phoneNumbers?.firstOrNull ?? '';
-          final mobile = rawMobile.replaceAll(RegExp(r'[^0-9]'), '');
-          
-          if (name.isNotEmpty && mobile.isNotEmpty) {
-            pickedClients.add(ClientModel(
-              id: '',
-              tenantId: '',
-              name: name,
-              mobileNumber: mobile,
-              venue: 'Mobile Contact',
-              createdAt: DateTime.now(),
-            ));
-            count++;
-            
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Picked $count: "$name". Close picker when finished.'),
-                  duration: const Duration(milliseconds: 1500),
-                ),
-              );
-            }
-          }
-          await Future.delayed(const Duration(milliseconds: 350));
-        }
-      }
-
-      if (pickedClients.isEmpty) return;
-
-      setState(() {
-        _isResolving = true;
-      });
 
       final resolved = await getIt<ClientRepository>().bulkResolveClients(pickedClients);
 
@@ -391,7 +344,7 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
         }
       });
 
-      // Reload clients list to show the new contacts in the list
+      // Reload clients list to show newly created contacts
       if (mounted) {
         _loadClients(page: 1);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -933,3 +886,4 @@ class _CreateGroupDialogState extends State<CreateGroupDialog> {
 extension on String {
   String? get nullIfEmpty => trim().isEmpty ? null : trim();
 }
+

@@ -83,3 +83,4 @@ class AuthFormState {
       'validityEnabled: $validityEnabled, '
       'validitySeconds: $validitySeconds)';
 }
+

@@ -6,9 +6,9 @@ import 'dart:math';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:iFloraBuzz/features/templates/data/models/app_entry.dart';
-import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/features/templates/data/models/app_entry.dart';
+import 'package:sendzyy/features/templates/presentation/bloc/template_bloc.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -357,3 +357,4 @@ Future<void> _waitForRepoCall(_FakeWhatsAppRepository repo) async {
     await Future<void>.delayed(const Duration(milliseconds: 10));
   }
 }
+

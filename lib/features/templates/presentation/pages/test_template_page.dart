@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/theme/app_theme.dart';
-import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:sendzyy/core/di/injection.dart';
+import 'package:sendzyy/core/theme/app_theme.dart';
+import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.dart';
 
 class TestTemplateDialog extends StatefulWidget {
   final String templateName;
@@ -409,3 +409,4 @@ class _ErrorBanner extends StatelessWidget {
     );
   }
 }
+
