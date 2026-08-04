@@ -12,14 +12,13 @@ plugins {
 android {
     namespace = "com.iflorainfopvtltd.sendzyy"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = "28.2.13676358"
 
     val keystorePropertiesFile = rootProject.file("key.properties")
     val keystoreProperties = Properties()
-    if (keystorePropertiesFile.exists()) {
+    val hasKeystore = keystorePropertiesFile.exists()
+    if (hasKeystore) {
         FileInputStream(keystorePropertiesFile).use { keystoreProperties.load(it) }
-    } else {
-        throw GradleException("Keystore properties file not found: $keystorePropertiesFile")
     }
 
     compileOptions {
@@ -49,21 +48,23 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String?
-            keyPassword = keystoreProperties["keyPassword"] as String?
-            storeFile = keystoreProperties["storeFile"]?.let {
-                val filePath = it as String
-                val file = File(filePath)
-                if (file.isAbsolute) file else rootProject.file(filePath)
+        if (hasKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String?
+                keyPassword = keystoreProperties["keyPassword"] as String?
+                storeFile = keystoreProperties["storeFile"]?.let {
+                    val filePath = it as String
+                    val file = File(filePath)
+                    if (file.isAbsolute) file else rootProject.file(filePath)
+                }
+                storePassword = keystoreProperties["storePassword"] as String?
             }
-            storePassword = keystoreProperties["storePassword"] as String?
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            signingConfig = if (hasKeystore) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
 

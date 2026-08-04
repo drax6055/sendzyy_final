@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sendzyy/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sendzyy/features/auth/presentation/pages/login_page.dart';
@@ -30,7 +31,6 @@ import 'package:sendzyy/features/whatsapp/data/repositories/whatsapp_repository.
 import 'package:sendzyy/core/widgets/password_verification_dialog.dart';
 import 'package:sendzyy/features/settings/presentation/widgets/whatsapp_business_profile_dialog.dart';
 import 'package:sendzyy/features/notifications/presentation/widgets/notification_bell_icon.dart';
-import 'package:sendzyy/features/notifications/presentation/bloc/notification_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardShell extends StatefulWidget {
@@ -42,6 +42,8 @@ class DashboardShell extends StatefulWidget {
 
 class _DashboardShellState extends State<DashboardShell> {
   int _selectedIndex = 0;
+  final List<int> _navigationHistory = [0];
+  DateTime? _lastBackPressTime;
   bool _isReportsExpanded = false;
   bool _isSettingsExpanded = false;
   late final RenewalReminderService _reminderService;
@@ -142,6 +144,8 @@ class _DashboardShellState extends State<DashboardShell> {
     if (mounted) {
       setState(() {
         _selectedIndex = saved;
+        _navigationHistory.clear();
+        _navigationHistory.add(saved);
         if (saved >= 5 && saved <= 7) {
           _isReportsExpanded = true;
         }
@@ -153,6 +157,14 @@ class _DashboardShellState extends State<DashboardShell> {
   }
 
   Future<void> _setSelectedIndex(int index) async {
+    if (_selectedIndex != index) {
+      if (_navigationHistory.isEmpty || _navigationHistory.last != index) {
+        _navigationHistory.add(index);
+        if (_navigationHistory.length > 25) {
+          _navigationHistory.removeAt(0);
+        }
+      }
+    }
     setState(() {
       _selectedIndex = index;
       if (index >= 5 && index <= 7) {
@@ -393,42 +405,102 @@ class _DashboardShellState extends State<DashboardShell> {
       ],
       child: Builder(
         builder: (scaffoldContext) {
-          return Scaffold(
-            key: _scaffoldKey,
-            drawer: isMobile ? Drawer(child: SafeArea(child: _buildSidebar(true))) : null,
-            bottomNavigationBar: isMobile ? _buildBottomNavigationBar() : null,
-            body: Row(
-              children: [
-                // Sidebar for desktop
-                if (!isMobile) ...[
-                  _buildSidebar(false),
-                  const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE0E0E0)),
-                ],
-                // Main Content
-                Expanded(
-                  child: Container(
-                    color: AppTheme.backgroundColor,
-                    child: SafeArea(
-                      top: true,
-                      bottom: false,
-                      child: Column(
-                        children: [
-                          // Header
-                          _buildHeader(isMobile),
-                          if (!_checkingOnboarding && _onboardingIncomplete)
-                            _buildOnboardingWarningBanner(),
-                          // Page Content
-                          Expanded(
-                            child: (isMobile && _selectedIndex == 6)
-                                ? _pages[5]
-                                : _pages[_selectedIndex],
-                          ),
-                        ],
+          return PopScope(
+            canPop: false,
+            onPopInvokedWithResult: (didPop, result) async {
+              if (didPop) return;
+
+              // 1. Close drawer if open
+              if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+                _scaffoldKey.currentState?.closeDrawer();
+                return;
+              }
+
+              // 2. If a modal/dialog or pushed page is open on Navigator, pop it
+              final navigator = Navigator.of(context);
+              if (navigator.canPop()) {
+                navigator.pop();
+                return;
+              }
+
+              // 3. Navigate backward through tab history
+              if (_navigationHistory.length > 1) {
+                setState(() {
+                  _navigationHistory.removeLast();
+                  _selectedIndex = _navigationHistory.last;
+                  if (_selectedIndex >= 5 && _selectedIndex <= 7) {
+                    _isReportsExpanded = true;
+                  }
+                  if (_selectedIndex >= 10 && _selectedIndex <= 12) {
+                    _isSettingsExpanded = true;
+                  }
+                });
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setInt(_selectedIndexKey, _selectedIndex);
+                return;
+              }
+
+              // 4. Return to home tab (Broadcast - index 0)
+              if (_selectedIndex != 0) {
+                _setSelectedIndex(0);
+                return;
+              }
+
+              // 5. Double-back to exit from Home tab
+              final now = DateTime.now();
+              if (_lastBackPressTime == null ||
+                  now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+                _lastBackPressTime = now;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Press back again to exit'),
+                    duration: Duration(seconds: 2),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+                return;
+              }
+
+              // Press back twice within 2s on Home tab -> Exit App
+              SystemNavigator.pop();
+            },
+            child: Scaffold(
+              key: _scaffoldKey,
+              drawer: isMobile ? Drawer(child: SafeArea(child: _buildSidebar(true))) : null,
+              bottomNavigationBar: isMobile ? _buildBottomNavigationBar() : null,
+              body: Row(
+                children: [
+                  // Sidebar for desktop
+                  if (!isMobile) ...[
+                    _buildSidebar(false),
+                    const VerticalDivider(width: 1, thickness: 1, color: Color(0xFFE0E0E0)),
+                  ],
+                  // Main Content
+                  Expanded(
+                    child: Container(
+                      color: AppTheme.backgroundColor,
+                      child: SafeArea(
+                        top: true,
+                        bottom: false,
+                        child: Column(
+                          children: [
+                            // Header
+                            _buildHeader(isMobile),
+                            if (!_checkingOnboarding && _onboardingIncomplete)
+                              _buildOnboardingWarningBanner(),
+                            // Page Content
+                            Expanded(
+                              child: (isMobile && _selectedIndex == 6)
+                                  ? _pages[5]
+                                  : _pages[_selectedIndex],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           );
         },

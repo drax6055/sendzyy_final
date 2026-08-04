@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sendzyy/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:sendzyy/core/theme/app_theme.dart';
 import 'package:sendzyy/features/dashboard/presentation/pages/dashboard_shell.dart';
@@ -21,6 +22,42 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _shakeKey = GlobalKey<ShakeWidgetState>();
+  bool _rememberMe = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final prefs = await SharedPreferences.getInstance();
+    final remember = prefs.getBool('remember_me') ?? false;
+    if (remember) {
+      final email = prefs.getString('remembered_email') ?? '';
+      final password = prefs.getString('remembered_password') ?? '';
+      if (mounted) {
+        setState(() {
+          _rememberMe = true;
+          _emailController.text = email;
+          _passwordController.text = password;
+        });
+      }
+    }
+  }
+
+  Future<void> _saveCredentialsIfNeeded() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_rememberMe) {
+      await prefs.setBool('remember_me', true);
+      await prefs.setString('remembered_email', _emailController.text.trim());
+      await prefs.setString('remembered_password', _passwordController.text);
+    } else {
+      await prefs.setBool('remember_me', false);
+      await prefs.remove('remembered_email');
+      await prefs.remove('remembered_password');
+    }
+  }
 
   void _showForgotPasswordDialog(BuildContext context) {
     showDialog(context: context, builder: (_) => const ForgotPasswordDialog());
@@ -28,6 +65,7 @@ class _LoginPageState extends State<LoginPage> {
 
   void _handleLogin() {
     if (_formKey.currentState!.validate()) {
+      _saveCredentialsIfNeeded();
       context.read<AuthBloc>().add(
         LoginRequested(_emailController.text, _passwordController.text),
       );
@@ -127,26 +165,8 @@ class _LoginPageState extends State<LoginPage> {
                             },
                           ),
                           const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () => _showForgotPasswordDialog(context),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppTheme.primaryColor,
-                                padding: EdgeInsets.zero,
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text(
-                                'Forgot Password?',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 32),
+                          _buildRememberMeRow(false),
+                          const SizedBox(height: 28),
                           InteractiveButton(
                             onPressed: _handleLogin,
                             isLoading: state is AuthLoading,
@@ -272,25 +292,7 @@ class _LoginPageState extends State<LoginPage> {
                           },
                         ),
                         const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton(
-                            onPressed: () => _showForgotPasswordDialog(context),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppTheme.primaryColor,
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: const Text(
-                              'Forgot Password?',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
+                        _buildRememberMeRow(true),
                         const SizedBox(height: 28),
                         InteractiveButton(
                           onPressed: _handleLogin,
@@ -342,6 +344,64 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRememberMeRow(bool isMobile) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _rememberMe = !_rememberMe),
+          borderRadius: BorderRadius.circular(6),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: Checkbox(
+                    value: _rememberMe,
+                    activeColor: AppTheme.primaryColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    side: BorderSide(color: Colors.grey.shade400, width: 1.5),
+                    onChanged: (val) => setState(() => _rememberMe = val ?? false),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Remember me',
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: isMobile ? 13 : 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        TextButton(
+          onPressed: () => _showForgotPasswordDialog(context),
+          style: TextButton.styleFrom(
+            foregroundColor: AppTheme.primaryColor,
+            padding: EdgeInsets.zero,
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Text(
+            'Forgot Password?',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: isMobile ? 13 : 14,
             ),
           ),
         ),
