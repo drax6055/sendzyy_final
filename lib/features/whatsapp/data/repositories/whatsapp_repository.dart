@@ -91,7 +91,8 @@ class WhatsAppRepository {
     String? mediaId,
     String? mediaType,
     String? campaignId,
-    Map<int, String>? variables, // {1: 'John', 2: '+91...', 3: 'ABC Co.'}
+    Map<int, String>? variables,       // body variables {1: 'John', 2: '+91...', 3: 'ABC Co.'}
+    Map<int, String>? headerVariables, // header TEXT variables {1: 'value'}
   }) async {
     try {
       // Build body component parameters from variables map
@@ -105,7 +106,7 @@ class WhatsAppRepository {
 
       final List<Map<String, dynamic>> components = [];
 
-      // Header component (media)
+      // Header component — media takes priority over text variables
       if (mediaId != null && mediaType != null) {
         components.add({
           'type': 'header',
@@ -116,6 +117,13 @@ class WhatsAppRepository {
             }
           ],
         });
+      } else if (headerVariables != null && headerVariables.isNotEmpty) {
+        // TEXT header with {{n}} variables
+        final sortedHeaderKeys = headerVariables.keys.toList()..sort();
+        final headerParams = sortedHeaderKeys
+            .map((k) => {'type': 'text', 'text': headerVariables[k] ?? ''})
+            .toList();
+        components.add({'type': 'header', 'parameters': headerParams});
       }
 
       // Body component (variables)
@@ -341,7 +349,7 @@ class WhatsAppRepository {
               'type': 'HEADER',
               'format': 'TEXT',
               'text': sanitizedHeader,
-              if (sanitizedHeader.contains('{{1}}'))
+              if (sanitizedHeader.contains('{{'))
                 'example': {
                   'header_text': ['Sample Header'],
                 },
@@ -353,7 +361,7 @@ class WhatsAppRepository {
               'example': {
                 'body_text': [
                   List.generate(
-                    RegExp(r'\{\{\d+\}\}').allMatches(body).length,
+                    _getMaxVariableIndex(body),
                     (index) => 'Sample ${index + 1}',
                   ),
                 ],
@@ -1170,6 +1178,17 @@ class WhatsAppRepository {
     } catch (e) {
       rethrow;
     }
+  }
+
+  int _getMaxVariableIndex(String text) {
+    final matches = RegExp(r'\{\{(\d+)\}\}').allMatches(text);
+    if (matches.isEmpty) return 0;
+    int maxIndex = 0;
+    for (final m in matches) {
+      final idx = int.tryParse(m.group(1) ?? '') ?? 0;
+      if (idx > maxIndex) maxIndex = idx;
+    }
+    return maxIndex > 0 ? maxIndex : matches.length;
   }
 }
 

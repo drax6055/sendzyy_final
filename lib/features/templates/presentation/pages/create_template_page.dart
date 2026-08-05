@@ -805,7 +805,7 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             TextButton.icon(
-              onPressed: () => _insertTag('{{1}}', _headerController),
+              onPressed: () => _insertNextVariable(_headerController),
               icon: const Icon(Icons.add, size: 16),
               label: const Text('Add variable', style: TextStyle(fontSize: 12)),
               style: TextButton.styleFrom(
@@ -896,7 +896,7 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
               ),
               const Spacer(),
               TextButton.icon(
-                onPressed: () => _insertTag('{{1}}', _bodyController),
+                onPressed: () => _insertNextVariable(_bodyController),
                 icon: const Icon(Icons.add, size: 16),
                 label: const Text(
                   'Add variable',
@@ -930,6 +930,17 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
         offset: selection.start + tag.length + selectedText.length + tag.length,
       ),
     );
+  }
+
+  void _insertNextVariable(TextEditingController controller) {
+    final text = controller.text;
+    final matches = RegExp(r'\{\{(\d+)\}\}').allMatches(text);
+    int maxIndex = 0;
+    for (final m in matches) {
+      final idx = int.tryParse(m.group(1) ?? '') ?? 0;
+      if (idx > maxIndex) maxIndex = idx;
+    }
+    _insertTag('{{${maxIndex + 1}}}', controller);
   }
 
   void _insertTag(String tag, TextEditingController controller) {

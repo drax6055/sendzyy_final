@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
@@ -30,7 +29,10 @@ extension type _SignupResult._(JSObject _) implements JSObject {
 }
 
 @JS()
-external JSPromise<_SignupResult> launchWhatsAppSignup(String appId, String configId);
+external JSPromise<_SignupResult> launchWhatsAppSignup(
+  String appId,
+  String configId,
+);
 
 class SettingsPage extends StatefulWidget {
   final VoidCallback? onRenewPlan;
@@ -92,15 +94,18 @@ class _SettingsPageState extends State<SettingsPage> {
     if (_whatsappProfile == null) return;
     _aboutController.text = _whatsappProfile!['about']?.toString() ?? '';
     _addressController.text = _whatsappProfile!['address']?.toString() ?? '';
-    _descriptionController.text = _whatsappProfile!['description']?.toString() ?? '';
+    _descriptionController.text =
+        _whatsappProfile!['description']?.toString() ?? '';
     _emailController.text = _whatsappProfile!['email']?.toString() ?? '';
-    
+
     final List<dynamic> websites = _whatsappProfile!['websites'] ?? [];
-    _websiteControllers = websites.map((w) => TextEditingController(text: w.toString())).toList();
+    _websiteControllers = websites
+        .map((w) => TextEditingController(text: w.toString()))
+        .toList();
     if (_websiteControllers.isEmpty) {
       _websiteControllers.add(TextEditingController());
     }
-    
+
     _selectedVertical = _whatsappProfile!['vertical']?.toString();
   }
 
@@ -138,7 +143,10 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _updateActivePhoneNumber(Map<String, dynamic> phone, Map<String, dynamic> config) async {
+  Future<void> _updateActivePhoneNumber(
+    Map<String, dynamic> phone,
+    Map<String, dynamic> config,
+  ) async {
     setState(() {
       _isUpdatingPhone = true;
     });
@@ -158,15 +166,19 @@ class _SettingsPageState extends State<SettingsPage> {
         if (mounted) {
           context.read<AuthBloc>().add(AuthCheckRequested());
           context.read<TemplateBloc>().add(FetchTemplates());
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Active phone number updated successfully!')),
+            const SnackBar(
+              content: Text('Active phone number updated successfully!'),
+            ),
           );
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to update active phone number')),
+            const SnackBar(
+              content: Text('Failed to update active phone number'),
+            ),
           );
         }
       }
@@ -184,8 +196,6 @@ class _SettingsPageState extends State<SettingsPage> {
       }
     }
   }
-
-
 
   @override
   void dispose() {
@@ -223,17 +233,19 @@ class _SettingsPageState extends State<SettingsPage> {
       final phoneId = config['phoneNumberId']?.toString();
       final token = config['accessToken']?.toString();
 
-      if (phoneId != null && token != null && phoneId.isNotEmpty && token.isNotEmpty) {
-        final waProfile = await getIt<WhatsAppRepository>().fetchWhatsAppProfile(
-          phoneNumberId: phoneId,
-          accessToken: token,
-        );
+      if (phoneId != null &&
+          token != null &&
+          phoneId.isNotEmpty &&
+          token.isNotEmpty) {
+        final waProfile = await getIt<WhatsAppRepository>()
+            .fetchWhatsAppProfile(phoneNumberId: phoneId, accessToken: token);
         if (mounted) {
           setState(() {
             _whatsappProfile = waProfile;
             _whatsappProfileLoading = false;
             if (waProfile == null) {
-              _whatsappProfileError = 'Failed to load WhatsApp Business Profile';
+              _whatsappProfileError =
+                  'Failed to load WhatsApp Business Profile';
             } else {
               _initProfileFormFields();
             }
@@ -290,41 +302,57 @@ class _SettingsPageState extends State<SettingsPage> {
     try {
       final dt = DateTime.parse(value.toString()).toLocal();
       return DateFormat('dd MMM yyyy').format(dt);
-    } catch (_) { return value.toString(); }
+    } catch (_) {
+      return value.toString();
+    }
   }
 
   String _daysLeft(dynamic expiresAt) {
     if (expiresAt == null) return 'N/A';
     try {
-      final diff = DateTime.parse(expiresAt.toString()).toLocal().difference(DateTime.now()).inDays;
+      final diff = DateTime.parse(
+        expiresAt.toString(),
+      ).toLocal().difference(DateTime.now()).inDays;
       if (diff < 0) return 'Expired';
       return '$diff days left';
-    } catch (_) { return 'N/A'; }
+    } catch (_) {
+      return 'N/A';
+    }
   }
 
   Color _expiryColor(dynamic expiresAt) {
     if (expiresAt == null) return Colors.grey;
     try {
-      final diff = DateTime.parse(expiresAt.toString()).toLocal().difference(DateTime.now()).inDays;
+      final diff = DateTime.parse(
+        expiresAt.toString(),
+      ).toLocal().difference(DateTime.now()).inDays;
       if (diff < 0) return Colors.red;
       if (diff <= 7) return Colors.orange;
       return Colors.green;
-    } catch (_) { return Colors.grey; }
+    } catch (_) {
+      return Colors.grey;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
-        final bool isConnected = state is AuthAuthenticated &&
+        final bool isConnected =
+            state is AuthAuthenticated &&
             state.tenant['whatsappConfig'] != null &&
             state.tenant['whatsappConfig']['accessToken'] != null &&
             state.tenant['whatsappConfig']['accessToken'].toString().isNotEmpty;
 
         if (isConnected) {
-          final wabaId = state.tenant['whatsappConfig']['businessAccountId']?.toString();
-          final accessToken = state.tenant['whatsappConfig']['accessToken']?.toString();
-          if (wabaId != null && accessToken != null && wabaId != _fetchedWabaId && !_loadingPhoneNumbers) {
+          final wabaId = state.tenant['whatsappConfig']['businessAccountId']
+              ?.toString();
+          final accessToken = state.tenant['whatsappConfig']['accessToken']
+              ?.toString();
+          if (wabaId != null &&
+              accessToken != null &&
+              wabaId != _fetchedWabaId &&
+              !_loadingPhoneNumbers) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _fetchPhoneNumbers(wabaId, accessToken);
             });
@@ -342,14 +370,17 @@ class _SettingsPageState extends State<SettingsPage> {
                 Text(
                   'Manage Meta Account',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.secondaryColor,
+                  ),
                 ),
                 const SizedBox(height: 32),
 
                 isConnected
-                    ? _buildConnectedDetailsCard(context, state.tenant['whatsappConfig'])
+                    ? _buildConnectedDetailsCard(
+                        context,
+                        state.tenant['whatsappConfig'],
+                      )
                     : _buildConnectMetaCard(context),
 
                 const SizedBox(height: 32),
@@ -363,7 +394,9 @@ class _SettingsPageState extends State<SettingsPage> {
                   onCreateTemplate: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => const CreateTemplatePage()),
+                      MaterialPageRoute(
+                        builder: (context) => const CreateTemplatePage(),
+                      ),
                     );
                   },
                 ),
@@ -389,14 +422,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   onTap: _toggleProfileInfo,
                   child: _buildProfileContent(
                     context,
-                    isConnected ? (state as AuthAuthenticated).tenant['whatsappConfig'] ?? {} : {},
+                    isConnected
+                        ? (state as AuthAuthenticated)
+                                  .tenant['whatsappConfig'] ??
+                              {}
+                        : {},
                     isConnected,
                   ),
                 ),
 
                 const SizedBox(height: 12),
-                _buildPlaceholderTile('Security & Password', Icons.lock_outline,
-                    () => _showChangePasswordDialog(context)),
+                _buildPlaceholderTile(
+                  'Security & Password',
+                  Icons.lock_outline,
+                  () => _showChangePasswordDialog(context),
+                ),
 
                 const SizedBox(height: 12),
                 _buildExpandableTile(
@@ -406,8 +446,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   onTap: _togglePaymentHistory,
                   child: _buildPaymentHistoryContent(),
                 ),
-
-
               ],
             ),
           ),
@@ -422,11 +460,14 @@ class _SettingsPageState extends State<SettingsPage> {
         if (authState is! AuthAuthenticated) {
           return const SizedBox.shrink();
         }
-        
-        final subscription = authState.tenant['subscription'] as Map<String, dynamic>?;
+
+        final subscription =
+            authState.tenant['subscription'] as Map<String, dynamic>?;
         final expiryDateStr = subscription?['expiryDate'];
-        final expiresAt = expiryDateStr != null ? DateTime.parse(expiryDateStr as String) : null;
-        
+        final expiresAt = expiryDateStr != null
+            ? DateTime.parse(expiryDateStr as String)
+            : null;
+
         final daysLeft = expiresAt != null
             ? expiresAt.difference(DateTime.now()).inDays
             : null;
@@ -436,14 +477,14 @@ class _SettingsPageState extends State<SettingsPage> {
         final Color badgeColor = isExpired
             ? Colors.red
             : isWarning
-                ? Colors.orange
-                : Colors.green;
+            ? Colors.orange
+            : Colors.green;
 
         final String expiryLabel = expiresAt == null
             ? 'No active plan'
             : isExpired
-                ? 'Expired'
-                : '$daysLeft day${daysLeft == 1 ? '' : 's'} left';
+            ? 'Expired'
+            : '$daysLeft day${daysLeft == 1 ? '' : 's'} left';
 
         final String expiryDateFormatted = expiresAt != null
             ? DateFormat('dd MMM yyyy').format(expiresAt.toLocal())
@@ -464,8 +505,11 @@ class _SettingsPageState extends State<SettingsPage> {
                   color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.workspace_premium_rounded,
-                    color: AppTheme.secondaryColor, size: 20),
+                child: const Icon(
+                  Icons.workspace_premium_rounded,
+                  color: AppTheme.secondaryColor,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -474,13 +518,19 @@ class _SettingsPageState extends State<SettingsPage> {
                   children: [
                     const Text(
                       'Panel Plan',
-                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                     if (expiresAt != null) ...[
                       const SizedBox(height: 3),
                       Text(
                         'Expires $expiryDateFormatted',
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ],
@@ -490,11 +540,16 @@ class _SettingsPageState extends State<SettingsPage> {
               if (daysLeft != null)
                 Container(
                   margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: badgeColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: badgeColor.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: badgeColor.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Text(
                     expiryLabel,
@@ -516,11 +571,17 @@ class _SettingsPageState extends State<SettingsPage> {
                         ? badgeColor
                         : AppTheme.primaryColor,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     textStyle: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.bold),
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -549,7 +610,13 @@ class _SettingsPageState extends State<SettingsPage> {
               : Colors.grey.withValues(alpha: 0.1),
         ),
         boxShadow: isExpanded
-            ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))]
+            ? [
+                BoxShadow(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ]
             : [],
       ),
       child: Column(
@@ -561,14 +628,19 @@ class _SettingsPageState extends State<SettingsPage> {
               padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
-                  Icon(icon, color: isExpanded ? AppTheme.primaryColor : Colors.blueGrey),
+                  Icon(
+                    icon,
+                    color: isExpanded ? AppTheme.primaryColor : Colors.blueGrey,
+                  ),
                   const SizedBox(width: 16),
                   Text(
                     title,
                     style: TextStyle(
                       fontWeight: FontWeight.w500,
                       fontSize: 15,
-                      color: isExpanded ? AppTheme.primaryColor : Colors.black87,
+                      color: isExpanded
+                          ? AppTheme.primaryColor
+                          : Colors.black87,
                     ),
                   ),
                   const Spacer(),
@@ -588,7 +660,9 @@ class _SettingsPageState extends State<SettingsPage> {
           AnimatedCrossFade(
             firstChild: const SizedBox.shrink(),
             secondChild: child,
-            crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            crossFadeState: isExpanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
             duration: const Duration(milliseconds: 250),
           ),
         ],
@@ -596,7 +670,11 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildProfileContent(BuildContext context, Map<String, dynamic> config, bool isConnected) {
+  Widget _buildProfileContent(
+    BuildContext context,
+    Map<String, dynamic> config,
+    bool isConnected,
+  ) {
     if (_profileLoading) {
       return const Padding(
         padding: EdgeInsets.all(24),
@@ -606,7 +684,12 @@ class _SettingsPageState extends State<SettingsPage> {
     if (_profile == null) {
       return const Padding(
         padding: EdgeInsets.all(24),
-        child: Center(child: Text('Failed to load profile', style: TextStyle(color: Colors.grey))),
+        child: Center(
+          child: Text(
+            'Failed to load profile',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
       );
     }
 
@@ -628,10 +711,13 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 14),
           _infoRow('Name', _profile!['name']?.toString() ?? 'N/A'),
           _infoRow('Email', _profile!['email']?.toString() ?? 'N/A'),
-          _infoRow('Member Since', _formatDate(
-            _profile!['createdAt'] ??
-            _profile!['subscription']?['lastPaymentDate'],
-          )),
+          _infoRow(
+            'Member Since',
+            _formatDate(
+              _profile!['createdAt'] ??
+                  _profile!['subscription']?['lastPaymentDate'],
+            ),
+          ),
 
           if (sub != null) ...[
             const SizedBox(height: 20),
@@ -641,8 +727,16 @@ class _SettingsPageState extends State<SettingsPage> {
             // ── Subscription ──
             _sectionHeader(Icons.workspace_premium, 'Subscription'),
             const SizedBox(height: 14),
-            _infoRow('Plan', sub['planName']?.toString() ?? sub['packageName']?.toString() ?? 'N/A'),
-            _infoRow('Billing Cycle', _capitalize(sub['billingCycle']?.toString() ?? 'N/A')),
+            _infoRow(
+              'Plan',
+              sub['planName']?.toString() ??
+                  sub['packageName']?.toString() ??
+                  'N/A',
+            ),
+            _infoRow(
+              'Billing Cycle',
+              _capitalize(sub['billingCycle']?.toString() ?? 'N/A'),
+            ),
             _infoRow('Price', '₹${sub['price'] ?? 'N/A'}'),
             _infoRow('Panel Expires', _formatDate(expiresAt)),
             const SizedBox(height: 12),
@@ -662,14 +756,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   const SizedBox(width: 8),
                   Text(
                     daysLeft,
-                    style: TextStyle(color: expiryColor, fontWeight: FontWeight.w600, fontSize: 14),
+                    style: TextStyle(
+                      color: expiryColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
                   ),
                 ],
               ),
             ),
           ] else ...[
             const SizedBox(height: 16),
-            const Text('No active subscription', style: TextStyle(color: Colors.grey)),
+            const Text(
+              'No active subscription',
+              style: TextStyle(color: Colors.grey),
+            ),
           ],
 
           if (isConnected) _buildWhatsAppProfileSection(config),
@@ -687,7 +788,10 @@ class _SettingsPageState extends State<SettingsPage> {
             children: [
               CircularProgressIndicator(),
               SizedBox(height: 12),
-              Text('Fetching WhatsApp profile from Meta...', style: TextStyle(color: Colors.grey)),
+              Text(
+                'Fetching WhatsApp profile from Meta...',
+                style: TextStyle(color: Colors.grey),
+              ),
             ],
           ),
         ),
@@ -700,7 +804,10 @@ class _SettingsPageState extends State<SettingsPage> {
         child: Center(
           child: Column(
             children: [
-              Text(_whatsappProfileError!, style: const TextStyle(color: Colors.redAccent)),
+              Text(
+                _whatsappProfileError!,
+                style: const TextStyle(color: Colors.redAccent),
+              ),
               const SizedBox(height: 12),
               ElevatedButton.icon(
                 onPressed: () {
@@ -722,7 +829,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
     final activePhoneId = config['phoneNumberId']?.toString();
     String? verifiedName = config['verifiedName']?.toString();
-    
+
     if (verifiedName == null || verifiedName.isEmpty) {
       if (_phoneNumbers.isNotEmpty && activePhoneId != null) {
         final activePhone = _phoneNumbers.firstWhere(
@@ -734,8 +841,10 @@ class _SettingsPageState extends State<SettingsPage> {
         }
       }
     }
-    
-    final displayName = (verifiedName ?? _profile?['name']?.toString() ?? 'Profile Picture').toUpperCase();
+
+    final displayName =
+        (verifiedName ?? _profile?['name']?.toString() ?? 'Profile Picture')
+            .toUpperCase();
 
     final avatarUrl = _whatsappProfile!['profile_picture_url']?.toString();
 
@@ -745,17 +854,22 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 20),
         const Divider(height: 1),
         const SizedBox(height: 20),
-        
+
         Row(
           children: [
             Expanded(
-              child: _sectionHeader(Icons.chat_bubble_outline, 'WhatsApp Business Profile'),
+              child: _sectionHeader(
+                Icons.chat_bubble_outline,
+                'WhatsApp Business Profile',
+              ),
             ),
             IconButton(
               tooltip: _isProfileEditing ? 'Cancel Edit' : 'Edit Profile',
               icon: Icon(
                 _isProfileEditing ? Icons.close_rounded : Icons.edit_rounded,
-                color: _isProfileEditing ? Colors.redAccent : AppTheme.primaryColor,
+                color: _isProfileEditing
+                    ? Colors.redAccent
+                    : AppTheme.primaryColor,
               ),
               onPressed: () {
                 setState(() {
@@ -779,9 +893,15 @@ class _SettingsPageState extends State<SettingsPage> {
                 CircleAvatar(
                   radius: 50,
                   backgroundColor: Colors.grey.shade200,
-                  backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                  backgroundImage: avatarUrl != null
+                      ? NetworkImage(avatarUrl)
+                      : null,
                   child: avatarUrl == null
-                      ? Icon(Icons.person, size: 50, color: Colors.grey.shade400)
+                      ? Icon(
+                          Icons.person,
+                          size: 50,
+                          color: Colors.grey.shade400,
+                        )
                       : null,
                 ),
                 if (_isUploadingImage)
@@ -827,7 +947,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 children: [
                   Text(
                     displayName,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -848,13 +971,25 @@ class _SettingsPageState extends State<SettingsPage> {
         TextFormField(
           controller: _aboutController,
           readOnly: !_isProfileEditing,
-          style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
           maxLength: 139,
           decoration: InputDecoration(
             labelText: 'About Status Text',
-            labelStyle: TextStyle(color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700, fontWeight: FontWeight.w600),
+            labelStyle: TextStyle(
+              color: _isProfileEditing
+                  ? AppTheme.primaryColor
+                  : Colors.grey.shade700,
+              fontWeight: FontWeight.w600,
+            ),
             hintText: 'Hey there! I am using WhatsApp.',
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
             filled: true,
             fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
             border: OutlineInputBorder(
@@ -867,7 +1002,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryColor,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -877,13 +1015,26 @@ class _SettingsPageState extends State<SettingsPage> {
         TextFormField(
           controller: _descriptionController,
           readOnly: !_isProfileEditing,
-          style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
           maxLines: 3,
           decoration: InputDecoration(
             labelText: 'Business Description',
-            labelStyle: TextStyle(color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700, fontWeight: FontWeight.w600),
-            hintText: 'Tell customers about your business vertical, services, or catalog...',
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            labelStyle: TextStyle(
+              color: _isProfileEditing
+                  ? AppTheme.primaryColor
+                  : Colors.grey.shade700,
+              fontWeight: FontWeight.w600,
+            ),
+            hintText:
+                'Tell customers about your business vertical, services, or catalog...',
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
             filled: true,
             fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
             border: OutlineInputBorder(
@@ -896,7 +1047,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryColor,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -906,12 +1060,24 @@ class _SettingsPageState extends State<SettingsPage> {
         TextFormField(
           controller: _addressController,
           readOnly: !_isProfileEditing,
-          style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
           decoration: InputDecoration(
             labelText: 'Business Address',
-            labelStyle: TextStyle(color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700, fontWeight: FontWeight.w600),
+            labelStyle: TextStyle(
+              color: _isProfileEditing
+                  ? AppTheme.primaryColor
+                  : Colors.grey.shade700,
+              fontWeight: FontWeight.w600,
+            ),
             hintText: 'Ahmedabad, Gujarat 380006',
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
             filled: true,
             fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
             border: OutlineInputBorder(
@@ -924,7 +1090,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryColor,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -934,13 +1103,25 @@ class _SettingsPageState extends State<SettingsPage> {
         TextFormField(
           controller: _emailController,
           readOnly: !_isProfileEditing,
-          style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
           keyboardType: TextInputType.emailAddress,
           decoration: InputDecoration(
             labelText: 'Contact Email',
-            labelStyle: TextStyle(color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700, fontWeight: FontWeight.w600),
+            labelStyle: TextStyle(
+              color: _isProfileEditing
+                  ? AppTheme.primaryColor
+                  : Colors.grey.shade700,
+              fontWeight: FontWeight.w600,
+            ),
             hintText: 'info@yourbusiness.com',
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
             filled: true,
             fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
             border: OutlineInputBorder(
@@ -953,7 +1134,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryColor,
+                width: 1.5,
+              ),
             ),
           ),
         ),
@@ -962,19 +1146,36 @@ class _SettingsPageState extends State<SettingsPage> {
         // Industry Vertical Dropdown
         Text(
           'Business Vertical Category',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: _isProfileEditing
+                ? AppTheme.primaryColor
+                : Colors.grey.shade700,
+          ),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           initialValue: _selectedVertical,
           isExpanded: true,
-          style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+          style: const TextStyle(
+            color: Colors.black87,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
           disabledHint: Text(
             _verticals[_selectedVertical] ?? _selectedVertical ?? 'None',
-            style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+            style: const TextStyle(
+              color: Colors.black87,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
           decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: Colors.grey.shade300),
@@ -985,7 +1186,10 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryColor,
+                width: 1.5,
+              ),
             ),
             filled: true,
             fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
@@ -994,7 +1198,10 @@ class _SettingsPageState extends State<SettingsPage> {
           items: _verticals.entries.map((e) {
             return DropdownMenuItem<String>(
               value: e.key,
-              child: Text(e.value, style: const TextStyle(color: Colors.black87)),
+              child: Text(
+                e.value,
+                style: const TextStyle(color: Colors.black87),
+              ),
             );
           }).toList(),
           onChanged: _isProfileEditing
@@ -1014,7 +1221,9 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 32),
           // Save Button
           ElevatedButton(
-            onPressed: _isSavingWhatsAppProfile ? null : () => _saveWhatsAppProfile(config),
+            onPressed: _isSavingWhatsAppProfile
+                ? null
+                : () => _saveWhatsAppProfile(config),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
               foregroundColor: Colors.white,
@@ -1027,9 +1236,15 @@ class _SettingsPageState extends State<SettingsPage> {
                 ? const SizedBox(
                     width: 20,
                     height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
                   )
-                : const Text('Save WhatsApp Business Profile', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                : const Text(
+                    'Save WhatsApp Business Profile',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
           ),
         ],
       ],
@@ -1042,7 +1257,13 @@ class _SettingsPageState extends State<SettingsPage> {
       children: [
         Text(
           'Websites',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: _isProfileEditing ? AppTheme.primaryColor : Colors.grey.shade700),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: _isProfileEditing
+                ? AppTheme.primaryColor
+                : Colors.grey.shade700,
+          ),
         ),
         const SizedBox(height: 8),
         ...List.generate(_websiteControllers.length, (index) {
@@ -1054,12 +1275,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: TextFormField(
                     controller: _websiteControllers[index],
                     readOnly: !_isProfileEditing,
-                    style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                      color: Colors.black87,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'https://example.com',
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
                       filled: true,
-                      fillColor: _isProfileEditing ? Colors.white : Colors.grey.shade50,
+                      fillColor: _isProfileEditing
+                          ? Colors.white
+                          : Colors.grey.shade50,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                         borderSide: BorderSide(color: Colors.grey.shade300),
@@ -1070,7 +1300,10 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+                        borderSide: const BorderSide(
+                          color: AppTheme.primaryColor,
+                          width: 1.5,
+                        ),
                       ),
                     ),
                   ),
@@ -1109,7 +1342,11 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: EdgeInsets.only(top: 4.0),
             child: Text(
               'Maximum 2 websites allowed by Meta.',
-              style: TextStyle(color: Colors.grey, fontSize: 12, fontStyle: FontStyle.italic),
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
             ),
           ),
       ],
@@ -1127,34 +1364,37 @@ class _SettingsPageState extends State<SettingsPage> {
         allowMultiple: false,
         withData: true,
       );
-      
+
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
         final bytes = file.bytes;
         if (bytes == null) return;
-        
+
         setState(() {
           _isUploadingImage = true;
           _uploadProgress = 0.0;
         });
 
-        final handleId = await getIt<WhatsAppRepository>().uploadWhatsAppProfileImage(
-          phoneNumberId: phoneId,
-          accessToken: token,
-          imageBytes: bytes,
-          fileName: file.name,
-          mimeType: file.extension == 'png' ? 'image/png' : 'image/jpeg',
-          onProgress: (progress) {
-            setState(() {
-              _uploadProgress = progress;
-            });
-          },
-        );
+        final handleId = await getIt<WhatsAppRepository>()
+            .uploadWhatsAppProfileImage(
+              phoneNumberId: phoneId,
+              accessToken: token,
+              imageBytes: bytes,
+              fileName: file.name,
+              mimeType: file.extension == 'png' ? 'image/png' : 'image/jpeg',
+              onProgress: (progress) {
+                setState(() {
+                  _uploadProgress = progress;
+                });
+              },
+            );
 
         if (handleId != null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Profile picture uploaded successfully!')),
+              const SnackBar(
+                content: Text('Profile picture uploaded successfully!'),
+              ),
             );
           }
           _whatsappProfile = null;
@@ -1170,9 +1410,9 @@ class _SettingsPageState extends State<SettingsPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error uploading image: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error uploading image: $e')));
       }
     } finally {
       setState(() {
@@ -1194,7 +1434,9 @@ class _SettingsPageState extends State<SettingsPage> {
     if (aboutText.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('About Status Text is required and cannot be empty.')),
+          const SnackBar(
+            content: Text('About Status Text is required and cannot be empty.'),
+          ),
         );
       }
       setState(() {
@@ -1212,7 +1454,11 @@ class _SettingsPageState extends State<SettingsPage> {
       if (!w.startsWith('http://') && !w.startsWith('https://')) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Invalid website: $w. Must start with http:// or https://')),
+            SnackBar(
+              content: Text(
+                'Invalid website: $w. Must start with http:// or https://',
+              ),
+            ),
           );
         }
         setState(() {
@@ -1222,9 +1468,7 @@ class _SettingsPageState extends State<SettingsPage> {
       }
     }
 
-    final Map<String, dynamic> profileData = {
-      'about': aboutText,
-    };
+    final Map<String, dynamic> profileData = {'about': aboutText};
 
     final addressText = _addressController.text.trim();
     if (addressText.isNotEmpty) {
@@ -1246,11 +1490,12 @@ class _SettingsPageState extends State<SettingsPage> {
     }
 
     try {
-      final success = await getIt<WhatsAppRepository>().updateWhatsAppProfileText(
-        phoneNumberId: phoneId,
-        accessToken: token,
-        profileData: profileData,
-      );
+      final success = await getIt<WhatsAppRepository>()
+          .updateWhatsAppProfileText(
+            phoneNumberId: phoneId,
+            accessToken: token,
+            profileData: profileData,
+          );
 
       if (success) {
         if (mounted) {
@@ -1258,7 +1503,9 @@ class _SettingsPageState extends State<SettingsPage> {
             _isProfileEditing = false;
           });
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('WhatsApp Business Profile updated successfully!')),
+            const SnackBar(
+              content: Text('WhatsApp Business Profile updated successfully!'),
+            ),
           );
         }
         _toggleProfileInfo();
@@ -1266,7 +1513,9 @@ class _SettingsPageState extends State<SettingsPage> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to update WhatsApp Business Profile')),
+            const SnackBar(
+              content: Text('Failed to update WhatsApp Business Profile'),
+            ),
           );
         }
       }
@@ -1287,14 +1536,17 @@ class _SettingsPageState extends State<SettingsPage> {
 
   /// Replace characters outside the PDF default font's Latin-1 range.
   String _pdfSafe(String s) => s
-      .replaceAll('\u2014', '-')   // em dash â€”
-      .replaceAll('\u2013', '-')   // en dash â€“
-      .replaceAll('\u2018', "'")   // left single quote '
-      .replaceAll('\u2019', "'")   // right single quote '
-      .replaceAll('\u201C', '"')   // left double quote "
-      .replaceAll('\u201D', '"')   // right double quote "
+      .replaceAll('\u2014', '-') // em dash â€”
+      .replaceAll('\u2013', '-') // en dash â€“
+      .replaceAll('\u2018', "'") // left single quote '
+      .replaceAll('\u2019', "'") // right single quote '
+      .replaceAll('\u201C', '"') // left double quote "
+      .replaceAll('\u201D', '"') // right double quote "
       .replaceAll('\u2026', '...') // ellipsis â€¦
-      .replaceAll(RegExp(r'[^\x00-\xFF]'), '?'); // anything else outside Latin-1
+      .replaceAll(
+        RegExp(r'[^\x00-\xFF]'),
+        '?',
+      ); // anything else outside Latin-1
 
   /// Generate and download a PDF receipt for a single payment record.
   Future<void> _downloadReceipt(Map<String, dynamic> record) async {
@@ -1308,7 +1560,9 @@ class _SettingsPageState extends State<SettingsPage> {
         : null;
     final dateStr = timestamp != null ? fmt.format(timestamp) : 'N/A';
     final typeLabel = isPanelRenewal ? 'Panel Renewal' : 'Credit Purchase';
-    final color = isPanelRenewal ? PdfColors.purple : PdfColor.fromHex('#1DB954');
+    final color = isPanelRenewal
+        ? PdfColors.purple
+        : PdfColor.fromHex('#1DB954');
 
     pdf.addPage(
       pw.Page(
@@ -1321,18 +1575,45 @@ class _SettingsPageState extends State<SettingsPage> {
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                  pw.Text('Sendzyy',
-                      style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold, color: color)),
-                  pw.Text('Payment Receipt',
-                      style: const pw.TextStyle(fontSize: 13, color: PdfColors.grey600)),
-                ]),
-                pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-                  pw.Text('Date: $dateStr',
-                      style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
-                  pw.Text('Type: $typeLabel',
-                      style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey700)),
-                ]),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Sendzyy',
+                      style: pw.TextStyle(
+                        fontSize: 24,
+                        fontWeight: pw.FontWeight.bold,
+                        color: color,
+                      ),
+                    ),
+                    pw.Text(
+                      'Payment Receipt',
+                      style: const pw.TextStyle(
+                        fontSize: 13,
+                        color: PdfColors.grey600,
+                      ),
+                    ),
+                  ],
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text(
+                      'Date: $dateStr',
+                      style: const pw.TextStyle(
+                        fontSize: 11,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                    pw.Text(
+                      'Type: $typeLabel',
+                      style: const pw.TextStyle(
+                        fontSize: 11,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
             pw.SizedBox(height: 8),
@@ -1347,28 +1628,48 @@ class _SettingsPageState extends State<SettingsPage> {
                 color: PdfColors.grey100,
                 borderRadius: pw.BorderRadius.circular(8),
               ),
-              child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-                pw.Text('Description',
-                    style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
-                pw.SizedBox(height: 4),
-                pw.Text(_pdfSafe(description.isNotEmpty ? description : typeLabel),
-                    style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
-              ]),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Description',
+                    style: const pw.TextStyle(
+                      fontSize: 10,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    _pdfSafe(description.isNotEmpty ? description : typeLabel),
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
             ),
             pw.SizedBox(height: 20),
 
             // Details table
             pw.TableHelper.fromTextArray(
               headers: ['Field', 'Value'],
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+              headerStyle: pw.TextStyle(
+                fontWeight: pw.FontWeight.bold,
+                fontSize: 10,
+              ),
               cellStyle: const pw.TextStyle(fontSize: 10),
               headerDecoration: pw.BoxDecoration(color: color),
               headerAlignment: pw.Alignment.centerLeft,
-              cellAlignments: {0: pw.Alignment.centerLeft, 1: pw.Alignment.centerLeft},
+              cellAlignments: {
+                0: pw.Alignment.centerLeft,
+                1: pw.Alignment.centerLeft,
+              },
               data: [
                 ['Category', typeLabel],
                 ['Date & Time', dateStr],
-                if (!isPanelRenewal && credits > 0) ['Credits Added', '+${credits.toStringAsFixed(0)}'],
+                if (!isPanelRenewal && credits > 0)
+                  ['Credits Added', '+${credits.toStringAsFixed(0)}'],
                 ['Status', 'Completed'],
               ],
             ),
@@ -1376,8 +1677,13 @@ class _SettingsPageState extends State<SettingsPage> {
             pw.Divider(),
             pw.SizedBox(height: 8),
             pw.Center(
-              child: pw.Text('Thank you for your payment.',
-                  style: const pw.TextStyle(fontSize: 11, color: PdfColors.grey600)),
+              child: pw.Text(
+                'Thank you for your payment.',
+                style: const pw.TextStyle(
+                  fontSize: 11,
+                  color: PdfColors.grey600,
+                ),
+              ),
             ),
           ],
         ),
@@ -1400,12 +1706,25 @@ class _SettingsPageState extends State<SettingsPage> {
         header: (_) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-              pw.Text('Sendzyy - Payment History',
-                  style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-              pw.Text('Generated: $now',
-                  style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
-            ]),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'Sendzyy - Payment History',
+                  style: pw.TextStyle(
+                    fontSize: 18,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Text(
+                  'Generated: $now',
+                  style: const pw.TextStyle(
+                    fontSize: 10,
+                    color: PdfColors.grey600,
+                  ),
+                ),
+              ],
+            ),
             pw.SizedBox(height: 6),
             pw.Divider(),
           ],
@@ -1413,7 +1732,10 @@ class _SettingsPageState extends State<SettingsPage> {
         build: (_) => [
           pw.TableHelper.fromTextArray(
             headers: ['Date', 'Description', 'Type', 'Credits'],
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 10),
+            headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 10,
+            ),
             cellStyle: const pw.TextStyle(fontSize: 9),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
             cellAlignments: {
@@ -1432,7 +1754,9 @@ class _SettingsPageState extends State<SettingsPage> {
                 timestamp != null ? fmt.format(timestamp) : 'N/A',
                 _pdfSafe(r['description']?.toString() ?? ''),
                 isPanelRenewal ? 'Panel Renewal' : 'Credit Purchase',
-                (!isPanelRenewal && credits > 0) ? '+${credits.toStringAsFixed(0)}' : '-',
+                (!isPanelRenewal && credits > 0)
+                    ? '+${credits.toStringAsFixed(0)}'
+                    : '-',
               ];
             }).toList(),
           ),
@@ -1459,9 +1783,15 @@ class _SettingsPageState extends State<SettingsPage> {
             children: [
               const Icon(Icons.error_outline, color: Colors.red, size: 36),
               const SizedBox(height: 8),
-              const Text('Failed to load history', style: TextStyle(color: Colors.grey)),
+              const Text(
+                'Failed to load history',
+                style: TextStyle(color: Colors.grey),
+              ),
               const SizedBox(height: 12),
-              TextButton(onPressed: _togglePaymentHistory, child: const Text('Retry')),
+              TextButton(
+                onPressed: _togglePaymentHistory,
+                child: const Text('Retry'),
+              ),
             ],
           ),
         ),
@@ -1485,18 +1815,33 @@ class _SettingsPageState extends State<SettingsPage> {
                 onTap: _downloadAllPayments,
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.grey.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+                    border: Border.all(
+                      color: Colors.grey.withValues(alpha: 0.2),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.download_outlined, size: 15, color: Colors.grey.shade600),
+                      Icon(
+                        Icons.download_outlined,
+                        size: 15,
+                        color: Colors.grey.shade600,
+                      ),
                       const SizedBox(width: 5),
-                      Text('Download All', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                      Text(
+                        'Download All',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -1510,21 +1855,36 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Center(
                 child: Column(
                   children: [
-                    Icon(Icons.receipt_long_outlined, size: 40, color: Colors.grey.shade300),
+                    Icon(
+                      Icons.receipt_long_outlined,
+                      size: 40,
+                      color: Colors.grey.shade300,
+                    ),
                     const SizedBox(height: 8),
-                    Text('No records', style: TextStyle(color: Colors.grey.shade400)),
+                    Text(
+                      'No records',
+                      style: TextStyle(color: Colors.grey.shade400),
+                    ),
                   ],
                 ),
               ),
             )
           else
-            ...current.map((record) => _buildPaymentCard(record, onDownload: () => _downloadReceipt(record))),
+            ...current.map(
+              (record) => _buildPaymentCard(
+                record,
+                onDownload: () => _downloadReceipt(record),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildPaymentCard(Map<String, dynamic> record, {VoidCallback? onDownload}) {
+  Widget _buildPaymentCard(
+    Map<String, dynamic> record, {
+    VoidCallback? onDownload,
+  }) {
     final isPanelRenewal = record['category'] == 'panel_renewal';
     final description = record['description']?.toString() ?? '';
     final credits = (record['credits'] as num?)?.toDouble() ?? 0;
@@ -1536,7 +1896,9 @@ class _SettingsPageState extends State<SettingsPage> {
         : 'N/A';
 
     final color = isPanelRenewal ? Colors.purple : AppTheme.primaryColor;
-    final icon = isPanelRenewal ? Icons.workspace_premium_rounded : Icons.add_shopping_cart_rounded;
+    final icon = isPanelRenewal
+        ? Icons.workspace_premium_rounded
+        : Icons.add_shopping_cart_rounded;
     final typeLabel = isPanelRenewal ? 'Panel Renewal' : 'Credit Purchase';
 
     return Container(
@@ -1564,22 +1926,40 @@ class _SettingsPageState extends State<SettingsPage> {
               children: [
                 Text(
                   description.isNotEmpty ? description : typeLabel,
-                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: color.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: Text(typeLabel,
-                          style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w600)),
+                      child: Text(
+                        typeLabel,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 8),
-                    Text(dateStr, style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                    Text(
+                      dateStr,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -1595,7 +1975,10 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Text(
                 '+${credits.toStringAsFixed(0)}',
                 style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.primaryColor),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: AppTheme.primaryColor,
+                ),
               ),
             ),
           const SizedBox(width: 8),
@@ -1610,7 +1993,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
               ),
-              child: Icon(Icons.download_outlined, size: 18, color: Colors.grey.shade600),
+              child: Icon(
+                Icons.download_outlined,
+                size: 18,
+                color: Colors.grey.shade600,
+              ),
             ),
           ),
         ],
@@ -1618,7 +2005,8 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _sectionHeader(IconData icon, String title) {    return Row(
+  Widget _sectionHeader(IconData icon, String title) {
+    return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(6),
@@ -1629,7 +2017,14 @@ class _SettingsPageState extends State<SettingsPage> {
           child: Icon(icon, color: AppTheme.primaryColor, size: 16),
         ),
         const SizedBox(width: 10),
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.secondaryColor)),
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            color: AppTheme.secondaryColor,
+          ),
+        ),
       ],
     );
   }
@@ -1641,13 +2036,17 @@ class _SettingsPageState extends State<SettingsPage> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
         ],
       ),
     );
   }
 
-  String _capitalize(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
+  String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   Widget _buildConnectMetaCard(BuildContext context) {
     return Card(
@@ -1675,12 +2074,22 @@ class _SettingsPageState extends State<SettingsPage> {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: _connectMeta,
-              icon: _isConnecting 
-                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : const Icon(Icons.facebook, size: 24),
+              icon: _isConnecting
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.facebook, size: 24),
               label: Text(
                 _isConnecting ? 'Connecting...' : 'Connect Meta Account',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF1877F2),
@@ -1732,25 +2141,31 @@ class _SettingsPageState extends State<SettingsPage> {
         );
 
         // If we have no code but have WABA/phone IDs, proceed with embedded signup
-        if ((code == null || code.isEmpty) && (wabaId != null || phoneNumberId != null)) {
+        if ((code == null || code.isEmpty) &&
+            (wabaId != null || phoneNumberId != null)) {
           setState(() => _isConnecting = false);
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Meta signup incomplete. Please try again or contact support.')),
+              const SnackBar(
+                content: Text(
+                  'Meta signup incomplete. Please try again or contact support.',
+                ),
+              ),
             );
           }
           return;
         }
 
-        final response = await getIt<WhatsAppRepository>().facebookEmbeddedSignup(
-          code: code ?? '',
-          appId: AppConstants.metaAppId,
-          wabaId: wabaId,
-          phoneNumberId: phoneNumberId,
-          sessionId: sessionId,
-          sessionInfoResponse: sessionInfoResponse,
-          businessPortfolioId: result.businessPortfolioId, // Step 3
-        );
+        final response = await getIt<WhatsAppRepository>()
+            .facebookEmbeddedSignup(
+              code: code ?? '',
+              appId: AppConstants.metaAppId,
+              wabaId: wabaId,
+              phoneNumberId: phoneNumberId,
+              sessionId: sessionId,
+              sessionInfoResponse: sessionInfoResponse,
+              businessPortfolioId: result.businessPortfolioId, // Step 3
+            );
 
         setState(() => _isConnecting = false);
 
@@ -1765,17 +2180,27 @@ class _SettingsPageState extends State<SettingsPage> {
             context.read<AuthBloc>().add(AuthCheckRequested());
             context.read<TemplateBloc>().add(FetchTemplates());
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Meta Account Connected Successfully!')),
+              const SnackBar(
+                content: Text('Meta Account Connected Successfully!'),
+              ),
             );
           } else {
             // Token saved but IDs missing — show error
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Connection partially completed. Please reconnect your Meta account.')),
+              const SnackBar(
+                content: Text(
+                  'Connection partially completed. Please reconnect your Meta account.',
+                ),
+              ),
             );
           }
         } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to connect Meta account. Please try again.')),
+            const SnackBar(
+              content: Text(
+                'Failed to connect Meta account. Please try again.',
+              ),
+            ),
           );
         }
       } else if (result.status == 'cancelled') {
@@ -1824,7 +2249,9 @@ class _SettingsPageState extends State<SettingsPage> {
         setState(() => _isConnecting = false);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Meta signup failed. Please try again.')),
+            const SnackBar(
+              content: Text('Meta signup failed. Please try again.'),
+            ),
           );
         }
       }
@@ -1870,7 +2297,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       color: Colors.red.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.phone_disabled_rounded, color: Colors.red, size: 24),
+                    child: const Icon(
+                      Icons.phone_disabled_rounded,
+                      color: Colors.red,
+                      size: 24,
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -1879,7 +2310,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black87),
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
                         ),
                         const SizedBox(height: 2),
                         const Text(
@@ -1909,12 +2344,21 @@ class _SettingsPageState extends State<SettingsPage> {
                   children: [
                     const Text(
                       'Error Detail',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.red, letterSpacing: 0.5),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.red,
+                        letterSpacing: 0.5,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       errorDetail,
-                      style: const TextStyle(fontSize: 13, color: Colors.black87, height: 1.5),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black87,
+                        height: 1.5,
+                      ),
                     ),
                   ],
                 ),
@@ -1928,43 +2372,69 @@ class _SettingsPageState extends State<SettingsPage> {
                 decoration: BoxDecoration(
                   color: Colors.amber.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: Colors.amber.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.lightbulb_outline, size: 14, color: Colors.orange),
+                        Icon(
+                          Icons.lightbulb_outline,
+                          size: 14,
+                          color: Colors.orange,
+                        ),
                         SizedBox(width: 6),
                         Text(
                           'What to try',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.orange, letterSpacing: 0.5),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.orange,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    ...[ 
+                    ...[
                       if (isNetworkError)
                         'Check your internet connection and try again.'
                       else
                         'Ensure your phone number is verified and approved by Meta.',
                       'Make sure your Access Token has the required permissions.',
                       'If the error persists, disconnect and reconnect your Meta account.',
-                    ].map((tip) => Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(top: 4),
-                            child: Icon(Icons.circle, size: 5, color: Colors.orange),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(child: Text(tip, style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4))),
-                        ],
+                    ].map(
+                      (tip) => Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Padding(
+                              padding: EdgeInsets.only(top: 4),
+                              child: Icon(
+                                Icons.circle,
+                                size: 5,
+                                color: Colors.orange,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                tip,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black87,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    )),
+                    ),
                   ],
                 ),
               ),
@@ -1976,7 +2446,10 @@ class _SettingsPageState extends State<SettingsPage> {
                 children: [
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Dismiss', style: TextStyle(color: Colors.grey)),
+                    child: const Text(
+                      'Dismiss',
+                      style: TextStyle(color: Colors.grey),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton.icon(
@@ -1989,8 +2462,13 @@ class _SettingsPageState extends State<SettingsPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                   ),
                 ],
@@ -2024,7 +2502,9 @@ class _SettingsPageState extends State<SettingsPage> {
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Phone number registered successfully! Status is now CONNECTED.'),
+              content: Text(
+                '✅ Phone number registered successfully! Status is now CONNECTED.',
+              ),
               backgroundColor: Colors.green,
               duration: Duration(seconds: 4),
             ),
@@ -2032,7 +2512,11 @@ class _SettingsPageState extends State<SettingsPage> {
         }
       } else {
         // API returned a failure response
-        final errDetail = res?['error'] ?? res?['details'] ?? res?['message'] ?? 'Registration failed. Please try again.';
+        final errDetail =
+            res?['error'] ??
+            res?['details'] ??
+            res?['message'] ??
+            'Registration failed. Please try again.';
         if (mounted) {
           _showRegisterPhoneErrorDialog(
             context: context,
@@ -2045,7 +2529,8 @@ class _SettingsPageState extends State<SettingsPage> {
       // Network / unexpected exception
       if (mounted) {
         setState(() => _isRegisteringPhone = false);
-        final isNetwork = e.toString().toLowerCase().contains('socket') ||
+        final isNetwork =
+            e.toString().toLowerCase().contains('socket') ||
             e.toString().toLowerCase().contains('connection') ||
             e.toString().toLowerCase().contains('timeout');
         _showRegisterPhoneErrorDialog(
@@ -2058,7 +2543,10 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Widget _buildConnectedDetailsCard(BuildContext context, Map<String, dynamic> config) {
+  Widget _buildConnectedDetailsCard(
+    BuildContext context,
+    Map<String, dynamic> config,
+  ) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -2081,7 +2569,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 const SizedBox(width: 16),
                 const Text(
                   'Meta Account Connected',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green),
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
                 ),
               ],
             ),
@@ -2108,7 +2600,10 @@ class _SettingsPageState extends State<SettingsPage> {
             const Divider(height: 32),
             _buildDetailRow('WABA ID', config['businessAccountId'] ?? 'N/A'),
             const Divider(height: 32),
-            _buildDetailRow('Access Token', '••••••••••••••••${config['accessToken']?.toString().substring((config['accessToken']?.toString().length ?? 4) - 4) ?? ''}'),
+            _buildDetailRow(
+              'Access Token',
+              '••••••••••••••••${config['accessToken']?.toString().substring((config['accessToken']?.toString().length ?? 4) - 4) ?? ''}',
+            ),
             if ((config['displayPhone'] as String?)?.isNotEmpty == true) ...[
               const Divider(height: 32),
               _buildDetailRow('Display Phone', config['displayPhone'] ?? ''),
@@ -2126,96 +2621,146 @@ class _SettingsPageState extends State<SettingsPage> {
               _buildDetailRow('Throughput', config['throughputLevel'] ?? ''),
             ],
             // Register Phone button — only shown when phone is NOT connected
-            Builder(builder: (context) {
-              final activePhoneId = config['phoneNumberId']?.toString();
-              // Look up the status from the fetched phone numbers list
-              String? phoneStatus;
-              if (_phoneNumbers.isNotEmpty && activePhoneId != null) {
-                final activePhone = _phoneNumbers.firstWhere(
-                  (p) => p['id']?.toString() == activePhoneId,
-                  orElse: () => <String, dynamic>{},
-                );
-                phoneStatus = activePhone['status']?.toString().toUpperCase();
-              }
-              // Also fallback to config stored status if available
-              phoneStatus ??= config['phoneStatus']?.toString().toUpperCase();
+            Builder(
+              builder: (context) {
+                final activePhoneId = config['phoneNumberId']?.toString();
+                // Look up the status from the fetched phone numbers list
+                String? phoneStatus;
+                if (_phoneNumbers.isNotEmpty && activePhoneId != null) {
+                  final activePhone = _phoneNumbers.firstWhere(
+                    (p) => p['id']?.toString() == activePhoneId,
+                    orElse: () => <String, dynamic>{},
+                  );
+                  phoneStatus = activePhone['status']?.toString().toUpperCase();
+                }
+                // Also fallback to config stored status if available
+                phoneStatus ??= config['phoneStatus']?.toString().toUpperCase();
 
-              final isConnected = phoneStatus == 'CONNECTED';
+                final isConnected = phoneStatus == 'CONNECTED';
 
-              if (isConnected) return const SizedBox.shrink();
+                if (isConnected) return const SizedBox.shrink();
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 25),
-                  // Status warning banner
-                  if (phoneStatus != null && phoneStatus != 'CONNECTED') ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.orange.withValues(alpha: 0.35)),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Phone status: $phoneStatus — Messages may fail with error 141000. '
-                              'Tap below to register the phone number with Meta Cloud API.',
-                              style: const TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
-                            ),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 25),
+                    // Status warning banner
+                    if (phoneStatus != null && phoneStatus != 'CONNECTED') ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.orange.withValues(alpha: 0.35),
                           ),
-                        ],
-                      ),
-                    ),
-                  ] else ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.06),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.info_outline_rounded, color: Colors.blueAccent, size: 18),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'If you are seeing error 141000, tap below to register your phone number with Meta Cloud API.',
-                              style: TextStyle(fontSize: 12, color: Colors.black87, height: 1.4),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.orange,
+                              size: 18,
                             ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Phone status: $phoneStatus — Messages may fail with error 141000. '
+                                'Tap below to register the phone number with Meta Cloud API.',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black87,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Colors.blue.withValues(alpha: 0.2),
                           ),
-                        ],
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline_rounded,
+                              color: Colors.blueAccent,
+                              size: 18,
+                            ),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'If you are seeing error 141000, tap below to register your phone number with Meta Cloud API.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.black87,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    ElevatedButton.icon(
+                      onPressed: _isRegisteringPhone
+                          ? null
+                          : _registerPhoneWithMeta,
+                      icon: _isRegisteringPhone
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(
+                              Icons.verified_user_rounded,
+                              color: Colors.white,
+                            ),
+                      label: Text(
+                        _isRegisteringPhone
+                            ? 'Registering Phone...'
+                            : 'Register Phone Number (Fix Error 141000)',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        minimumSize: const Size(double.infinity, 52),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
                     ),
                   ],
-                  ElevatedButton.icon(
-                    onPressed: _isRegisteringPhone ? null : _registerPhoneWithMeta,
-                    icon: _isRegisteringPhone
-                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                        : const Icon(Icons.verified_user_rounded, color: Colors.white),
-                    label: Text(
-                      _isRegisteringPhone ? 'Registering Phone...' : 'Register Phone Number (Fix Error 141000)',
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      minimumSize: const Size(double.infinity, 52),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ],
-              );
-            }),
+                );
+              },
+            ),
           ],
         ),
       ),
@@ -2231,10 +2776,16 @@ class _SettingsPageState extends State<SettingsPage> {
             SizedBox(
               width: 18,
               height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryColor),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppTheme.primaryColor,
+              ),
             ),
             SizedBox(width: 12),
-            Text('Fetching phone numbers from Meta...', style: TextStyle(color: Colors.grey, fontSize: 14)),
+            Text(
+              'Fetching phone numbers from Meta...',
+              style: TextStyle(color: Colors.grey, fontSize: 14),
+            ),
           ],
         ),
       );
@@ -2254,7 +2805,8 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: () {
               final wabaId = config['businessAccountId']?.toString();
               final accessToken = config['accessToken']?.toString();
-              if (wabaId != null && accessToken != null) _fetchPhoneNumbers(wabaId, accessToken);
+              if (wabaId != null && accessToken != null)
+                _fetchPhoneNumbers(wabaId, accessToken);
             },
             icon: const Icon(Icons.refresh, size: 16),
             label: const Text('Retry'),
@@ -2272,7 +2824,9 @@ class _SettingsPageState extends State<SettingsPage> {
       return _buildDetailRow('Phone Number ID', currentPhoneId ?? 'N/A');
     }
 
-    final hasCurrent = _phoneNumbers.any((p) => p['id']?.toString() == currentPhoneId);
+    final hasCurrent = _phoneNumbers.any(
+      (p) => p['id']?.toString() == currentPhoneId,
+    );
     final List<Map<String, dynamic>> itemsList = List.from(_phoneNumbers);
     if (!hasCurrent && currentPhoneId != null && currentPhoneId.isNotEmpty) {
       itemsList.insert(0, {
@@ -2301,7 +2855,10 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 1.5),
+          borderSide: const BorderSide(
+            color: AppTheme.primaryColor,
+            width: 1.5,
+          ),
         ),
         filled: true,
         fillColor: AppTheme.backgroundColor,
@@ -2309,7 +2866,8 @@ class _SettingsPageState extends State<SettingsPage> {
       dropdownColor: AppTheme.surfaceColor,
       items: itemsList.map((phone) {
         final id = phone['id']?.toString() ?? '';
-        final displayPhone = phone['display_phone_number']?.toString() ?? 'Unknown Phone';
+        final displayPhone =
+            phone['display_phone_number']?.toString() ?? 'Unknown Phone';
         final verifiedName = phone['verified_name']?.toString() ?? 'No Name';
         final rating = phone['quality_rating']?.toString() ?? 'UNKNOWN';
 
@@ -2330,7 +2888,10 @@ class _SettingsPageState extends State<SettingsPage> {
                   children: [
                     Text(
                       displayPhone,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
@@ -2347,20 +2908,25 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         );
       }).toList(),
-      onChanged: _isUpdatingPhone ? null : (selectedId) async {
-        if (selectedId != null && selectedId != currentPhoneId) {
-          final verified = await showPasswordVerificationDialog(
-            context,
-            prompt: 'Enter your login password to change WhatsApp phone number.',
-          );
-          if (verified) {
-            final selectedPhone = itemsList.firstWhere((p) => p['id']?.toString() == selectedId);
-            _updateActivePhoneNumber(selectedPhone, config);
-          } else {
-            if (mounted) setState(() {});
-          }
-        }
-      },
+      onChanged: _isUpdatingPhone
+          ? null
+          : (selectedId) async {
+              if (selectedId != null && selectedId != currentPhoneId) {
+                final verified = await showPasswordVerificationDialog(
+                  context,
+                  prompt:
+                      'Enter your login password to change WhatsApp phone number.',
+                );
+                if (verified) {
+                  final selectedPhone = itemsList.firstWhere(
+                    (p) => p['id']?.toString() == selectedId,
+                  );
+                  _updateActivePhoneNumber(selectedPhone, config);
+                } else {
+                  if (mounted) setState(() {});
+                }
+              }
+            },
     );
   }
 
@@ -2388,7 +2954,11 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       child: Text(
         value.toUpperCase(),
-        style: TextStyle(color: badgeColor, fontSize: 9, fontWeight: FontWeight.bold),
+        style: TextStyle(
+          color: badgeColor,
+          fontSize: 9,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -2398,7 +2968,10 @@ class _SettingsPageState extends State<SettingsPage> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(label, style: const TextStyle(color: Colors.grey, fontSize: 16)),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
       ],
     );
   }
@@ -2443,7 +3016,11 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildPlaceholderTile(String title, IconData icon, VoidCallback? onTap) {
+  Widget _buildPlaceholderTile(
+    String title,
+    IconData icon,
+    VoidCallback? onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -2557,11 +3134,16 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                       color: AppTheme.primaryColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.lock_outline, color: AppTheme.secondaryColor),
+                    child: const Icon(
+                      Icons.lock_outline,
+                      color: AppTheme.secondaryColor,
+                    ),
                   ),
                   const SizedBox(width: 12),
-                  const Text('Change Password',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Change Password',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -2611,20 +3193,26 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
                       backgroundColor: AppTheme.primaryColor,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
                     child: _loading
                         ? const SizedBox(
                             height: 20,
                             width: 20,
                             child: CircularProgressIndicator(
-                                color: Colors.white, strokeWidth: 2),
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
-                        : const Text('Update Password',
+                        : const Text(
+                            'Update Password',
                             style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15)),
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                            ),
+                          ),
                   ),
                 ),
               ),
@@ -2663,8 +3251,10 @@ class _PasswordField extends StatelessWidget {
         fillColor: Colors.grey.shade50,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
         suffixIcon: IconButton(
-          icon: Icon(show ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-              size: 20),
+          icon: Icon(
+            show ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+            size: 20,
+          ),
           onPressed: onToggle,
         ),
       ),

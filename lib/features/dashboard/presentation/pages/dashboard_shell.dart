@@ -29,7 +29,6 @@ import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_reposito
 import 'package:iFloraBuzz/core/widgets/password_verification_dialog.dart';
 import 'package:iFloraBuzz/features/settings/presentation/widgets/whatsapp_business_profile_dialog.dart';
 import 'package:iFloraBuzz/features/notifications/presentation/widgets/notification_bell_icon.dart';
-import 'package:iFloraBuzz/features/notifications/presentation/bloc/notification_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardShell extends StatefulWidget {

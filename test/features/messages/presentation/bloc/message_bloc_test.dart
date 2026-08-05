@@ -43,6 +43,7 @@ class _FakeWhatsAppRepository extends WhatsAppRepository {
     String? mediaType,
     String? campaignId,
     Map<int, String>? variables,
+    Map<int, String>? headerVariables, // added — ignored by fake
   }) async {
     callLog.add(_CallType.sendMessage);
     return sendMessageSucceeds ? 'fake-wamid-${callLog.length}' : null;

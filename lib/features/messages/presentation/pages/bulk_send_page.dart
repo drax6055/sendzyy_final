@@ -49,11 +49,13 @@ class _BulkSendPageState extends State<BulkSendPage> {
     });
   }
 
-  // Per-recipient variable controllers: recipientIndex -> {varIndex -> controller}
-  // Used only for manually added recipients (CSV ones carry their own values)
+  // Per-recipient BODY variable controllers: recipientIndex -> {varIndex -> controller}
   final Map<int, Map<int, TextEditingController>> _perRecipientControllers = {};
 
-  /// Returns how many {{n}} variables the selected template body has
+  // Per-recipient HEADER variable controllers: recipientIndex -> {varIndex -> controller}
+  final Map<int, Map<int, TextEditingController>> _perRecipientHeaderControllers = {};
+
+  /// Returns how many {{n}} variables the selected template BODY has
   int get _templateVariableCount {
     if (_selectedTemplateData == null) return 0;
     final components = _selectedTemplateData!['components'] as List<dynamic>? ?? [];
@@ -71,8 +73,26 @@ class _BulkSendPageState extends State<BulkSendPage> {
     }).fold(0, (a, b) => a > b ? a : b);
   }
 
+  /// Returns how many {{n}} variables the selected template TEXT HEADER has
+  int get _templateHeaderVariableCount {
+    if (_selectedTemplateData == null) return 0;
+    final components = _selectedTemplateData!['components'] as List<dynamic>? ?? [];
+    final header = components.firstWhere(
+      (c) => c['type'] == 'HEADER' && c['format'] == 'TEXT',
+      orElse: () => null,
+    );
+    if (header == null) return 0;
+    final text = header['text'] as String? ?? '';
+    final matches = RegExp(r'\{\{\d+\}\}').allMatches(text);
+    if (matches.isEmpty) return 0;
+    return matches.map((m) {
+      final inner = m.group(0)!.replaceAll(RegExp(r'[{}]'), '');
+      return int.tryParse(inner) ?? 0;
+    }).fold(0, (a, b) => a > b ? a : b);
+  }
+
   void _syncVariableControllers(int count) {
-    // For each recipient, ensure controllers exist for all variable indices
+    // For each recipient, ensure controllers exist for all body variable indices
     for (int ri = 0; ri < _recipients.length; ri++) {
       _perRecipientControllers.putIfAbsent(ri, () => {});
       final recipient = _recipients[ri];
@@ -93,6 +113,26 @@ class _BulkSendPageState extends State<BulkSendPage> {
     _perRecipientControllers.removeWhere((ri, _) => ri >= _recipients.length);
   }
 
+  void _syncHeaderVariableControllers(int count) {
+    // For each recipient, ensure controllers exist for all header variable indices
+    for (int ri = 0; ri < _recipients.length; ri++) {
+      _perRecipientHeaderControllers.putIfAbsent(ri, () => {});
+      final recipient = _recipients[ri];
+      for (int vi = 1; vi <= count; vi++) {
+        _perRecipientHeaderControllers[ri]!.putIfAbsent(vi, () {
+          final prefilled = recipient.headerVariables[vi] ?? '';
+          return TextEditingController(text: prefilled);
+        });
+      }
+      // Remove extra controllers beyond current count
+      _perRecipientHeaderControllers[ri]!.removeWhere((k, v) {
+        if (k > count) { v.dispose(); return true; }
+        return false;
+      });
+    }
+    _perRecipientHeaderControllers.removeWhere((ri, _) => ri >= _recipients.length);
+  }
+
   Future<void> _addFromClients() async {
     debugPrint('[BulkSend] "Add from Clients" clicked — opening client selection dialog');
     final existingNumbers = _recipients.map((r) => r.mobileNumber).toList();
@@ -109,6 +149,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
         )));
         if (_templateVariableCount > 0) {
           _syncVariableControllers(_templateVariableCount);
+        }
+        if (_templateHeaderVariableCount > 0) {
+          _syncHeaderVariableControllers(_templateHeaderVariableCount);
         }
       });
       if (mounted) {
@@ -144,6 +187,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
         variables: c.name.trim().isNotEmpty ? {1: c.name.trim()} : {},
       )));
       if (_templateVariableCount > 0) _syncVariableControllers(_templateVariableCount);
+      if (_templateHeaderVariableCount > 0) _syncHeaderVariableControllers(_templateHeaderVariableCount);
     });
 
     if (mounted) {
@@ -198,6 +242,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
         if (_templateVariableCount > 0) {
           _syncVariableControllers(_templateVariableCount);
         }
+        if (_templateHeaderVariableCount > 0) {
+          _syncHeaderVariableControllers(_templateHeaderVariableCount);
+        }
       });
     }
   }
@@ -238,12 +285,23 @@ class _BulkSendPageState extends State<BulkSendPage> {
   /// Build final recipients: CSV ones keep their own variables, manual ones use per-row controllers
   List<RecipientData> _buildFinalRecipients() {
     return List.generate(_recipients.length, (ri) {
+      // Body variables
       final ctrlMap = _perRecipientControllers[ri] ?? {};
       final vars = <int, String>{};
       ctrlMap.forEach((vi, ctrl) {
         if (ctrl.text.trim().isNotEmpty) vars[vi] = ctrl.text.trim();
       });
-      return RecipientData(mobileNumber: _recipients[ri].mobileNumber, variables: vars);
+      // Header variables
+      final headerCtrlMap = _perRecipientHeaderControllers[ri] ?? {};
+      final headerVars = <int, String>{};
+      headerCtrlMap.forEach((vi, ctrl) {
+        if (ctrl.text.trim().isNotEmpty) headerVars[vi] = ctrl.text.trim();
+      });
+      return RecipientData(
+        mobileNumber: _recipients[ri].mobileNumber,
+        variables: vars,
+        headerVariables: headerVars,
+      );
     });
   }
 
@@ -319,7 +377,12 @@ class _BulkSendPageState extends State<BulkSendPage> {
           campaignName: 'Campaign ${DateTime.now().millisecondsSinceEpoch}',
           template: _selectedTemplate!,
           language: _selectedTemplateData?['language'] ?? 'en_US',
-          recipients: finalRecipients.map((r) => {'mobileNumber': r.mobileNumber, 'variables': r.variables.map((k, v) => MapEntry(k.toString(), v))}).toList(),
+          recipients: finalRecipients.map((r) => {
+            'mobileNumber': r.mobileNumber,
+            'variables': r.variables.map((k, v) => MapEntry(k.toString(), v)),
+            if (r.headerVariables.isNotEmpty)
+              'headerVariables': r.headerVariables.map((k, v) => MapEntry(k.toString(), v)),
+          }).toList(),
           scheduledAt: _scheduledAt!,
           mediaId: mediaId,
           mediaType: mediaType,
@@ -343,6 +406,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
         _selectedTemplateData?['language'] ?? 'en_US',
         mediaId: mediaId,
         mediaType: mediaType,
+        // headerVariables are carried inside each RecipientData.headerVariables
       ),
     );
   }
@@ -350,6 +414,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
   @override
   void dispose() {
     for (final m in _perRecipientControllers.values) {
+      for (final c in m.values) c.dispose();
+    }
+    for (final m in _perRecipientHeaderControllers.values) {
       for (final c in m.values) c.dispose();
     }
     super.dispose();
@@ -408,7 +475,8 @@ class _BulkSendPageState extends State<BulkSendPage> {
                       _buildTemplateSelector(),
                       const SizedBox(height: 16),
                       if (_selectedTemplateData != null) ...[
-                        if (_templateVariableCount > 0) _buildVariableMapping(),
+                        if (_templateVariableCount > 0 || _templateHeaderVariableCount > 0)
+                          _buildVariableMapping(),
                         const SizedBox(height: 16),
                         _buildMediaSelector(),
                       ],
@@ -546,10 +614,10 @@ class _BulkSendPageState extends State<BulkSendPage> {
 
   /// Per-recipient variable table — each row = one contact + their variable inputs
   Widget _buildVariableMapping() {
-    final count = _templateVariableCount;
-    _syncVariableControllers(count);
-
-    // All recipients shown in one unified table
+    final bodyCount = _templateVariableCount;
+    final headerCount = _templateHeaderVariableCount;
+    _syncVariableControllers(bodyCount);
+    _syncHeaderVariableControllers(headerCount);
 
     return Card(
       elevation: 0,
@@ -573,14 +641,14 @@ class _BulkSendPageState extends State<BulkSendPage> {
             ),
             const SizedBox(height: 12),
 
-            // All recipients table (manual, client-added, and CSV — all editable)
             if (_recipients.isNotEmpty) ...[
               Text(
                 'Fill in variable values for each recipient:',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
               ),
               const SizedBox(height: 12),
-              // Header row
+
+              // Column header row
               Row(
                 children: [
                   const SizedBox(
@@ -588,23 +656,68 @@ class _BulkSendPageState extends State<BulkSendPage> {
                     child: Text('Mobile Number',
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                   ),
-                  ...List.generate(count, (i) => Expanded(
+                  // Header variable columns (orange label)
+                  ...List.generate(headerCount, (i) => Expanded(
                     child: Padding(
                       padding: const EdgeInsets.only(left: 8),
-                      child: Text('{{${i + 1}}}',
-                          style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blueAccent)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Header {{${i + 1}}}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )),
+                  // Body variable columns (blue label)
+                  ...List.generate(bodyCount, (i) => Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade100,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Body {{${i + 1}}}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.blue.shade800,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   )),
                   const SizedBox(width: 32), // delete btn space
                 ],
               ),
               const Divider(height: 16),
+
+              // Data rows
               ...List.generate(_recipients.length, (ri) {
                 final r = _recipients[ri];
-                final ctrlMap = _perRecipientControllers[ri] ?? {};
+                final bodyCtrlMap = _perRecipientControllers[ri] ?? {};
+                final headerCtrlMap = _perRecipientHeaderControllers[ri] ?? {};
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: Row(
@@ -617,9 +730,41 @@ class _BulkSendPageState extends State<BulkSendPage> {
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                      ...List.generate(count, (vi) {
+                      // Header variable inputs
+                      ...List.generate(headerCount, (vi) {
                         final idx = vi + 1;
-                        final ctrl = ctrlMap[idx] ?? TextEditingController();
+                        final ctrl = headerCtrlMap[idx] ?? TextEditingController();
+                        return Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: TextField(
+                              controller: ctrl,
+                              onChanged: (_) => setState(() {}),
+                              style: const TextStyle(fontSize: 13),
+                              decoration: InputDecoration(
+                                hintText: 'Header value',
+                                isDense: true,
+                                filled: true,
+                                fillColor: Colors.orange.shade50,
+                                contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 10),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.orange.shade300),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: Colors.orange.shade200),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                      // Body variable inputs
+                      ...List.generate(bodyCount, (vi) {
+                        final idx = vi + 1;
+                        final ctrl = bodyCtrlMap[idx] ?? TextEditingController();
                         return Expanded(
                           child: Padding(
                             padding: const EdgeInsets.only(left: 8),
@@ -646,23 +791,33 @@ class _BulkSendPageState extends State<BulkSendPage> {
                       IconButton(
                         icon: const Icon(Icons.close, size: 16, color: Colors.redAccent),
                         onPressed: () => setState(() {
-                          // Dispose controllers for this recipient
+                          // Dispose body controllers for this recipient
                           _perRecipientControllers[ri]?.values.forEach((c) => c.dispose());
                           _perRecipientControllers.remove(ri);
+                          // Dispose header controllers for this recipient
+                          _perRecipientHeaderControllers[ri]?.values.forEach((c) => c.dispose());
+                          _perRecipientHeaderControllers.remove(ri);
                           _recipients.removeAt(ri);
-                          // Re-key the controllers map
+                          // Re-key both controller maps
                           final reKeyed = <int, Map<int, TextEditingController>>{};
+                          final reKeyedHeader = <int, Map<int, TextEditingController>>{};
                           int newIdx = 0;
                           for (int old = 0; old < _recipients.length + 1; old++) {
                             if (old == ri) continue;
                             if (_perRecipientControllers.containsKey(old)) {
                               reKeyed[newIdx] = _perRecipientControllers[old]!;
                             }
+                            if (_perRecipientHeaderControllers.containsKey(old)) {
+                              reKeyedHeader[newIdx] = _perRecipientHeaderControllers[old]!;
+                            }
                             newIdx++;
                           }
                           _perRecipientControllers
                             ..clear()
                             ..addAll(reKeyed);
+                          _perRecipientHeaderControllers
+                            ..clear()
+                            ..addAll(reKeyedHeader);
                         }),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
@@ -736,6 +891,11 @@ class _BulkSendPageState extends State<BulkSendPage> {
                           for (final c in m.values) c.dispose();
                         }
                         _perRecipientControllers.clear();
+                        // Also reset header variable controllers
+                        for (final m in _perRecipientHeaderControllers.values) {
+                          for (final c in m.values) c.dispose();
+                        }
+                        _perRecipientHeaderControllers.clear();
                       });
                     },
                   );
@@ -966,14 +1126,22 @@ class _BulkSendPageState extends State<BulkSendPage> {
       }
     }
 
-    // Substitute variables in preview using the first manual recipient's controllers
+    // Substitute variables in preview using the first recipient's controllers
     String previewBody = body ?? '';
+    String previewHeader = header ?? '';
     final firstManualIdx = _recipients.indexWhere((r) => r.variables.isEmpty);
     if (firstManualIdx >= 0) {
+      // Manual recipient — use controllers
       final ctrlMap = _perRecipientControllers[firstManualIdx] ?? {};
       ctrlMap.forEach((idx, ctrl) {
         if (ctrl.text.trim().isNotEmpty) {
           previewBody = previewBody.replaceAll('{{$idx}}', ctrl.text.trim());
+        }
+      });
+      final headerCtrlMap = _perRecipientHeaderControllers[firstManualIdx] ?? {};
+      headerCtrlMap.forEach((idx, ctrl) {
+        if (ctrl.text.trim().isNotEmpty) {
+          previewHeader = previewHeader.replaceAll('{{$idx}}', ctrl.text.trim());
         }
       });
     } else {
@@ -982,8 +1150,13 @@ class _BulkSendPageState extends State<BulkSendPage> {
         _recipients.first.variables.forEach((idx, val) {
           previewBody = previewBody.replaceAll('{{$idx}}', val);
         });
+        _recipients.first.headerVariables.forEach((idx, val) {
+          previewHeader = previewHeader.replaceAll('{{$idx}}', val);
+        });
       }
     }
+    // Use substituted header in the preview (may still have {{n}} if not yet filled)
+    final resolvedHeader = previewHeader.isEmpty ? null : previewHeader;
 
     return Column(
       children: [
@@ -1016,7 +1189,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
             border: Border.all(color: Colors.black12),
           ),
           child: WhatsAppPreview(
-            headerText: header,
+            headerText: resolvedHeader,
             bodyText: previewBody,
             footerText: footer,
             mediaType: mediaType,

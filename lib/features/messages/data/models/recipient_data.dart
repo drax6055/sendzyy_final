@@ -1,13 +1,16 @@
 /// A recipient parsed from CSV or manual input.
-/// [variables] maps variable index (1-based) to its value, e.g. {1: 'John', 2: '+91...'}
+/// [variables] maps body variable index (1-based) to its value, e.g. {1: 'John', 2: '+91...'}
+/// [headerVariables] maps header variable index (1-based) to its value, e.g. {1: 'Hello'}
 class RecipientData {
   final String mobileNumber;
-  final Map<int, String> variables; // {1: name, 2: mobile, 3: company ...}
+  final Map<int, String> variables;       // body variables {1: name, 2: mobile, ...}
+  final Map<int, String> headerVariables; // header text variables {1: value, ...}
   final bool fromCsv; // true = CSV row (pre-filled, not shown in manual table)
 
   const RecipientData({
     required this.mobileNumber,
     required this.variables,
+    this.headerVariables = const {},
     this.fromCsv = false,
   });
 
