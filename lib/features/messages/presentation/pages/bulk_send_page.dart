@@ -438,6 +438,21 @@ class _BulkSendPageState extends State<BulkSendPage> {
                   dispatchedAt: state.dispatchedAt,
                 ),
               );
+              if (state.failureCount > 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('${state.failureCount} recipient(s) failed to receive message.'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+            } else if (state is MessageError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(state.message),
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
             }
           },
         ),

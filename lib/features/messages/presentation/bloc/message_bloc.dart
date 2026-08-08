@@ -95,16 +95,21 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
               ...recipient.headerVariables,
             };
 
-            return await _repository.sendMessage(
-              to: recipient.mobileNumber,
-              templateName: event.template,
-              languageCode: event.language,
-              mediaId: event.mediaId,
-              mediaType: event.mediaType,
-              campaignId: campaignId,
-              variables: recipient.variables,
-              headerVariables: effectiveHeaderVars.isNotEmpty ? effectiveHeaderVars : null,
-            );
+            try {
+              return await _repository.sendMessage(
+                to: recipient.mobileNumber,
+                templateName: event.template,
+                languageCode: event.language,
+                mediaId: event.mediaId,
+                mediaType: event.mediaType,
+                campaignId: campaignId,
+                variables: recipient.variables,
+                headerVariables: effectiveHeaderVars.isNotEmpty ? effectiveHeaderVars : null,
+              );
+            } catch (err) {
+              debugPrint('[MessageBloc] Error sending message to ${recipient.mobileNumber}: $err');
+              return null;
+            }
           }));
 
           for (final wamid in results) {

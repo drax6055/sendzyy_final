@@ -49,6 +49,20 @@ class _LoginPageState extends State<LoginPage> {
               duration: const Duration(seconds: 6),
             ),
           );
+        } else if (state is AuthAccountInactive) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.block, color: Colors.white),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(state.message)),
+                ],
+              ),
+              backgroundColor: Colors.red.shade900,
+              duration: const Duration(seconds: 6),
+            ),
+          );
         } else if (state is AuthFailure) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(state.message), backgroundColor: Colors.red),

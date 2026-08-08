@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
@@ -12,6 +13,7 @@ import 'package:iFloraBuzz/features/clients/presentation/widgets/create_group_di
 import 'package:iFloraBuzz/features/clients/presentation/widgets/groups_tab.dart';
 import 'package:iFloraBuzz/features/clients/presentation/widgets/qr_code_dialog.dart';
 import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
+import 'package:iFloraBuzz/features/clients/presentation/utils/csv_export_helper.dart';
 
 class ClientsPage extends StatefulWidget {
   const ClientsPage({super.key});
@@ -116,6 +118,67 @@ class _ClientsViewState extends State<_ClientsView> {
   Timer? _searchDebounce;
   final Set<String> _selectedClientIds = {};
   bool _isSelectingAll = false;
+  bool _isDownloadingCsv = false;
+
+  Future<void> _downloadClientsCsv(ClientsLoaded state) async {
+    if (_isDownloadingCsv) return;
+    setState(() {
+      _isDownloadingCsv = true;
+    });
+
+    try {
+      List<ClientModel> clientsToExport = [];
+
+      final repo = getIt<ClientRepository>();
+      final paginatedResult = await repo.getClients(
+        page: 1,
+        limit: state.totalClients > 0 ? state.totalClients : 10000,
+        search: state.searchQuery,
+      );
+
+      if (_selectedClientIds.isNotEmpty) {
+        clientsToExport = paginatedResult.clients
+            .where((c) => _selectedClientIds.contains(c.id))
+            .toList();
+      } else {
+        clientsToExport = paginatedResult.clients;
+      }
+
+      if (clientsToExport.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No client data to download.')),
+          );
+        }
+        return;
+      }
+
+      final dateStr = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final fileName = 'clients_$dateStr.csv';
+      CsvExportHelper.downloadClientsCsv(clientsToExport, fileName);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Downloaded ${clientsToExport.length} clients to CSV.'),
+            backgroundColor: AppTheme.primaryColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to download CSV: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloadingCsv = false;
+        });
+      }
+    }
+  }
 
   Future<void> _selectAllTotalClients(ClientsLoaded state) async {
     setState(() {
@@ -418,6 +481,7 @@ class _ClientsViewState extends State<_ClientsView> {
                                               ),
                                             ),
                                           ),
+
                                           const DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('Company', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -425,7 +489,43 @@ class _ClientsViewState extends State<_ClientsView> {
                                           const DataColumn(label: Text('Venue', style: TextStyle(fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('Remark', style: TextStyle(fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('Added On', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          DataColumn(
+                                            label: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Text('Action', style: TextStyle(fontWeight: FontWeight.bold)),
+                                                const SizedBox(width: 20),
+                                                Tooltip(
+                                                  message: 'Download CSV',
+                                                  child: InkWell(
+                                                    onTap: _isDownloadingCsv ? null : () => _downloadClientsCsv(state),
+                                                    borderRadius: BorderRadius.circular(20),
+                                                    child: Padding(
+                                                      padding: const EdgeInsets.all(4.0),
+                                                      child: _isDownloadingCsv
+                                                          ? const SizedBox(
+                                                              width: 18,
+                                                              height: 18,
+                                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                                            )
+                                                          : Container(
+                                                              padding: const EdgeInsets.all(6),
+                                                              decoration: BoxDecoration(
+                                                                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                                                shape: BoxShape.circle,
+                                                              ),
+                                                              child: const Icon(
+                                                                Icons.download_rounded,
+                                                                size: 18,
+                                                                color: AppTheme.primaryColor,
+                                                              ),
+                                                            ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ],
                                         rows: clients.map((client) {
                                           final isSelected = _selectedClientIds.contains(client.id);

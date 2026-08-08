@@ -20,11 +20,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
   void initState() {
     super.initState();
     context.read<NotificationBloc>().add(
-          LoadNotificationsEvent(
-            tenantId: widget.tenantId,
-            category: _selectedCategory,
-          ),
-        );
+      LoadNotificationsEvent(
+        tenantId: widget.tenantId,
+        category: _selectedCategory,
+      ),
+    );
   }
 
   @override
@@ -32,6 +32,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF9FAFB),
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1B5E20),
+        iconTheme: const IconThemeData(color: Color(0xFF1B5E20)),
+        elevation: 1,
         title: const Row(
           children: [
             Icon(Icons.notifications_active_rounded, color: Color(0xFF1B5E20)),
@@ -46,19 +50,24 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ),
           ],
         ),
-        backgroundColor: Colors.white,
-        elevation: 1,
         actions: [
           TextButton.icon(
-            icon: const Icon(Icons.done_all_rounded, size: 18, color: Color(0xFF2E7D32)),
+            icon: const Icon(
+              Icons.done_all_rounded,
+              size: 18,
+              color: Color(0xFF2E7D32),
+            ),
             label: const Text(
               'Mark All Read',
-              style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Color(0xFF2E7D32),
+                fontWeight: FontWeight.w600,
+              ),
             ),
             onPressed: () {
               context.read<NotificationBloc>().add(
-                    MarkAllNotificationsReadEvent(tenantId: widget.tenantId),
-                  );
+                MarkAllNotificationsReadEvent(tenantId: widget.tenantId),
+              );
             },
           ),
           const SizedBox(width: 8),
@@ -155,11 +164,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
         onSelected: (selected) {
           setState(() => _selectedCategory = categoryKey);
           context.read<NotificationBloc>().add(
-                LoadNotificationsEvent(
-                  tenantId: widget.tenantId,
-                  category: categoryKey,
-                ),
-              );
+            LoadNotificationsEvent(
+              tenantId: widget.tenantId,
+              category: categoryKey,
+            ),
+          );
         },
       ),
     );
@@ -172,11 +181,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
       onTap: () {
         if (isUnread) {
           context.read<NotificationBloc>().add(
-                MarkSingleNotificationReadEvent(
-                  notificationId: item.id,
-                  tenantId: widget.tenantId,
-                ),
-              );
+            MarkSingleNotificationReadEvent(
+              notificationId: item.id,
+              tenantId: widget.tenantId,
+            ),
+          );
         }
       },
       borderRadius: BorderRadius.circular(12),
@@ -230,7 +239,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
                         child: Text(
                           item.title,
                           style: TextStyle(
-                            fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                            fontWeight: isUnread
+                                ? FontWeight.bold
+                                : FontWeight.w600,
                             fontSize: 14,
                             color: const Color(0xFF1B5E20),
                           ),
@@ -264,15 +275,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
             // Delete button
             IconButton(
-              icon: Icon(Icons.close_rounded, size: 16, color: Colors.grey.shade400),
+              icon: Icon(
+                Icons.close_rounded,
+                size: 16,
+                color: Colors.grey.shade400,
+              ),
               tooltip: 'Dismiss',
               onPressed: () {
                 context.read<NotificationBloc>().add(
-                      DeleteNotificationEvent(
-                        notificationId: item.id,
-                        tenantId: widget.tenantId,
-                      ),
-                    );
+                  DeleteNotificationEvent(
+                    notificationId: item.id,
+                    tenantId: widget.tenantId,
+                  ),
+                );
               },
             ),
           ],

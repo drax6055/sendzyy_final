@@ -150,8 +150,19 @@ class WhatsAppRepository {
       }
       return null;
     } catch (e) {
-      print('SEND MESSAGE ERROR: $e');
-      return null;
+      String errorMessage = 'Failed to send message: $e';
+      if (e is DioException) {
+        final errorData = e.response?.data;
+        if (errorData is Map && errorData.containsKey('error')) {
+          errorMessage = errorData['error'].toString();
+        } else if (errorData is Map && errorData.containsKey('message')) {
+          errorMessage = errorData['message'].toString();
+        } else if (e.message != null && e.message!.isNotEmpty) {
+          errorMessage = e.message!;
+        }
+      }
+      print('SEND MESSAGE ERROR: $errorMessage');
+      throw Exception(errorMessage);
     }
   }
 

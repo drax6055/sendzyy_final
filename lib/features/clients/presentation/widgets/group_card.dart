@@ -6,6 +6,8 @@ class GroupCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onQrCode;
+  final VoidCallback? onDownloadCsv;
+  final bool isDownloading;
 
   const GroupCard({
     super.key,
@@ -13,6 +15,8 @@ class GroupCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onQrCode,
+    this.onDownloadCsv,
+    this.isDownloading = false,
   });
 
   @override
@@ -35,6 +39,18 @@ class GroupCard extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (onDownloadCsv != null)
+              IconButton(
+                icon: isDownloading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.download_outlined),
+                tooltip: 'Download Group CSV',
+                onPressed: isDownloading ? null : onDownloadCsv,
+              ),
             IconButton(
               icon: const Icon(Icons.edit_outlined),
               tooltip: 'Edit group',
