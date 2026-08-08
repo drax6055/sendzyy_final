@@ -246,28 +246,32 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
           );
         },
       ),
-      // floatingActionButton: _currentStep == 1 && _category != 'AUTHENTICATION'
-      //     ? FloatingActionButton.extended(
-      //         onPressed: () {
-      //           showDialog(
-      //             context: context,
-      //             builder: (_) => AssistantDialog(
-      //               onApply: (body, header, footer) {
-      //                 setState(() {
-      //                   _bodyController.text = body;
-      //                   if (header != null) _headerController.text = header;
-      //                   if (footer != null) _footerController.text = footer;
-      //                 });
-      //               },
-      //             ),
-      //           );
-      //         },
-      //         icon: const Icon(Icons.auto_awesome),
-      //         label: const Text('AI Assistant'),
-      //         backgroundColor: AppTheme.primaryColor,
-      //         foregroundColor: Colors.white,
-      //       )
-      //     : null,
+      floatingActionButton: _currentStep == 1 && _category != 'AUTHENTICATION'
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (_) => AssistantDialog(
+                    initialHeader: _headerController.text,
+                    initialBody: _bodyController.text,
+                    initialFooter: _footerController.text,
+                    category: _category,
+                    onApply: (body, header, footer) {
+                      setState(() {
+                        _bodyController.text = body;
+                        if (header != null) _headerController.text = header;
+                        if (footer != null) _footerController.text = footer;
+                      });
+                    },
+                  ),
+                );
+              },
+              icon: const Icon(Icons.auto_awesome),
+              label: const Text('AI Assistant'),
+              backgroundColor: AppTheme.primaryColor,
+              foregroundColor: Colors.white,
+            )
+          : null,
       bottomNavigationBar: MediaQuery.of(context).size.width <= 900
           ? Container(
               padding: const EdgeInsets.all(16),

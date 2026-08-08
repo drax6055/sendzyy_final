@@ -8,14 +8,18 @@ import 'package:iFloraBuzz/features/templates/data/models/generated_template.dar
 class TemplateAssistantService {
   final Dio _dio = getIt<Dio>();
 
-  Future<GeneratedTemplate> generateTemplate(String prompt) async {
+  Future<GeneratedTemplate> generateTemplate(String prompt, {String? category}) async {
     final prefs = await SharedPreferences.getInstance();
     final tenantId = prefs.getString(AppConstants.keyTenantId) ?? '';
 
     try {
       final response = await _dio.post(
         '/api/ai/generate-template',
-        data: {'tenantId': tenantId, 'prompt': prompt},
+        data: {
+          'tenantId': tenantId,
+          'prompt': prompt,
+          if (category != null) 'category': category,
+        },
       );
       return GeneratedTemplate.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {

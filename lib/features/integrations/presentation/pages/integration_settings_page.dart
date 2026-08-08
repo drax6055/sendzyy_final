@@ -851,12 +851,12 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
               onToggle: _toggleClientTrigger,
               onDelete: _deleteClientTrigger,
             ),
-            // const SizedBox(height: 24),
-            // _OpenAIKeySection(
-            //   tenantId: _tenantId,
-            //   dio: _dio,
-            //   onToast: _showToast,
-            // ),
+            const SizedBox(height: 24),
+            _OpenAIKeySection(
+              tenantId: _tenantId,
+              dio: _dio,
+              onToast: _showToast,
+            ),
           ],
         ),
       ),
