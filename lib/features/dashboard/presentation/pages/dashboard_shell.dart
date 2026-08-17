@@ -27,8 +27,12 @@ import 'package:iFloraBuzz/core/services/renewal_reminder_service.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
 import 'package:iFloraBuzz/core/widgets/password_verification_dialog.dart';
-import 'package:iFloraBuzz/features/settings/presentation/widgets/whatsapp_business_profile_dialog.dart';
+import 'package:flutter/services.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
+import 'package:iFloraBuzz/features/notifications/data/datasources/fcm_service.dart';
+import 'package:iFloraBuzz/features/notifications/data/datasources/notification_remote_datasource.dart';
 import 'package:iFloraBuzz/features/notifications/presentation/widgets/notification_bell_icon.dart';
+import 'package:iFloraBuzz/features/settings/presentation/widgets/whatsapp_business_profile_dialog.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardShell extends StatefulWidget {
@@ -39,6 +43,8 @@ class DashboardShell extends StatefulWidget {
 }
 
 class _DashboardShellState extends State<DashboardShell> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  DateTime? _lastBackPressTime;
   int _selectedIndex = 0;
   bool _isReportsExpanded = false;
   bool _isSettingsExpanded = false;
@@ -62,6 +68,28 @@ class _DashboardShellState extends State<DashboardShell> {
     _restoreSelectedIndex();
     _initReminderService();
     _checkOnboardingStatus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initFcm();
+    });
+  }
+
+  void _initFcm() {
+    try {
+      final authState = context.read<AuthBloc>().state;
+      if (authState is AuthAuthenticated) {
+        final tenantId = authState.tenant['id']?.toString() ??
+            authState.tenant['_id']?.toString() ??
+            '';
+        if (tenantId.isNotEmpty) {
+          FCMService.initialize(
+            tenantId: tenantId,
+            remoteDataSource: getIt<NotificationRemoteDataSource>(),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('[FCM] Shell init warning: $e');
+    }
   }
 
   Future<void> _checkOnboardingStatus() async {
@@ -147,7 +175,10 @@ class _DashboardShellState extends State<DashboardShell> {
     }
   }
 
-  Future<void> _setSelectedIndex(int index) async {
+  Future<void> _setSelectedIndex(int index, {bool closeDrawer = false}) async {
+    if (closeDrawer && (_scaffoldKey.currentState?.isDrawerOpen ?? false)) {
+      Navigator.of(context).pop();
+    }
     setState(() {
       _selectedIndex = index;
       if (index >= 5 && index <= 7) {
@@ -332,85 +363,174 @@ class _DashboardShellState extends State<DashboardShell> {
     const RetrySystemPage(),
   ];
 
+  Widget _buildSidebarContent({bool isDrawer = false}) {
+    return Column(
+      children: [
+        const SizedBox(height: 18),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            children: [
+              Expanded(child: Image.asset('assets/images/logo.png')),
+              if (isDrawer)
+                IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                _buildNavItem(0, Icons.send_rounded, 'Broadcast', isDrawer: isDrawer),
+                _buildNavItem(1, Icons.forum_rounded, 'Chats', isDrawer: isDrawer),
+                _buildNavItem(2, Icons.copy_rounded, 'Templates', isDrawer: isDrawer),
+                _buildNavItem(3, Icons.people_alt_rounded, 'Clients', isDrawer: isDrawer),
+                _buildNavItem(4, Icons.contacts_rounded, 'Leads', isDrawer: isDrawer),
+                _buildExpandableReportsMenu(isDrawer: isDrawer),
+                _buildNavItem(8, Icons.smart_toy_rounded, 'Chatbot', isDrawer: isDrawer),
+                _buildNavItem(9, Icons.help_outline_rounded, 'Q & A', isDrawer: isDrawer),
+                const SizedBox(height: 16),
+                const Divider(
+                  color: AppTheme.secondaryColor,
+                  indent: 20,
+                  endIndent: 20,
+                ),
+                _buildExpandableSettingsMenu(isDrawer: isDrawer),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => getIt<ChatBloc>()),
-        BlocProvider(create: (context) => getIt<ChatbotBloc>()),
-      ],
-      child: Scaffold(
-        body: Row(
-          children: [
-            // Sidebar
-            Container(
-              width: 260,
-              color: Colors.white,
-              child: Column(
-                children: [
-                  const SizedBox(height: 18),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Image.asset('assets/images/logo.png'),
-                  ),
-                  const SizedBox(height: 8),
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final isTablet = ResponsiveHelper.isTablet(context);
 
-                  const SizedBox(height: 18),
-                  Expanded(
-                    child: SingleChildScrollView(
-                      child: Column(
-                        children: [
-                          _buildNavItem(0, Icons.send_rounded, 'Broadcast'),
-                          _buildNavItem(1, Icons.forum_rounded, 'Chats'),
-                          _buildNavItem(2, Icons.copy_rounded, 'Templates'),
-                          _buildNavItem(3, Icons.people_alt_rounded, 'Clients'),
-                          _buildNavItem(4, Icons.contacts_rounded, 'Leads'),
-                          _buildExpandableReportsMenu(),
-                          _buildNavItem(8, Icons.smart_toy_rounded, 'Chatbot'),
-                          _buildNavItem(9, Icons.help_outline_rounded, 'Q & A'),
-                          const SizedBox(height: 16),
-                          const Divider(
-                            color: AppTheme.secondaryColor,
-                            indent: 20,
-                            endIndent: 20,
-                          ),
-                          _buildExpandableSettingsMenu(),
-                          const SizedBox(height: 24),
-                        ],
-                      ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          Navigator.of(context).pop();
+          return;
+        }
+        if (_selectedIndex != 0) {
+          _setSelectedIndex(0);
+          return;
+        }
+        final now = DateTime.now();
+        if (_lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Press back again to exit app'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+          return;
+        }
+        SystemNavigator.pop();
+      },
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(create: (context) => getIt<ChatBloc>()),
+          BlocProvider(create: (context) => getIt<ChatbotBloc>()),
+        ],
+        child: Scaffold(
+          key: _scaffoldKey,
+          drawer: (isMobile || isTablet)
+              ? Drawer(
+                  backgroundColor: Colors.white,
+                  child: SafeArea(child: _buildSidebarContent(isDrawer: true)),
+                )
+              : null,
+          bottomNavigationBar: isMobile
+              ? BottomNavigationBar(
+                  currentIndex: _selectedIndex > 4 ? 4 : _selectedIndex,
+                  onTap: (index) {
+                    if (index == 4) {
+                      _scaffoldKey.currentState?.openDrawer();
+                    } else {
+                      _setSelectedIndex(index);
+                    }
+                  },
+                  type: BottomNavigationBarType.fixed,
+                  selectedItemColor: AppTheme.primaryColor,
+                  unselectedItemColor: Colors.grey.shade600,
+                  selectedFontSize: 12,
+                  unselectedFontSize: 11,
+                  items: const [
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.send_rounded),
+                      label: 'Broadcast',
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const VerticalDivider(
-              width: 1,
-              thickness: 1,
-              color: Color(0xFFE0E0E0),
-            ),
-            // Main Content
-            Expanded(
-              child: Container(
-                color: AppTheme.backgroundColor,
-                child: Column(
-                  children: [
-                    // Header
-                    _buildHeader(),
-                    if (!_checkingOnboarding && _onboardingIncomplete)
-                      _buildOnboardingWarningBanner(),
-                    // Page Content
-                    Expanded(child: _pages[_selectedIndex]),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.forum_rounded),
+                      label: 'Chats',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.copy_rounded),
+                      label: 'Templates',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.people_alt_rounded),
+                      label: 'Clients',
+                    ),
+                    BottomNavigationBarItem(
+                      icon: Icon(Icons.menu_rounded),
+                      label: 'More',
+                    ),
                   ],
+                )
+              : null,
+          body: Row(
+            children: [
+              // Desktop Sidebar
+              if (!isMobile && !isTablet) ...[
+                Container(
+                  width: 260,
+                  color: Colors.white,
+                  child: _buildSidebarContent(isDrawer: false),
+                ),
+                const VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: Color(0xFFE0E0E0),
+                ),
+              ],
+              // Main Content
+              Expanded(
+                child: Container(
+                  color: AppTheme.backgroundColor,
+                  child: Column(
+                    children: [
+                      // Header
+                      _buildHeader(),
+                      if (!_checkingOnboarding && _onboardingIncomplete)
+                        _buildOnboardingWarningBanner(),
+                      // Page Content
+                      Expanded(child: _pages[_selectedIndex]),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildExpandableSettingsMenu() {
+  Widget _buildExpandableSettingsMenu({bool isDrawer = false}) {
     final bool isAnySettingsSelected =
         _selectedIndex >= 10 && _selectedIndex <= 12;
 
@@ -475,18 +595,21 @@ class _DashboardShellState extends State<DashboardShell> {
                   Icons.tune_rounded,
                   'General Settings',
                   isSubItem: true,
+                  isDrawer: isDrawer,
                 ),
                 _buildNavItem(
                   11,
                   Icons.integration_instructions_rounded,
                   'Integrations',
                   isSubItem: true,
+                  isDrawer: isDrawer,
                 ),
                 _buildNavItem(
                   12,
                   Icons.replay_circle_filled_outlined,
                   'Retry System',
                   isSubItem: true,
+                  isDrawer: isDrawer,
                 ),
               ],
             ),
@@ -500,7 +623,7 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
-  Widget _buildExpandableReportsMenu() {
+  Widget _buildExpandableReportsMenu({bool isDrawer = false}) {
     final bool isAnyReportSelected = _selectedIndex >= 5 && _selectedIndex <= 7;
 
     return Column(
@@ -564,18 +687,21 @@ class _DashboardShellState extends State<DashboardShell> {
                   Icons.analytics_outlined,
                   'Campaign Reports',
                   isSubItem: true,
+                  isDrawer: isDrawer,
                 ),
                 _buildNavItem(
                   6,
                   Icons.insights_rounded,
                   'Meta Analytics',
                   isSubItem: true,
+                  isDrawer: isDrawer,
                 ),
                 _buildNavItem(
                   7,
                   Icons.schedule_rounded,
                   'Scheduled',
                   isSubItem: true,
+                  isDrawer: isDrawer,
                 ),
               ],
             ),
@@ -594,10 +720,11 @@ class _DashboardShellState extends State<DashboardShell> {
     IconData icon,
     String label, {
     bool isSubItem = false,
+    bool isDrawer = false,
   }) {
     bool isSelected = _selectedIndex == index;
     return InkWell(
-      onTap: () => _setSelectedIndex(index),
+      onTap: () => _setSelectedIndex(index, closeDrawer: isDrawer),
       borderRadius: BorderRadius.circular(12),
       child: Container(
         margin: EdgeInsets.only(
@@ -900,9 +1027,12 @@ class _DashboardShellState extends State<DashboardShell> {
   }
 
   Widget _buildHeader() {
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final isTablet = ResponsiveHelper.isTablet(context);
+
     return Container(
-      height: 80,
-      padding: const EdgeInsets.symmetric(horizontal: 32),
+      height: isMobile ? 64 : 80,
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 32),
       decoration: const BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -911,323 +1041,367 @@ class _DashboardShellState extends State<DashboardShell> {
       ),
       child: Row(
         children: [
-          // Panel expiry badge
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, authState) {
-              if (authState is! AuthAuthenticated) {
-                return const SizedBox.shrink();
-              }
+          if (isMobile || isTablet) ...[
+            IconButton(
+              icon: const Icon(Icons.menu_rounded, color: AppTheme.secondaryColor),
+              onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            ),
+            const SizedBox(width: 4),
+          ],
+          // Panel expiry badge (Desktop & Tablet only)
+          if (!isMobile)
+            BlocBuilder<AuthBloc, AuthState>(
+              builder: (context, authState) {
+                if (authState is! AuthAuthenticated) {
+                  return const SizedBox.shrink();
+                }
 
-              final subscription =
-                  authState.tenant['subscription'] as Map<String, dynamic>?;
-              final expiryDateStr = subscription?['expiryDate'];
-              if (expiryDateStr == null) {
-                return const SizedBox.shrink();
-              }
+                final subscription =
+                    authState.tenant['subscription'] as Map<String, dynamic>?;
+                final expiryDateStr = subscription?['expiryDate'];
+                if (expiryDateStr == null) {
+                  return const SizedBox.shrink();
+                }
 
-              final exp = DateTime.parse(expiryDateStr as String);
-              final daysLeft = exp.difference(DateTime.now()).inDays;
-              final isExpired = daysLeft < 0;
-              final isWarning = daysLeft <= 7 && !isExpired;
-              final color = isExpired
-                  ? Colors.red
-                  : isWarning
-                  ? Colors.orange
-                  : AppTheme.secondaryColor;
-              final expStr =
-                  '${exp.day.toString().padLeft(2, '0')}/${exp.month.toString().padLeft(2, '0')}/${exp.year}';
+                final exp = DateTime.parse(expiryDateStr as String);
+                final daysLeft = exp.difference(DateTime.now()).inDays;
+                final isExpired = daysLeft < 0;
+                final isWarning = daysLeft <= 7 && !isExpired;
+                final color = isExpired
+                    ? Colors.red
+                    : isWarning
+                    ? Colors.orange
+                    : AppTheme.secondaryColor;
+                final expStr =
+                    '${exp.day.toString().padLeft(2, '0')}/${exp.month.toString().padLeft(2, '0')}/${exp.year}';
 
-              return Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: color.withValues(alpha: 0.25)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      isExpired
-                          ? Icons.warning_amber_rounded
-                          : Icons.calendar_today_outlined,
-                      size: 15,
-                      color: color,
-                    ),
-                    const SizedBox(width: 7),
-                    Text(
-                      isExpired
-                          ? 'Dashboard Expired'
-                          : 'Dashboard Exp on $expStr',
-                      style: TextStyle(
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isExpired
+                            ? Icons.warning_amber_rounded
+                            : Icons.calendar_today_outlined,
+                        size: 14,
                         color: color,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
                       ),
-                    ),
-                    if (!isExpired) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 7,
-                          vertical: 2,
+                      const SizedBox(width: 6),
+                      Text(
+                        isExpired
+                            ? 'Dashboard Expired'
+                            : 'Dashboard Exp on $expStr',
+                        style: TextStyle(
+                          color: color,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
                         ),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '$daysLeft d',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: color,
+                      ),
+                      if (!isExpired) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '$daysLeft d',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
+                  ),
+                );
+              },
+            ),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              reverse: true,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  // Phone Selector Dropdown (Desktop & Tablet only)
+                  if (!isMobile) ...[
+                    BlocBuilder<AuthBloc, AuthState>(
+                      builder: (context, authState) {
+                        if (authState is AuthAuthenticated) {
+                          final config =
+                              authState.tenant['whatsappConfig'] as Map<String, dynamic>?;
+                          if (config != null &&
+                              config['accessToken'] != null &&
+                              config['accessToken'].toString().isNotEmpty) {
+                            return _buildHeaderPhoneSelector(config);
+                          }
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                    const SizedBox(width: 4),
                   ],
-                ),
-              );
-            },
-          ),
-          const Spacer(),
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, authState) {
-              if (authState is AuthAuthenticated) {
-                final config =
-                    authState.tenant['whatsappConfig'] as Map<String, dynamic>?;
-                if (config != null &&
-                    config['accessToken'] != null &&
-                    config['accessToken'].toString().isNotEmpty) {
-                  return _buildHeaderPhoneSelector(config);
-                }
-              }
-              return const SizedBox.shrink();
-            },
-          ),
 
-          // Notification Bell Icon with Badge Count
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, authState) {
-              if (authState is AuthAuthenticated) {
-                final tenantId = authState.tenant['id']?.toString() ??
-                    authState.tenant['_id']?.toString() ??
-                    '';
-                if (tenantId.isNotEmpty) {
-                  return NotificationBellIcon(tenantId: tenantId);
-                }
-              }
-              return const SizedBox.shrink();
-            },
-          ),
-          const SizedBox(width: 8),
+                  // Notification Bell Icon with Badge Count
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, authState) {
+                      if (authState is AuthAuthenticated) {
+                        final tenantId = authState.tenant['id']?.toString() ??
+                            authState.tenant['_id']?.toString() ??
+                            '';
+                        if (tenantId.isNotEmpty) {
+                          return NotificationBellIcon(tenantId: tenantId);
+                        }
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                  const SizedBox(width: 4),
 
-          // Support button
-          _SupportButton(),
-          const SizedBox(width: 8),
-          const VerticalDivider(indent: 20, endIndent: 20),
-          const SizedBox(width: 24),
-          BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, state) {
-              String name = 'User';
-              if (state is AuthAuthenticated) {
-                final config = state.tenant['whatsappConfig'];
-                if (config != null &&
-                    config['verifiedName'] != null &&
-                    config['verifiedName'].toString().isNotEmpty) {
-                  name = config['verifiedName'].toString();
-                } else {
-                  name = state.user;
-                }
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  _fetchMetaProfileIfNeeded(config);
-                });
-              }
-              final displayName = name;
-              final firstLetter = displayName.isNotEmpty
-                  ? displayName[0].toUpperCase()
-                  : 'U';
+                  // Support button
+                  _SupportButton(),
+                  if (!isMobile) ...[
+                    const SizedBox(width: 8),
+                    const VerticalDivider(indent: 20, endIndent: 20),
+                    const SizedBox(width: 12),
+                  ] else ...[
+                    const SizedBox(width: 4),
+                  ],
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, state) {
+                      String name = 'User';
+                      if (state is AuthAuthenticated) {
+                        final config = state.tenant['whatsappConfig'];
+                        if (config != null &&
+                            config['verifiedName'] != null &&
+                            config['verifiedName'].toString().isNotEmpty) {
+                          name = config['verifiedName'].toString();
+                        } else {
+                          name = state.user;
+                        }
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          _fetchMetaProfileIfNeeded(config);
+                        });
+                      }
+                      final displayName = name;
+                      final firstLetter = displayName.isNotEmpty
+                          ? displayName[0].toUpperCase()
+                          : 'U';
 
-              return PopupMenuButton<String>(
-                onSelected: (val) {
-                  if (val == 'whatsapp_profile') {
-                    if (state is AuthAuthenticated) {
-                      final config =
-                          state.tenant['whatsappConfig']
-                              as Map<String, dynamic>? ??
-                          {};
-                      WhatsAppBusinessProfileDialog.show(context, config);
-                    }
-                  } else if (val == 'logout') {
-                    _showLogoutDialog(context, name);
-                  }
-                },
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                elevation: 8,
-                offset: const Offset(0, 56),
-                itemBuilder: (context) => [
-                  PopupMenuItem<String>(
-                    enabled: false,
-                    padding: EdgeInsets.zero,
-                    child: Container(
-                      width: 240,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.secondaryColor.withValues(alpha: 0.06),
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(14),
+                      return PopupMenuButton<String>(
+                        onSelected: (val) {
+                          if (val == 'whatsapp_profile') {
+                            if (state is AuthAuthenticated) {
+                              final config =
+                                  state.tenant['whatsappConfig']
+                                      as Map<String, dynamic>? ??
+                                  {};
+                              WhatsAppBusinessProfileDialog.show(context, config);
+                            }
+                          } else if (val == 'logout') {
+                            _showLogoutDialog(context, name);
+                          }
+                        },
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: AppTheme.secondaryColor,
-                            backgroundImage: _metaProfileImageUrl != null
-                                ? NetworkImage(_metaProfileImageUrl!)
-                                : null,
-                            child: _metaProfileImageUrl == null
-                                ? Text(
-                                    firstLetter,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
+                        elevation: 8,
+                        offset: const Offset(0, 56),
+                        itemBuilder: (context) => [
+                          PopupMenuItem<String>(
+                            enabled: false,
+                            padding: EdgeInsets.zero,
+                            child: Container(
+                              width: 240,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.secondaryColor.withValues(alpha: 0.06),
+                                borderRadius: const BorderRadius.vertical(
+                                  top: Radius.circular(14),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: AppTheme.secondaryColor,
+                                    backgroundImage: _metaProfileImageUrl != null
+                                        ? NetworkImage(_metaProfileImageUrl!)
+                                        : null,
+                                    child: _metaProfileImageUrl == null
+                                        ? Text(
+                                            firstLetter,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 16,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          displayName.toUpperCase(),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                            color: Colors.black87,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const Text(
+                                          'Tenant Account',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.grey,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  )
-                                : null,
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          const PopupMenuDivider(height: 1),
+                          PopupMenuItem<String>(
+                            value: 'whatsapp_profile',
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            child: Row(
                               children: [
-                                Text(
-                                  displayName.toUpperCase(),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
+                                Container(
+                                  padding: const EdgeInsets.all(7),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.chat_bubble_outline_rounded,
+                                    size: 16,
+                                    color: AppTheme.primaryColor,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                const Text(
+                                  'WhatsApp Business Profile',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
                                     fontSize: 13,
                                     color: Colors.black87,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                const Text(
-                                  'Tenant Account',
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(height: 1),
+                          PopupMenuItem<String>(
+                            value: 'logout',
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 4,
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(7),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.logout_rounded,
+                                    size: 16,
+                                    color: Colors.red.shade600,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Logout',
                                   style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.grey,
+                                    color: Colors.red.shade600,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  ),
-                  const PopupMenuDivider(height: 1),
-                  PopupMenuItem<String>(
-                    value: 'whatsapp_profile',
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.chat_bubble_outline_rounded,
-                            size: 16,
-                            color: AppTheme.primaryColor,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Text(
-                          'WhatsApp Business Profile',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuDivider(height: 1),
-                  PopupMenuItem<String>(
-                    value: 'logout',
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(7),
-                          decoration: BoxDecoration(
-                            color: Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            Icons.logout_rounded,
-                            size: 16,
-                            color: Colors.red.shade600,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          'Logout',
-                          style: TextStyle(
-                            color: Colors.red.shade600,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
-                    ),
+                        child: isMobile
+                            ? CircleAvatar(
+                                radius: 18,
+                                backgroundColor: AppTheme.secondaryColor,
+                                backgroundImage: _metaProfileImageUrl != null
+                                    ? NetworkImage(_metaProfileImageUrl!)
+                                    : null,
+                                child: _metaProfileImageUrl == null
+                                    ? Text(
+                                        firstLetter,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
+                                      )
+                                    : null,
+                              )
+                            : Row(
+                                children: [
+                                  CircleAvatar(
+                                    backgroundColor: AppTheme.secondaryColor,
+                                    backgroundImage: _metaProfileImageUrl != null
+                                        ? NetworkImage(_metaProfileImageUrl!)
+                                        : null,
+                                    child: _metaProfileImageUrl == null
+                                        ? Text(
+                                            firstLetter,
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    displayName.toUpperCase(),
+                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  const Icon(Icons.keyboard_arrow_down),
+                                ],
+                              ),
+                      );
+                    },
                   ),
                 ],
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      backgroundColor: AppTheme.secondaryColor,
-                      backgroundImage: _metaProfileImageUrl != null
-                          ? NetworkImage(_metaProfileImageUrl!)
-                          : null,
-                      child: _metaProfileImageUrl == null
-                          ? Text(
-                              firstLetter,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            )
-                          : null,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      displayName.toUpperCase(),
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const Icon(Icons.keyboard_arrow_down),
-                  ],
-                ),
-              );
-            },
+              ),
+            ),
           ),
         ],
       ),

@@ -11,6 +11,7 @@ import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/chatbot/data/models/chatbot_model.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/pages/flow_builder_page.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 
 class ChatbotListPage extends StatefulWidget {
   const ChatbotListPage({super.key});
@@ -217,67 +218,73 @@ class _ChatbotListPageState extends State<ChatbotListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final isTablet = ResponsiveHelper.isTablet(context);
+
     if (!_isUnlocked) {
       return Scaffold(
         backgroundColor: Colors.transparent,
         body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 450,
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppTheme.secondaryColor.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: isMobile ? double.infinity : 450,
+                  padding: EdgeInsets.all(isMobile ? 20 : 32),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 16,
+                        offset: const Offset(0, 4),
                       ),
-                      child: Icon(Icons.lock_rounded, size: 40, color: AppTheme.secondaryColor),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Chatbots',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.secondaryColor,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    const Text(
-                      'This section is password protected.',
-                      style: TextStyle(fontSize: 14, color: Colors.black54),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.secondaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: AppTheme.secondaryColor.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(Icons.lock_rounded, size: 40, color: AppTheme.secondaryColor),
                       ),
-                      icon: const Icon(Icons.lock_open_rounded, size: 18),
-                      label: const Text('Enter Password', style: TextStyle(fontSize: 15)),
-                      onPressed: _showPasswordDialog,
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      Text(
+                        'Chatbots',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.secondaryColor,
+                            ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'This section is password protected.',
+                        style: TextStyle(fontSize: 14, color: Colors.black54),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.secondaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.lock_open_rounded, size: 18),
+                        label: const Text('Enter Password', style: TextStyle(fontSize: 15)),
+                        onPressed: _showPasswordDialog,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       );
@@ -302,7 +309,7 @@ class _ChatbotListPageState extends State<ChatbotListPage> {
             child: const Icon(Icons.add, color: Colors.white),
           ),
           body: Padding(
-            padding: const EdgeInsets.all(32),
+            padding: EdgeInsets.all(isMobile ? 12 : (isTablet ? 20 : 32)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -318,9 +325,9 @@ class _ChatbotListPageState extends State<ChatbotListPage> {
                     const Spacer(),
                     TextButton.icon(
                       onPressed: () => setState(() => _isUnlocked = false),
-                      icon: const Icon(Icons.lock_rounded, size: 16),
-                      label: const Text('Lock'),
-                      style: TextButton.styleFrom(foregroundColor: Colors.black45),
+                      icon: const Icon(Icons.lock, size: 16),
+                      label: Text(isMobile ? 'Lock' : 'Lock Section'),
+                      style: TextButton.styleFrom(foregroundColor: Colors.grey.shade600),
                     ),
                   ],
                 ),
@@ -552,7 +559,7 @@ class _ChatbotCard extends StatelessWidget {
         Switch(
           value: chatbot.isActive,
           onChanged: onToggleActive,
-          activeColor: AppTheme.primaryColor,
+          activeThumbColor: AppTheme.primaryColor,
         ),
       ],
     );

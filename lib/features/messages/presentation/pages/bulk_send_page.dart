@@ -1,5 +1,7 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
 import 'package:iFloraBuzz/features/clients/data/models/group_model.dart';
@@ -15,6 +17,8 @@ import 'package:iFloraBuzz/features/templates/presentation/bloc/template_bloc.da
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/templates/presentation/widgets/whatsapp_preview.dart';
 import 'package:iFloraBuzz/features/messages/presentation/widgets/campaign_result_dialog.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
+import 'package:iFloraBuzz/features/messages/presentation/widgets/phone_contacts_selection_dialog.dart';
 
 class BulkSendPage extends StatefulWidget {
   const BulkSendPage({super.key});
@@ -25,7 +29,7 @@ class BulkSendPage extends StatefulWidget {
 
 class _BulkSendPageState extends State<BulkSendPage> {
   final TextEditingController _manualNumbersController = TextEditingController();
-  List<RecipientData> _recipients = [];
+  final List<RecipientData> _recipients = [];
   String? _selectedTemplate;
   Map<String, dynamic>? _selectedTemplateData;
   PlatformFile? _campaignMedia;
@@ -144,6 +148,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
       setState(() {
         _recipients.addAll(selected.map((client) => RecipientData(
           mobileNumber: client.mobileNumber,
+          name: client.name.trim().isNotEmpty ? client.name.trim() : null,
           // Pre-fill {{1}} with client name so user doesn't have to type it
           variables: client.name.trim().isNotEmpty ? {1: client.name.trim()} : {},
         )));
@@ -184,6 +189,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
     setState(() {
       _recipients.addAll(toAdd.map((c) => RecipientData(
         mobileNumber: c.mobileNumber,
+        name: c.name.trim().isNotEmpty ? c.name.trim() : null,
         variables: c.name.trim().isNotEmpty ? {1: c.name.trim()} : {},
       )));
       if (_templateVariableCount > 0) _syncVariableControllers(_templateVariableCount);
@@ -194,6 +200,54 @@ class _BulkSendPageState extends State<BulkSendPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Added ${toAdd.length} client(s) from group "${selected.name}"')),
       );
+    }
+  }
+
+  Future<void> _addFromPhoneContacts() async {
+    if (!kIsWeb) {
+      final permission = await FlutterContacts.requestPermission(readonly: true);
+      if (!permission) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Contact permission is required to select device contacts. Please allow it in Settings.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    final existingNumbers = _recipients.map((r) => r.mobileNumber).toList();
+    final selected = await PhoneContactsSelectionDialog.show(
+      context,
+      existingNumbers: existingNumbers,
+    );
+    if (selected != null && selected.isNotEmpty) {
+      setState(() {
+        _recipients.addAll(selected.map((client) => RecipientData(
+          mobileNumber: client.mobileNumber,
+          name: client.name.trim().isNotEmpty && client.name.trim() != 'Phone Contact'
+              ? client.name.trim()
+              : null,
+          variables: client.name.trim().isNotEmpty && client.name.trim() != 'Phone Contact'
+              ? {1: client.name.trim()}
+              : {},
+        )));
+        if (_templateVariableCount > 0) {
+          _syncVariableControllers(_templateVariableCount);
+        }
+        if (_templateHeaderVariableCount > 0) {
+          _syncHeaderVariableControllers(_templateHeaderVariableCount);
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Added ${selected.length} phone contact(s)')),
+        );
+      }
     }
   }
 
@@ -299,6 +353,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
       });
       return RecipientData(
         mobileNumber: _recipients[ri].mobileNumber,
+        name: _recipients[ri].name,
         variables: vars,
         headerVariables: headerVars,
       );
@@ -357,7 +412,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
         mediaId = await repo.uploadMedia(_campaignMedia!);
         mediaType = headerComp['format'];
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
         setState(() => _isUploadingMedia = false);
         return;
       }
@@ -368,7 +423,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
 
     if (_isScheduled) {
       if (_scheduledAt == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick a schedule date & time first')));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick a schedule date & time first')));
         return;
       }
       try {
@@ -379,6 +434,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
           language: _selectedTemplateData?['language'] ?? 'en_US',
           recipients: finalRecipients.map((r) => {
             'mobileNumber': r.mobileNumber,
+            if (r.name != null && r.name!.isNotEmpty) 'name': r.name,
             'variables': r.variables.map((k, v) => MapEntry(k.toString(), v)),
             if (r.headerVariables.isNotEmpty)
               'headerVariables': r.headerVariables.map((k, v) => MapEntry(k.toString(), v)),
@@ -399,6 +455,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
       return;
     }
 
+    if (!mounted) return;
     context.read<MessageBloc>().add(
       SendBulkMessages(
         finalRecipients,
@@ -414,16 +471,19 @@ class _BulkSendPageState extends State<BulkSendPage> {
   @override
   void dispose() {
     for (final m in _perRecipientControllers.values) {
-      for (final c in m.values) c.dispose();
+      for (final c in m.values) { c.dispose(); }
     }
     for (final m in _perRecipientHeaderControllers.values) {
-      for (final c in m.values) c.dispose();
+      for (final c in m.values) { c.dispose(); }
     }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isStacked = !ResponsiveHelper.isDesktop(context);
+    final pagePadding = ResponsiveHelper.getPagePadding(context);
+
     return MultiBlocListener(
       listeners: [
         BlocListener<MessageBloc, MessageState>(
@@ -458,7 +518,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
         ),
       ],
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: pagePadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -469,44 +529,67 @@ class _BulkSendPageState extends State<BulkSendPage> {
                 color: AppTheme.secondaryColor,
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
 
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(flex: 3, child: _buildRecipientCard()),
-                const SizedBox(width: 24),
-                Expanded(flex: 1, child: CsvUploader(onParsed: _onCsvParsed)),
-              ],
-            ),
-            const SizedBox(height: 32),
+            if (isStacked) ...[
+              _buildRecipientCard(),
+              const SizedBox(height: 16),
+              CsvUploader(onParsed: _onCsvParsed),
+            ] else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: _buildRecipientCard()),
+                  const SizedBox(width: 24),
+                  Expanded(flex: 1, child: CsvUploader(onParsed: _onCsvParsed)),
+                ],
+              ),
+            ],
+            const SizedBox(height: 24),
 
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      _buildTemplateSelector(),
-                      const SizedBox(height: 16),
-                      if (_selectedTemplateData != null) ...[
-                        if (_templateVariableCount > 0 || _templateHeaderVariableCount > 0)
-                          _buildVariableMapping(),
+            if (isStacked) ...[
+              Column(
+                children: [
+                  _buildTemplateSelector(),
+                  const SizedBox(height: 16),
+                  if (_selectedTemplateData != null) ...[
+                    if (_templateVariableCount > 0 || _templateHeaderVariableCount > 0)
+                      _buildVariableMapping(),
+                    const SizedBox(height: 16),
+                    _buildMediaSelector(),
+                    const SizedBox(height: 24),
+                    _buildTemplatePreview(),
+                  ],
+                ],
+              ),
+            ] else ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        _buildTemplateSelector(),
                         const SizedBox(height: 16),
-                        _buildMediaSelector(),
+                        if (_selectedTemplateData != null) ...[
+                          if (_templateVariableCount > 0 || _templateHeaderVariableCount > 0)
+                            _buildVariableMapping(),
+                          const SizedBox(height: 16),
+                          _buildMediaSelector(),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 32),
-                Expanded(
-                  child: _selectedTemplateData != null
-                      ? _buildTemplatePreview()
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ),
-            const SizedBox(height: 32),
+                  const SizedBox(width: 32),
+                  Expanded(
+                    child: _selectedTemplateData != null
+                        ? _buildTemplatePreview()
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 24),
 
             _buildSummaryCard(),
           ],
@@ -564,7 +647,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
               ],
             ),
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
               children: [
                 OutlinedButton.icon(
                   onPressed: _addFromClients,
@@ -576,10 +661,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),
                 ),
-                const SizedBox(width: 12),
                 OutlinedButton.icon(
                   onPressed: _addFromGroup,
                   icon: const Icon(Icons.group_outlined, size: 18),
@@ -590,9 +674,23 @@ class _BulkSendPageState extends State<BulkSendPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),
                 ),
+                if (ResponsiveHelper.isMobile(context))
+                  OutlinedButton.icon(
+                    onPressed: _addFromPhoneContacts,
+                    icon: const Icon(Icons.contacts_outlined, size: 18),
+                    label: const Text('Select Contacts'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryColor,
+                      side: BorderSide(color: AppTheme.primaryColor),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    ),
+                  ),
               ],
             ),
             if (_recipients.isNotEmpty) ...[
@@ -882,7 +980,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
                 }
                 if (state is TemplateLoaded) {
                   return DropdownButtonFormField<String>(
-                    value: _selectedTemplate,
+                    initialValue: _selectedTemplate,
                     decoration: const InputDecoration(
                       hintText: 'Choose from approved templates',
                     ),
@@ -903,12 +1001,12 @@ class _BulkSendPageState extends State<BulkSendPage> {
                             state.templates.firstWhere((t) => t['name'] == val);
                         // Reset all per-recipient controllers on template change
                         for (final m in _perRecipientControllers.values) {
-                          for (final c in m.values) c.dispose();
+                          for (final c in m.values) { c.dispose(); }
                         }
                         _perRecipientControllers.clear();
                         // Also reset header variable controllers
                         for (final m in _perRecipientHeaderControllers.values) {
-                          for (final c in m.values) c.dispose();
+                          for (final c in m.values) { c.dispose(); }
                         }
                         _perRecipientHeaderControllers.clear();
                       });
@@ -1012,7 +1110,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
                               _isScheduled = v;
                               if (!v) _scheduledAt = null;
                             }),
-                            activeColor: Colors.orange.shade700,
+                            activeThumbColor: Colors.orange.shade700,
                           ),
                         ],
                       ),

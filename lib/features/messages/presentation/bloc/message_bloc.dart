@@ -103,6 +103,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
                 mediaId: event.mediaId,
                 mediaType: event.mediaType,
                 campaignId: campaignId,
+                recipientName: recipient.name,
                 variables: recipient.variables,
                 headerVariables: effectiveHeaderVars.isNotEmpty ? effectiveHeaderVars : null,
               );

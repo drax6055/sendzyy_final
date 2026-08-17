@@ -21,7 +21,7 @@ class UpdateConversations extends ChatEvent {
 }
 
 class SelectConversation extends ChatEvent {
-  final String contactId;
+  final String? contactId;
   SelectConversation(this.contactId);
   @override
   List<Object?> get props => [contactId];
@@ -86,11 +86,12 @@ class ChatLoaded extends ChatState {
   ChatLoaded copyWith({
     List<Map<String, dynamic>>? conversations,
     String? selectedContactId,
+    bool clearSelectedContact = false,
     List<Map<String, dynamic>>? messages,
   }) {
     return ChatLoaded(
       conversations: conversations ?? this.conversations,
-      selectedContactId: selectedContactId ?? this.selectedContactId,
+      selectedContactId: clearSelectedContact ? null : (selectedContactId ?? this.selectedContactId),
       messages: messages ?? this.messages,
     );
   }
@@ -142,13 +143,21 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     on<SelectConversation>((event, emit) async {
       if (state is ChatLoaded) {
         final currentState = state as ChatLoaded;
+        if (event.contactId == null) {
+          _messagesSubscription?.cancel();
+          emit(currentState.copyWith(
+            clearSelectedContact: true,
+            messages: const [],
+          ));
+          return;
+        }
         emit(currentState.copyWith(
           selectedContactId: event.contactId,
           messages: const [],
         ));
 
         // Fetch existing messages via REST immediately
-        final initial = await _repository.getMessages(event.contactId);
+        final initial = await _repository.getMessages(event.contactId!);
         if (state is ChatLoaded) {
           emit((state as ChatLoaded).copyWith(messages: initial));
         }
@@ -156,7 +165,7 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         // Subscribe to socket for live updates
         _messagesSubscription?.cancel();
         _messagesSubscription =
-            _socketService.getMessages(event.contactId).listen((messages) {
+            _socketService.getMessages(event.contactId!).listen((messages) {
           add(UpdateMessages(messages));
         });
       }

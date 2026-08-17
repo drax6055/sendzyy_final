@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
@@ -390,9 +389,13 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
     Future<void> pickFile(String headerType, StateSetter setDialogState) async {
       FileType type = FileType.custom;
       List<String> extensions;
-      if (headerType == 'IMAGE') extensions = ['jpg', 'jpeg', 'png'];
-      else if (headerType == 'VIDEO') extensions = ['mp4'];
-      else extensions = ['pdf'];
+      if (headerType == 'IMAGE') {
+        extensions = ['jpg', 'jpeg', 'png'];
+      } else if (headerType == 'VIDEO') {
+        extensions = ['mp4'];
+      } else {
+        extensions = ['pdf'];
+      }
 
       final result = await FilePicker.platform.pickFiles(
         type: type,
@@ -404,9 +407,13 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
 
       final file = result.files.first;
       String? error;
-      if (headerType == 'IMAGE') error = MediaValidator.validateImage(file);
-      else if (headerType == 'VIDEO') error = MediaValidator.validateVideo(file);
-      else error = MediaValidator.validateDocument(file);
+      if (headerType == 'IMAGE') {
+        error = MediaValidator.validateImage(file);
+      } else if (headerType == 'VIDEO') {
+        error = MediaValidator.validateVideo(file);
+      } else {
+        error = MediaValidator.validateDocument(file);
+      }
 
       if (error != null) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
@@ -438,7 +445,7 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
                   _clientTemplates.isEmpty
                       ? const Text('No approved templates found.', style: TextStyle(color: Colors.grey, fontSize: 13))
                       : DropdownButtonFormField<String>(
-                          value: selectedName,
+                          initialValue: selectedName,
                           hint: const Text('Select a template'),
                           isExpanded: true,
                           decoration: InputDecoration(
@@ -525,7 +532,7 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
                           ),
                           Expanded(
                             child: DropdownButtonFormField<String>(
-                              value: varMapping[i.toString()],
+                              initialValue: varMapping[i.toString()],
                               hint: const Text('Select field'),
                               isExpanded: true,
                               decoration: InputDecoration(
@@ -582,7 +589,9 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
                           return;
                         }
                       }
-                      Navigator.pop(ctx);
+                      if (ctx.mounted) {
+                        Navigator.pop(ctx);
+                      }
                       try {
                         final repo = ClientTriggerRepository(_dio);
                         final created = await repo.createTrigger(
@@ -1295,7 +1304,7 @@ class _TriggerRow extends StatelessWidget {
           Switch(
             value: trigger.isActive,
             onChanged: (_) => onToggle(),
-            activeColor: AppTheme.primaryColor,
+            activeThumbColor: AppTheme.primaryColor,
           ),
           IconButton(
             icon: const Icon(Icons.edit_rounded, size: 18),
@@ -1504,7 +1513,7 @@ class _TriggerFormDialogState extends State<_TriggerFormDialog> {
               const Text('Source', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               const SizedBox(height: 6),
               DropdownButtonFormField<String>(
-                value: _source,
+                initialValue: _source,
                 decoration: _inputDecoration('Source'),
                 items: const [
                   DropdownMenuItem(value: 'any', child: Text('Any')),
@@ -1531,7 +1540,7 @@ class _TriggerFormDialogState extends State<_TriggerFormDialog> {
                       child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
                     )
                   : DropdownButtonFormField<String>(
-                      value: _selectedTemplateName,
+                      initialValue: _selectedTemplateName,
                       decoration: _inputDecoration('Select a template'),
                       isExpanded: true,
                       items: _templates
@@ -1584,7 +1593,7 @@ class _TriggerFormDialogState extends State<_TriggerFormDialog> {
                       ),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _varMapping[i.toString()],
+                          initialValue: _varMapping[i.toString()],
                           decoration: _inputDecoration('Select field'),
                           isExpanded: true,
                           items: _leadFields
@@ -1704,9 +1713,13 @@ class _TriggerFormDialogState extends State<_TriggerFormDialog> {
 
     final file = result.files.first;
     String? error;
-    if (headerType == 'IMAGE') error = MediaValidator.validateImage(file);
-    else if (headerType == 'VIDEO') error = MediaValidator.validateVideo(file);
-    else if (headerType == 'DOCUMENT') error = MediaValidator.validateDocument(file);
+    if (headerType == 'IMAGE') {
+      error = MediaValidator.validateImage(file);
+    } else if (headerType == 'VIDEO') {
+      error = MediaValidator.validateVideo(file);
+    } else if (headerType == 'DOCUMENT') {
+      error = MediaValidator.validateDocument(file);
+    }
 
     if (error != null) {
       if (mounted) {
@@ -1820,7 +1833,7 @@ class _ClientTriggerRow extends StatelessWidget {
           Switch(
             value: trigger.isActive,
             onChanged: onToggle,
-            activeColor: AppTheme.primaryColor,
+            activeThumbColor: AppTheme.primaryColor,
           ),
           IconButton(
             icon: const Icon(Icons.delete_rounded, size: 18),

@@ -11,28 +11,11 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
-import 'dart:js_interop';
+import 'package:iFloraBuzz/core/js/meta_signup_helper.dart';
 import 'package:iFloraBuzz/features/settings/presentation/widgets/onboarding_checklist_widget.dart';
 import 'package:iFloraBuzz/features/templates/presentation/pages/create_template_page.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:iFloraBuzz/core/widgets/password_verification_dialog.dart';
-
-// JS interop types for the signup result
-extension type _SignupResult._(JSObject _) implements JSObject {
-  external String get status;
-  external String? get code;
-  external String? get wabaId;
-  external String? get phoneNumberId;
-  external String? get sessionId;
-  external String? get sessionInfoResponse;
-  external String? get businessPortfolioId; // Step 3 — Business Portfolio ID
-}
-
-@JS()
-external JSPromise<_SignupResult> launchWhatsAppSignup(
-  String appId,
-  String configId,
-);
 
 class SettingsPage extends StatefulWidget {
   final VoidCallback? onRenewPlan;
@@ -2114,19 +2097,19 @@ class _SettingsPageState extends State<SettingsPage> {
       // Log start event to backend server.log
       await getIt<WhatsAppRepository>().logSignupEvent(eventName: 'START');
 
-      final result = await launchWhatsAppSignup(
+      final result = await triggerMetaSignup(
         AppConstants.metaAppId,
         AppConstants.metaConfigId,
-      ).toDart;
+      );
 
-      if (result.status == 'success') {
+      if (result != null && result['status'] == 'success') {
         setState(() => _isConnecting = true);
 
-        final wabaId = result.wabaId;
-        final phoneNumberId = result.phoneNumberId;
-        final code = result.code;
-        final sessionId = result.sessionId;
-        final sessionInfoResponse = result.sessionInfoResponse;
+        final wabaId = result['wabaId'] as String?;
+        final phoneNumberId = result['phoneNumberId'] as String?;
+        final code = result['code'] as String?;
+        final sessionId = result['sessionId'] as String?;
+        final sessionInfoResponse = result['sessionInfoResponse'] as String?;
 
         // Log success at the frontend popup stage
         await getIt<WhatsAppRepository>().logSignupEvent(
@@ -2164,7 +2147,7 @@ class _SettingsPageState extends State<SettingsPage> {
               phoneNumberId: phoneNumberId,
               sessionId: sessionId,
               sessionInfoResponse: sessionInfoResponse,
-              businessPortfolioId: result.businessPortfolioId, // Step 3
+              businessPortfolioId: result['businessPortfolioId'] as String?, // Step 3
             );
 
         setState(() => _isConnecting = false);
@@ -2203,16 +2186,16 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           );
         }
-      } else if (result.status == 'cancelled') {
+      } else if (result?['status'] == 'cancelled') {
         // User cancelled — do nothing
         await getIt<WhatsAppRepository>().logSignupEvent(
           eventName: 'CANCELLED_FRONTEND',
-          sessionId: result.sessionId,
+          sessionId: result?['sessionId'] as String?,
         );
-      } else if (result.status == 'error_sdk_not_loaded') {
+      } else if (result?['status'] == 'error_sdk_not_loaded') {
         await getIt<WhatsAppRepository>().logSignupEvent(
           eventName: 'ERROR_SDK_NOT_LOADED_FRONTEND',
-          data: {'error': result.sessionInfoResponse ?? 'SDK Blocked'},
+          data: {'error': result?['sessionInfoResponse'] ?? 'SDK Blocked'},
         );
         setState(() => _isConnecting = false);
         if (mounted) {
@@ -2243,8 +2226,8 @@ class _SettingsPageState extends State<SettingsPage> {
       } else {
         await getIt<WhatsAppRepository>().logSignupEvent(
           eventName: 'ERROR_FRONTEND',
-          sessionId: result.sessionId,
-          data: {'status': result.status},
+          sessionId: result?['sessionId'] as String?,
+          data: {'status': result?['status']},
         );
         setState(() => _isConnecting = false);
         if (mounted) {

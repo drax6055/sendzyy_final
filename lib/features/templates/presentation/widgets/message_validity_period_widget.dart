@@ -46,8 +46,9 @@ class _MessageValidityPeriodWidgetState
   void initState() {
     super.initState();
     _toggleOn = widget.defaultOn;
-    _selectedSeconds =
-        widget.selectedSeconds != 0 ? widget.selectedSeconds : _defaultSeconds;
+    _selectedSeconds = widget.selectedSeconds != 0
+        ? widget.selectedSeconds
+        : _defaultSeconds;
   }
 
   void _onToggleChanged(bool value) {
@@ -93,8 +94,7 @@ class _MessageValidityPeriodWidgetState
               Icon(
                 Icons.timer_outlined,
                 size: 22,
-                color:
-                    _toggleOn ? AppTheme.primaryColor : Colors.grey.shade500,
+                color: _toggleOn ? AppTheme.primaryColor : Colors.grey.shade500,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -103,16 +103,14 @@ class _MessageValidityPeriodWidgetState
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: _toggleOn
-                        ? AppTheme.secondaryColor
-                        : Colors.black87,
+                    color: _toggleOn ? AppTheme.secondaryColor : Colors.black87,
                   ),
                 ),
               ),
               Switch(
                 value: _toggleOn,
                 onChanged: _onToggleChanged,
-                activeColor: AppTheme.primaryColor,
+                activeThumbColor: AppTheme.primaryColor,
               ),
             ],
           ),
@@ -128,22 +126,24 @@ class _MessageValidityPeriodWidgetState
                 ),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      BorderSide(color: Colors.grey.shade300, width: 1),
+                  borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      BorderSide(color: Colors.grey.shade300, width: 1),
+                  borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: AppTheme.primaryColor, width: 2),
+                  borderSide: const BorderSide(
+                    color: AppTheme.primaryColor,
+                    width: 2,
+                  ),
                 ),
               ),
               items: _options

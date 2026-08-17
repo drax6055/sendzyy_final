@@ -4,8 +4,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'package:csv/csv.dart';
 
 class PdfUtils {
@@ -264,7 +263,7 @@ class PdfUtils {
               style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 12),
           pw.TableHelper.fromTextArray(
-            headers: ['Phone Number', 'Status', 'Sent At', 'Delivered At', 'Read At', 'Failed At'],
+            headers: ['Name', 'Phone Number', 'Status', 'Sent At', 'Delivered At', 'Read At', 'Failed At'],
             data: recipients.map((r) {
               String fmt(String? iso) {
                 if (iso == null) return '-';
@@ -278,6 +277,7 @@ class PdfUtils {
 
               final status = r['status'] as String? ?? 'sent';
               return [
+                r['name'] ?? '-',
                 r['to'] ?? '-',
                 status[0].toUpperCase() + status.substring(1),
                 fmt(r['sentAt'] as String?),
@@ -355,7 +355,7 @@ class PdfUtils {
 
     // Details header
     rows.add(['Recipient Details']);
-    rows.add(['Phone Number', 'Status', 'Sent At', 'Delivered At', 'Read At', 'Failed At']);
+    rows.add(['Name', 'Phone Number', 'Status', 'Sent At', 'Delivered At', 'Read At', 'Failed At']);
     
     String fmt(String? iso) {
       if (iso == null) return '-';
@@ -371,6 +371,7 @@ class PdfUtils {
     for (final r in recipients) {
       final status = r['status'] as String? ?? 'sent';
       rows.add([
+        r['name'] ?? '-',
         r['to'] ?? '-',
         status[0].toUpperCase() + status.substring(1),
         fmt(r['sentAt'] as String?),
@@ -382,15 +383,8 @@ class PdfUtils {
 
     final csvString = const ListToCsvConverter().convert(rows);
     final bytes = utf8.encode(csvString);
-    final blob = html.Blob([bytes], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    
     final fileName = 'campaign_${template}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
-    
-    html.AnchorElement(href: url)
-      ..setAttribute('download', fileName)
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    await webDownloadBytes(bytes, fileName, mimeType: 'text/csv');
   }
 
   static Future<void> generatePhaseReport({
@@ -543,15 +537,8 @@ class PdfUtils {
 
     final csvString = const ListToCsvConverter().convert(rows);
     final bytes = utf8.encode(csvString);
-    final blob = html.Blob([bytes], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-
     final fileName = 'phase_report_${campaignTemplate}_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
-
-    html.AnchorElement(href: url)
-      ..setAttribute('download', fileName)
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    await webDownloadBytes(bytes, fileName, mimeType: 'text/csv');
   }
 
   static pw.Widget _buildPhaseSection(Map<String, dynamic> phase) {

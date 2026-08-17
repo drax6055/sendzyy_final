@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/core/widgets/compact_date_range_picker.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 
 // ---------------------------------------------------------------------------
 // Data model
@@ -266,53 +267,90 @@ class _LeadManagementPageState extends State<LeadManagementPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final isTablet = ResponsiveHelper.isTablet(context);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(isMobile ? 12 : (isTablet ? 20 : 32)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Row 1: title + filters
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  'Leads',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
-                      ),
-                ),
-                 const SizedBox(width: 10),
-                Expanded(
-                  child: _FilterBar(
-                  sourceFilter: _sourceFilter,
-                  statusFilter: _statusFilter,
-                  dateRange: _dateRange,
-                  searchCtrl: _searchCtrl,
-                  onSourceChanged: (v) {
-                    setState(() => _sourceFilter = v);
-                    _applyFilters();
-                  },
-                  onStatusChanged: (v) {
-                    setState(() => _statusFilter = v);
-                    _applyFilters();
-                  },
-                  onDateRangeChanged: (r) {
-                    setState(() => _dateRange = r);
-                    _applyFilters();
-                  },
-                  onSearchChanged: (_) => _applyFilters(),
-                  onClearDate: () {
-                    setState(() => _dateRange = null);
-                    _applyFilters();
-                  },
-                ),
-                ),
-              ],
-            ),
+            if (isMobile || isTablet) ...[
+              Text(
+                'Leads',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.secondaryColor,
+                    ),
+              ),
+              const SizedBox(height: 10),
+              _FilterBar(
+                sourceFilter: _sourceFilter,
+                statusFilter: _statusFilter,
+                dateRange: _dateRange,
+                searchCtrl: _searchCtrl,
+                onSourceChanged: (v) {
+                  setState(() => _sourceFilter = v);
+                  _applyFilters();
+                },
+                onStatusChanged: (v) {
+                  setState(() => _statusFilter = v);
+                  _applyFilters();
+                },
+                onDateRangeChanged: (r) {
+                  setState(() => _dateRange = r);
+                  _applyFilters();
+                },
+                onSearchChanged: (_) => _applyFilters(),
+                onClearDate: () {
+                  setState(() => _dateRange = null);
+                  _applyFilters();
+                },
+              ),
+            ] else ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Leads',
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.secondaryColor,
+                        ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _FilterBar(
+                      sourceFilter: _sourceFilter,
+                      statusFilter: _statusFilter,
+                      dateRange: _dateRange,
+                      searchCtrl: _searchCtrl,
+                      onSourceChanged: (v) {
+                        setState(() => _sourceFilter = v);
+                        _applyFilters();
+                      },
+                      onStatusChanged: (v) {
+                        setState(() => _statusFilter = v);
+                        _applyFilters();
+                      },
+                      onDateRangeChanged: (r) {
+                        setState(() => _dateRange = r);
+                        _applyFilters();
+                      },
+                      onSearchChanged: (_) => _applyFilters(),
+                      onClearDate: () {
+                        setState(() => _dateRange = null);
+                        _applyFilters();
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 10),
             // Row 2: status chips
             _StatusCountsRow(leads: _leads),
@@ -322,14 +360,20 @@ class _LeadManagementPageState extends State<LeadManagementPage> {
             if (_analytics != null) ...[
               _SummaryRow(analytics: _analytics!),
               const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(child: _BarChart(analytics: _analytics!)),
-                  const SizedBox(width: 16),
-                  SizedBox(width: 220, child: _FunnelWidget(analytics: _analytics!)),
-                ],
-              ),
+              if (isMobile) ...[
+                _BarChart(analytics: _analytics!),
+                const SizedBox(height: 16),
+                _FunnelWidget(analytics: _analytics!),
+              ] else ...[
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _BarChart(analytics: _analytics!)),
+                    const SizedBox(width: 16),
+                    SizedBox(width: 220, child: _FunnelWidget(analytics: _analytics!)),
+                  ],
+                ),
+              ],
               const SizedBox(height: 20),
             ],
 
@@ -434,11 +478,11 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Search - expanded to fill available space
-        Expanded(
-          child: TextField(
+    final isMobile = ResponsiveHelper.isMobile(context);
+    if (isMobile) {
+      return Column(
+        children: [
+          TextField(
             controller: searchCtrl,
             onChanged: onSearchChanged,
             decoration: InputDecoration(
@@ -449,7 +493,7 @@ class _FilterBar extends StatelessWidget {
               ),
               filled: true,
               fillColor: Colors.grey.shade100,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               suffixIcon: searchCtrl.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 18),
@@ -461,66 +505,152 @@ class _FilterBar extends StatelessWidget {
                   : Icon(Icons.search, color: Colors.grey.shade400, size: 20),
             ),
           ),
-        ),
-        const SizedBox(width: 8),
-        // Source dropdown
-        SizedBox(
-          width: 140,
-          child: DropdownButtonFormField<String>(
-            value: sourceFilter,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide.none,
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 130,
+                  child: DropdownButtonFormField<String>(
+                    value: sourceFilter,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'all', child: Text('All Sources', style: TextStyle(fontSize: 12))),
+                      DropdownMenuItem(value: 'shopify', child: Text('Shopify', style: TextStyle(fontSize: 12))),
+                      DropdownMenuItem(value: 'wordpress', child: Text('WordPress', style: TextStyle(fontSize: 12))),
+                    ],
+                    onChanged: (v) => onSourceChanged(v ?? 'all'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 135,
+                  child: DropdownButtonFormField<String>(
+                    value: statusFilter,
+                    decoration: InputDecoration(
+                      filled: true,
+                      fillColor: Colors.grey.shade100,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'all', child: Text('All Statuses', style: TextStyle(fontSize: 12))),
+                      DropdownMenuItem(value: 'new', child: Text('New', style: TextStyle(fontSize: 12))),
+                      DropdownMenuItem(value: 'contacted', child: Text('Contacted', style: TextStyle(fontSize: 12))),
+                      DropdownMenuItem(value: 'converted', child: Text('Converted', style: TextStyle(fontSize: 12))),
+                      DropdownMenuItem(value: 'failed', child: Text('Failed', style: TextStyle(fontSize: 12))),
+                    ],
+                    onChanged: (v) => onStatusChanged(v ?? 'all'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _DateRangeButton(
+                  dateRange: dateRange,
+                  onChanged: onDateRangeChanged,
+                  onClear: onClearDate,
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 220,
+            child: TextField(
+              controller: searchCtrl,
+              onChanged: onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'Search name or mobile...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                suffixIcon: searchCtrl.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          searchCtrl.clear();
+                          onSearchChanged('');
+                        },
+                      )
+                    : Icon(Icons.search, color: Colors.grey.shade400, size: 20),
               ),
             ),
-            items: const [
-              DropdownMenuItem(value: 'all', child: Text('All Sources')),
-              DropdownMenuItem(value: 'shopify', child: Text('Shopify')),
-              DropdownMenuItem(value: 'wordpress', child: Text('WordPress')),
-            ],
-            onChanged: (v) => onSourceChanged(v ?? 'all'),
           ),
-        ),
-        const SizedBox(width: 8),
-        // Status dropdown
-        SizedBox(
-          width: 150,
-          child: DropdownButtonFormField<String>(
-            value: statusFilter,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(30),
-                borderSide: BorderSide.none,
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 140,
+            child: DropdownButtonFormField<String>(
+              value: sourceFilter,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
               ),
+              items: const [
+                DropdownMenuItem(value: 'all', child: Text('All Sources')),
+                DropdownMenuItem(value: 'shopify', child: Text('Shopify')),
+                DropdownMenuItem(value: 'wordpress', child: Text('WordPress')),
+              ],
+              onChanged: (v) => onSourceChanged(v ?? 'all'),
             ),
-            items: const [
-              DropdownMenuItem(value: 'all', child: Text('All Statuses')),
-              DropdownMenuItem(value: 'new', child: Text('New')),
-              DropdownMenuItem(value: 'contacted', child: Text('Contacted')),
-              DropdownMenuItem(value: 'converted', child: Text('Converted')),
-              DropdownMenuItem(value: 'failed', child: Text('Failed')),
-            ],
-            onChanged: (v) => onStatusChanged(v ?? 'all'),
           ),
-        ),
-        const SizedBox(width: 8),
-        // Date range picker
-        _DateRangeButton(
-          dateRange: dateRange,
-          onChanged: onDateRangeChanged,
-          onClear: onClearDate,
-        ),
-        const SizedBox(width: 8),
-        // Search
-
-      ],
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 150,
+            child: DropdownButtonFormField<String>(
+              value: statusFilter,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: Colors.grey.shade100,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'all', child: Text('All Statuses')),
+                DropdownMenuItem(value: 'new', child: Text('New')),
+                DropdownMenuItem(value: 'contacted', child: Text('Contacted')),
+                DropdownMenuItem(value: 'converted', child: Text('Converted')),
+                DropdownMenuItem(value: 'failed', child: Text('Failed')),
+              ],
+              onChanged: (v) => onStatusChanged(v ?? 'all'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          _DateRangeButton(
+            dateRange: dateRange,
+            onChanged: onDateRangeChanged,
+            onClear: onClearDate,
+          ),
+        ],
+      ),
     );
   }
 }
@@ -592,6 +722,97 @@ class _LeadRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobileOrTablet = !ResponsiveHelper.isDesktop(context);
+
+    if (isMobileOrTablet) {
+      return Card(
+        margin: const EdgeInsets.only(bottom: 8),
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey.shade200),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 18,
+                      backgroundColor: AppTheme.secondaryColor.withValues(alpha: 0.1),
+                      child: Text(
+                        lead.name.isNotEmpty ? lead.name[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                          color: AppTheme.secondaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  lead.name.isNotEmpty ? lead.name : 'Unknown',
+                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (lead.isDuplicate) ...[
+                                const SizedBox(width: 6),
+                                const _Badge(label: 'Duplicate', color: Colors.orange),
+                              ],
+                            ],
+                          ),
+                          Text(
+                            lead.mobileNumber,
+                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _StatusDropdown(
+                      status: lead.status,
+                      onChanged: onStatusChanged,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _SourceBadge(source: lead.source),
+                    Text(
+                      DateFormat('dd MMM yy · HH:mm').format(lead.createdAt.toLocal()),
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                    ),
+                  ],
+                ),
+                if (lead.message.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    lead.message,
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       elevation: 0,
@@ -628,13 +849,16 @@ class _LeadRow extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          lead.name.isNotEmpty ? lead.name : 'Unknown',
-                          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        Flexible(
+                          child: Text(
+                            lead.name.isNotEmpty ? lead.name : 'Unknown',
+                            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         if (lead.isDuplicate) ...[
                           const SizedBox(width: 6),
-                          _Badge(label: 'Duplicate', color: Colors.orange),
+                          const _Badge(label: 'Duplicate', color: Colors.orange),
                         ],
                       ],
                     ),
@@ -1022,18 +1246,21 @@ class _StatusCountsRow extends StatelessWidget {
       counts[l.status] = (counts[l.status] ?? 0) + 1;
     }
 
-    return Row(
-      children: [
-        _CountChip(label: 'New', count: counts['new']!, color: Colors.blue),
-        const SizedBox(width: 8),
-        _CountChip(label: 'Contacted', count: counts['contacted']!, color: Colors.orange),
-        const SizedBox(width: 8),
-        _CountChip(label: 'Converted', count: counts['converted']!, color: Colors.green),
-        const SizedBox(width: 8),
-        _CountChip(label: 'Failed', count: counts['failed']!, color: Colors.red),
-        const SizedBox(width: 8),
-        _CountChip(label: 'Total', count: leads.length, color: AppTheme.secondaryColor),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _CountChip(label: 'New', count: counts['new']!, color: Colors.blue),
+          const SizedBox(width: 8),
+          _CountChip(label: 'Contacted', count: counts['contacted']!, color: Colors.orange),
+          const SizedBox(width: 8),
+          _CountChip(label: 'Converted', count: counts['converted']!, color: Colors.green),
+          const SizedBox(width: 8),
+          _CountChip(label: 'Failed', count: counts['failed']!, color: Colors.red),
+          const SizedBox(width: 8),
+          _CountChip(label: 'Total', count: leads.length, color: AppTheme.secondaryColor),
+        ],
+      ),
     );
   }
 }
@@ -1078,18 +1305,32 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobileOrTablet = !ResponsiveHelper.isDesktop(context);
+    final cards = [
+      _StatCard(label: 'Total Leads', value: '${analytics.totalLeads}', icon: Icons.contacts_rounded, color: AppTheme.secondaryColor),
+      _StatCard(label: 'Today', value: '${analytics.leadsToday}', icon: Icons.today_rounded, color: Colors.blue),
+      _StatCard(label: 'This Week', value: '${analytics.leadsThisWeek}', icon: Icons.date_range_rounded, color: Colors.purple),
+      _StatCard(label: 'Shopify', value: '${analytics.shopifyCount}', icon: Icons.shopping_bag_rounded, color: Colors.green),
+      _StatCard(label: 'WordPress', value: '${analytics.wordpressCount}', icon: Icons.language_rounded, color: Colors.blue.shade700),
+    ];
+
+    if (isMobileOrTablet) {
+      return GridView.count(
+        crossAxisCount: ResponsiveHelper.isMobile(context) ? 2 : 3,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 2.2,
+        children: cards,
+      );
+    }
+
     return Row(
-      children: [
-        _StatCard(label: 'Total Leads', value: '${analytics.totalLeads}', icon: Icons.contacts_rounded, color: AppTheme.secondaryColor),
-        const SizedBox(width: 12),
-        _StatCard(label: 'Today', value: '${analytics.leadsToday}', icon: Icons.today_rounded, color: Colors.blue),
-        const SizedBox(width: 12),
-        _StatCard(label: 'This Week', value: '${analytics.leadsThisWeek}', icon: Icons.date_range_rounded, color: Colors.purple),
-        const SizedBox(width: 12),
-        _StatCard(label: 'Shopify', value: '${analytics.shopifyCount}', icon: Icons.shopping_bag_rounded, color: Colors.green),
-        const SizedBox(width: 12),
-        _StatCard(label: 'WordPress', value: '${analytics.wordpressCount}', icon: Icons.language_rounded, color: Colors.blue.shade700),
-      ],
+      children: cards.map((c) => Expanded(child: Padding(
+        padding: const EdgeInsets.only(right: 12),
+        child: c,
+      ))).toList(),
     );
   }
 }

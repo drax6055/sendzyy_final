@@ -3,12 +3,14 @@
 /// [headerVariables] maps header variable index (1-based) to its value, e.g. {1: 'Hello'}
 class RecipientData {
   final String mobileNumber;
+  final String? name;
   final Map<int, String> variables;       // body variables {1: name, 2: mobile, ...}
   final Map<int, String> headerVariables; // header text variables {1: value, ...}
   final bool fromCsv; // true = CSV row (pre-filled, not shown in manual table)
 
   const RecipientData({
     required this.mobileNumber,
+    this.name,
     required this.variables,
     this.headerVariables = const {},
     this.fromCsv = false,
@@ -35,7 +37,13 @@ class RecipientData {
     for (int i = 1; i < row.length; i++) {
       vars[i] = row[i].toString().trim();
     }
-    return RecipientData(mobileNumber: mobile, variables: vars, fromCsv: true);
+    final nameVal = vars[1];
+    return RecipientData(
+      mobileNumber: mobile,
+      name: nameVal != null && nameVal.trim().isNotEmpty ? nameVal.trim() : null,
+      variables: vars,
+      fromCsv: true,
+    );
   }
 
   /// Build from manual number entry (no variables pre-filled)

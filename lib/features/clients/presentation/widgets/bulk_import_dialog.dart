@@ -1,4 +1,5 @@
-import 'dart:html' as html;
+import 'dart:convert';
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
@@ -20,17 +21,12 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
   String? _error;
   bool _isImporting = false;
 
-  void _downloadSample() {
+  void _downloadSample() async {
     const csv = 'name,mobile,company,email,venue,remark\n'
         'John Doe,919876543210,Acme Corp,john@acme.com,Main Street Store,VIP customer\n'
         'Jane Smith,919123456789,,jane@example.com,Wedding Expo 2025,\n'
         'Bob Kumar,917890123456,Bob Enterprises,,City Mall,Referred by John\n';
-    final blob = html.Blob([csv], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', 'sample_clients.csv')
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    await webDownloadBytes(utf8.encode(csv), 'sample_clients.csv', mimeType: 'text/csv');
   }
 
   Future<void> _pickFile() async {

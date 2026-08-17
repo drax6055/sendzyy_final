@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:html' as html;
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'package:csv/csv.dart';
 import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
 
 class CsvExportHelper {
-  /// Converts a list of [ClientModel] items to CSV and triggers browser download.
-  static void downloadClientsCsv(List<ClientModel> clients, String fileName) {
+  /// Converts a list of [ClientModel] items to CSV and triggers download.
+  static Future<void> downloadClientsCsv(List<ClientModel> clients, String fileName) async {
     final List<List<dynamic>> rows = [
       ['Name', 'Mobile Number', 'Company', 'Email', 'Venue', 'Remark', 'Added On'],
     ];
@@ -27,14 +27,8 @@ class CsvExportHelper {
     final csvString = const ListToCsvConverter().convert(rows);
     // Include UTF-8 BOM (\uFEFF) so Excel opens UTF-8 encoded CSV files correctly
     final bytes = utf8.encode('\uFEFF$csvString');
-    final blob = html.Blob([bytes], 'text/csv;charset=utf-8');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-
     final finalFileName = fileName.endsWith('.csv') ? fileName : '$fileName.csv';
 
-    html.AnchorElement(href: url)
-      ..setAttribute('download', finalFileName)
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    await webDownloadBytes(bytes, finalFileName, mimeType: 'text/csv;charset=utf-8');
   }
 }

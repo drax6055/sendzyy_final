@@ -8,6 +8,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:iFloraBuzz/features/credits/data/models/panel_plan.dart';
 import 'package:iFloraBuzz/features/templates/data/models/app_entry.dart';
+import 'package:iFloraBuzz/core/utils/snackbar_utils.dart';
 
 class WhatsAppRepository {
   final Dio _dio;
@@ -91,6 +92,7 @@ class WhatsAppRepository {
     String? mediaId,
     String? mediaType,
     String? campaignId,
+    String? recipientName,          // client name stored in recipient doc for report display
     Map<int, String>? variables,       // body variables {1: 'John', 2: '+91...', 3: 'ABC Co.'}
     Map<int, String>? headerVariables, // header TEXT variables {1: 'value'}
   }) async {
@@ -137,6 +139,8 @@ class WhatsAppRepository {
           'to': to,
           'type': 'template',
           'campaignId': campaignId,
+          if (recipientName != null && recipientName.isNotEmpty)
+            'recipientName': recipientName,
           'template': {
             'name': templateName,
             'language': {'code': languageCode},
@@ -161,7 +165,6 @@ class WhatsAppRepository {
           errorMessage = e.message!;
         }
       }
-      print('SEND MESSAGE ERROR: $errorMessage');
       throw Exception(errorMessage);
     }
   }
@@ -200,7 +203,8 @@ class WhatsAppRepository {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print('SEND DIRECT MEDIA MESSAGE ERROR: $e');
+      final errorMessage = parseErrorMessage(e, 'Failed to send direct media message');
+      showGlobalSnackBar(errorMessage);
       return false;
     }
   }
@@ -219,7 +223,8 @@ class WhatsAppRepository {
       );
       return response.statusCode == 200 && response.data['success'] == true;
     } catch (e) {
-      print('SEND OTP ERROR: $e');
+      final errorMessage = parseErrorMessage(e, 'Failed to send OTP');
+      showGlobalSnackBar(errorMessage);
       return false;
     }
   }
@@ -326,7 +331,7 @@ class WhatsAppRepository {
           authPayload['message_send_ttl_seconds'] = messageSendTtlSeconds;
         }
 
-        print('Auth Template Creation Payload: ${jsonEncode(authPayload)}');
+    
 
         final authResponse = await _dio.post('/create-template', data: authPayload);
         return authResponse.statusCode == 200;
@@ -406,14 +411,14 @@ class WhatsAppRepository {
         ],
       };
 
-      print('Template Creation Payload: ${jsonEncode(payload)}');
+  
 
       final response = await _dio.post('/create-template', data: payload);
 
       return response.statusCode == 200;
     } on DioException catch (e) {
       final errorData = e.response?.data;
-      print('Template Creation Error response: $errorData');
+      
       String errorMessage = 'Error creating template';
 
       if (errorData is Map) {
@@ -432,10 +437,11 @@ class WhatsAppRepository {
       } else {
         errorMessage = e.message ?? errorMessage;
       }
-      throw Exception(errorMessage);
+      throw errorMessage;
     } catch (e) {
-      print('Template Creation Unknown error: $e');
-      throw Exception('Error creating template: $e');
+      final errorMessage = parseErrorMessage(e, 'Error creating template');
+      showGlobalSnackBar(errorMessage);
+      throw errorMessage;
     }
   }
 
@@ -625,7 +631,7 @@ class WhatsAppRepository {
       if (e is DioException) {
         final resp = e.response;
         if (resp != null) {
-          print('META UPLOAD ERROR: ${resp.data}');
+       
           final data = resp.data;
           String? message;
 

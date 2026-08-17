@@ -399,24 +399,24 @@ Content-Type: application/json
 
 ---
 
-### 5.4 Deactivate Package (Soft Delete)
+### 5.4 Delete Package (Hard Delete)
 
 ```http
 DELETE /api/superadmin/packages/:id
 Authorization: Bearer <token>
 ```
 
-> ⚠️ If any **active tenants** are subscribed to this plan, the request will be **rejected** with a `409 Conflict` error:
+> ⚠️ This **permanently removes** the package from MongoDB. If any **active tenants** are subscribed to this plan, the request will be **rejected** with a `409 Conflict` error:
 > ```json
-> { "error": "Cannot deactivate package. 3 active tenant(s) are currently on this plan.", "activeTenantCount": 3 }
+> { "error": "Cannot delete package. 3 active tenant(s) are currently on this plan.", "activeTenantCount": 3 }
 > ```
 
 **Success Response (200)**:
 ```json
 {
   "success": true,
-  "message": "Package '6 Month Pro Pass' deactivated successfully.",
-  "package": { "id": "...", "planId": "panel_custom_6m", "name": "6 Month Pro Pass", "isActive": false }
+  "message": "Package '6 Month Pro Pass' deleted permanently.",
+  "package": { "id": "...", "planId": "panel_custom_6m", "name": "6 Month Pro Pass" }
 }
 ```
 

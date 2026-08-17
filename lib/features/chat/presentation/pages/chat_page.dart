@@ -1,9 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:ui_web' as ui_web;
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +9,7 @@ import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/chat/presentation/bloc/chat_bloc.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
 class ChatPage extends StatefulWidget {
@@ -45,7 +43,9 @@ class _ChatPageState extends State<ChatPage> {
       final prefs = await SharedPreferences.getInstance();
       _prefs = prefs;
       final tenantId = prefs.getString('tenant_id') ?? 'default';
-      final String? jsonStr = prefs.getString('read_contacts_timestamps_$tenantId');
+      final String? jsonStr = prefs.getString(
+        'read_contacts_timestamps_$tenantId',
+      );
       if (jsonStr != null) {
         final Map<String, dynamic> decoded = jsonDecode(jsonStr);
         setState(() {
@@ -127,10 +127,25 @@ class _ChatPageState extends State<ChatPage> {
         }
 
         if (state is ChatLoaded) {
+          final isMobile = ResponsiveHelper.isMobile(context);
+          if (isMobile) {
+            if (state.selectedContactId == null) {
+              return _buildConversationSidebar(state);
+            } else {
+              return PopScope(
+                canPop: false,
+                onPopInvokedWithResult: (didPop, result) {
+                  if (didPop) return;
+                  context.read<ChatBloc>().add(SelectConversation(null));
+                },
+                child: _buildChatWindow(state),
+              );
+            }
+          }
           return Row(
             children: [
               // 1. Conversation Sidebar
-              _buildConversationSidebar(state),
+              SizedBox(width: 320, child: _buildConversationSidebar(state)),
 
               // 2. Chat Window
               Expanded(
@@ -154,15 +169,19 @@ class _ChatPageState extends State<ChatPage> {
         : state.conversations.where((c) {
             final name = (c['name'] as String? ?? '').toLowerCase();
             final number = (c['id'] as String? ?? '').toLowerCase();
+            final lastMessage = (c['lastMessage'] as String? ?? '')
+                .toLowerCase();
             final q = _searchQuery.toLowerCase();
-            return name.contains(q) || number.contains(q);
+            return name.contains(q) ||
+                number.contains(q) ||
+                lastMessage.contains(q);
           }).toList();
 
     // Step 2: apply All / Unread chip filter
     final filtered = _selectedFilter == 'unread'
         ? searchFiltered.where((c) {
             final contactId = c['id'] as String? ?? '';
-            
+
             // Check if client replied to our template or message
             final hasReply = c['hasReply'] == true;
             if (!hasReply) {
@@ -173,8 +192,8 @@ class _ChatPageState extends State<ChatPage> {
             final lastActive = c['lastActive'] is DateTime
                 ? (c['lastActive'] as DateTime).toLocal()
                 : (DateTime.tryParse(c['lastActive']?.toString() ?? '') ??
-                        DateTime.now())
-                    .toLocal();
+                          DateTime.now())
+                      .toLocal();
 
             // Check if it was read after the last activity
             final lastReadStr = _readContactTimestamps[contactId];
@@ -193,7 +212,7 @@ class _ChatPageState extends State<ChatPage> {
     // Count for badge on Unread chip
     final unreadCount = state.conversations.where((c) {
       final contactId = c['id'] as String? ?? '';
-      
+
       // Check if client replied to our template or message
       final hasReply = c['hasReply'] == true;
       if (!hasReply) {
@@ -204,8 +223,8 @@ class _ChatPageState extends State<ChatPage> {
       final lastActive = c['lastActive'] is DateTime
           ? (c['lastActive'] as DateTime).toLocal()
           : (DateTime.tryParse(c['lastActive']?.toString() ?? '') ??
-                  DateTime.now())
-              .toLocal();
+                    DateTime.now())
+                .toLocal();
 
       // Check if it was read after the last activity
       final lastReadStr = _readContactTimestamps[contactId];
@@ -219,8 +238,9 @@ class _ChatPageState extends State<ChatPage> {
       return DateTime.now().difference(lastActive).inHours < 24;
     }).length;
 
+    final isMobileSidebar = ResponsiveHelper.isMobile(context);
     return Container(
-      width: 350,
+      width: isMobileSidebar ? double.infinity : 350,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(right: BorderSide(color: Colors.grey.shade200)),
@@ -252,7 +272,7 @@ class _ChatPageState extends State<ChatPage> {
               controller: _searchController,
               onChanged: (val) => setState(() => _searchQuery = val),
               decoration: InputDecoration(
-                hintText: 'Search by Name or Number......',
+                hintText: 'Search by Name, Number, or Message......',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
                   borderSide: BorderSide.none,
@@ -501,13 +521,25 @@ class _ChatPageState extends State<ChatPage> {
         children: [
           // Chat Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: ResponsiveHelper.isMobile(context) ? 8 : 24,
+              vertical: 14,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             ),
             child: Row(
               children: [
+                if (ResponsiveHelper.isMobile(context)) ...[
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () {
+                      context.read<ChatBloc>().add(SelectConversation(null));
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 CircleAvatar(
                   backgroundColor: AppTheme.secondaryColor,
                   child: Text(
@@ -517,55 +549,67 @@ class _ChatPageState extends State<ChatPage> {
                     style: const TextStyle(color: Colors.white),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          contact['name'] ?? 'Unknown',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              contact['name'] ?? 'Unknown',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          contact['id'] ?? '',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: const Color.fromARGB(255, 99, 99, 99),
+                          const SizedBox(width: 8),
+                          Text(
+                            contact['id'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color.fromARGB(255, 99, 99, 99),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isWithin24h ? Colors.green : Colors.grey,
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isWithin24h ? Colors.green : Colors.grey,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isWithin24h
-                              ? '24h Window Open'
-                              : '24h Window Expired (Requires Template)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              isWithin24h
+                                  ? '24h Window Open'
+                                  : '24h Window Expired (Requires Template)',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const Spacer(),
-                if (isWithin24h) _WindowTimerWidget(lastActive: lastActive),
+                if (isWithin24h) ...[
+                  const SizedBox(width: 4),
+                  _WindowTimerWidget(lastActive: lastActive),
+                ],
               ],
             ),
           ),
@@ -574,7 +618,9 @@ class _ChatPageState extends State<ChatPage> {
           Expanded(
             child: Container(
               color: AppTheme.backgroundColor,
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(
+                ResponsiveHelper.isMobile(context) ? 12 : 24,
+              ),
               child: ListView.builder(
                 controller: _messagesScrollController,
                 itemCount: state.messages.length,
@@ -595,9 +641,10 @@ class _ChatPageState extends State<ChatPage> {
 
   Widget _buildMessageBubble(Map<String, dynamic> msg) {
     final bloc = context.read<ChatBloc>();
+    final isMobile = ResponsiveHelper.isMobile(context);
     return MessageRenderer(
       msg: msg,
-      maxWidth: MediaQuery.of(context).size.width * 0.4,
+      maxWidth: MediaQuery.of(context).size.width * (isMobile ? 0.75 : 0.4),
       formatTime: _formatMessageTime,
       baseUrl: AppConstants.baseUrl,
       authToken: bloc.authToken,
@@ -993,7 +1040,12 @@ class MessageRenderer extends StatelessWidget {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: _buildContent(context, isMe, messageType, isBotSent: isBotSent),
+            child: _buildContent(
+              context,
+              isMe,
+              messageType,
+              isBotSent: isBotSent,
+            ),
           ),
           const SizedBox(height: 4),
           Row(
@@ -1024,7 +1076,9 @@ class MessageRenderer extends StatelessWidget {
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: IntrinsicWidth(
           child: Column(
-            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             children: [
               // 🤖 Bot label above chatbot messages
               if (isChatbotMsg)
@@ -1112,7 +1166,12 @@ class MessageRenderer extends StatelessWidget {
     }
   }
 
-  Widget _buildContent(BuildContext context, bool isMe, String? messageType, {bool isBotSent = false}) {
+  Widget _buildContent(
+    BuildContext context,
+    bool isMe,
+    String? messageType, {
+    bool isBotSent = false,
+  }) {
     final textColor = isMe ? Colors.white : AppTheme.secondaryColor;
     final mutedColor = isMe
         ? Colors.white.withValues(alpha: 0.7)
@@ -1241,7 +1300,9 @@ class MessageRenderer extends StatelessWidget {
         final replyIcon = interactiveType == 'list_reply'
             ? Icons.list_alt_outlined
             : Icons.touch_app_outlined;
-        final replyLabel = interactiveType == 'list_reply' ? 'List Reply' : 'Button Reply';
+        final replyLabel = interactiveType == 'list_reply'
+            ? 'List Reply'
+            : 'Button Reply';
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1303,10 +1364,14 @@ class MessageRenderer extends StatelessWidget {
           width: 220,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isMe ? Colors.teal.shade800.withOpacity(0.3) : Colors.grey.shade100,
+            color: isMe
+                ? Colors.teal.shade800.withOpacity(0.3)
+                : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isMe ? Colors.teal.shade700.withOpacity(0.5) : Colors.grey.shade300,
+              color: isMe
+                  ? Colors.teal.shade700.withOpacity(0.5)
+                  : Colors.grey.shade300,
             ),
           ),
           child: Column(
@@ -1342,10 +1407,7 @@ class MessageRenderer extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             phone,
-                            style: TextStyle(
-                              color: mutedColor,
-                              fontSize: 11,
-                            ),
+                            style: TextStyle(color: mutedColor, fontSize: 11),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1364,14 +1426,19 @@ class MessageRenderer extends StatelessWidget {
                       Clipboard.setData(ClipboardData(text: phone));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Copied contact number "$phone" to clipboard.'),
+                          content: Text(
+                            'Copied contact number "$phone" to clipboard.',
+                          ),
                           backgroundColor: Colors.green,
                         ),
                       );
                     },
                     borderRadius: BorderRadius.circular(4),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -1385,7 +1452,9 @@ class MessageRenderer extends StatelessWidget {
                             'Copy Phone',
                             style: TextStyle(
                               fontSize: 11,
-                              color: isMe ? Colors.white : AppTheme.primaryColor,
+                              color: isMe
+                                  ? Colors.white
+                                  : AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1437,10 +1506,12 @@ class MessageRenderer extends StatelessWidget {
     Color mutedColor,
   ) {
     final questionText = payload['title'] as String? ?? '';
-    final buttons =
-        (payload['buttons'] as List<dynamic>? ?? []).map((b) {
-      return (b as Map<String, dynamic>)['label'] as String? ?? '';
-    }).where((l) => l.isNotEmpty).toList();
+    final buttons = (payload['buttons'] as List<dynamic>? ?? [])
+        .map((b) {
+          return (b as Map<String, dynamic>)['label'] as String? ?? '';
+        })
+        .where((l) => l.isNotEmpty)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1486,10 +1557,16 @@ class MessageRenderer extends StatelessWidget {
   ) {
     final questionText = payload['title'] as String? ?? '';
     final buttonLabel = payload['buttonLabel'] as String? ?? 'View Options';
-    final items = (payload['items'] as List<dynamic>? ?? []).map((item) {
-      final m = item as Map<String, dynamic>;
-      return {'title': m['title'] as String? ?? '', 'description': m['description'] as String? ?? ''};
-    }).where((i) => (i['title'] as String).isNotEmpty).toList();
+    final items = (payload['items'] as List<dynamic>? ?? [])
+        .map((item) {
+          final m = item as Map<String, dynamic>;
+          return {
+            'title': m['title'] as String? ?? '',
+            'description': m['description'] as String? ?? '',
+          };
+        })
+        .where((i) => (i['title'] as String).isNotEmpty)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1502,14 +1579,15 @@ class MessageRenderer extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
           ),
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1703,32 +1781,40 @@ class _AudioBubbleState extends State<_AudioBubble> {
   void _registerAudioElement() {
     final audioUrl =
         '${widget.baseUrl}/media/${widget.mediaId}?token=${widget.authToken}';
-
-    // ignore: undefined_prefixed_name
-    ui_web.platformViewRegistry.registerViewFactory(_viewId, (int viewId) {
-      final audio = html.AudioElement()
-        ..src = audioUrl
-        ..controls = true
-        ..style.width = '100%'
-        ..style.height = '40px'
-        ..style.outline = 'none';
-      return audio;
-    });
+    registerWebAudioElement(_viewId, audioUrl);
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 260,
-      height: 48,
-      child: HtmlElementView(viewType: _viewId),
+    if (kIsWeb) {
+      return SizedBox(
+        width: 260,
+        height: 48,
+        child: HtmlElementView(viewType: _viewId),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.audiotrack, color: AppTheme.primaryColor),
+          SizedBox(width: 8),
+          Text(
+            'Audio Message',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 }
 
 /// Shows a video thumbnail with a play button overlay.
-/// Uses a hidden <video> element to render the first frame as a preview.
-/// Tapping opens the video in a new browser tab.
 class _VideoBubble extends StatefulWidget {
   final String mediaId;
   final bool isMe;
@@ -1760,43 +1846,33 @@ class _VideoBubbleState extends State<_VideoBubble> {
   }
 
   void _registerVideoElement() {
-    // ignore: undefined_prefixed_name
-    ui_web.platformViewRegistry.registerViewFactory(_viewId, (int viewId) {
-      final video = html.VideoElement()
-        ..src = _videoUrl
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..style.objectFit = 'cover'
-        ..style.borderRadius = '8px'
-        ..preload = 'metadata'
-        ..muted = true;
-      // Seek to first frame so the poster shows
-      video.onLoadedMetadata.listen((_) {
-        video.currentTime = 0.1;
-      });
-      return video;
-    });
+    registerWebVideoElement(_viewId, _videoUrl);
   }
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = widget.isMe
-        ? Colors.white.withValues(alpha: 0.9)
-        : Colors.white.withValues(alpha: 0.9);
+    final iconColor = Colors.white.withValues(alpha: 0.9);
 
     return GestureDetector(
-      onTap: () => html.window.open(_videoUrl, '_blank'),
+      onTap: () => webOpenUrl(_videoUrl),
       child: SizedBox(
         width: 200,
         height: 150,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: HtmlElementView(viewType: _viewId),
-            ),
-            // Dark overlay + play icon
+            if (kIsWeb)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: HtmlElementView(viewType: _viewId),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.black87,
+                ),
+              ),
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),

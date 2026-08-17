@@ -1,6 +1,5 @@
-// ignore: avoid_web_libraries_in_flutter
 import 'dart:convert';
-import 'dart:html' as html;
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -70,13 +69,7 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
         order: img.ChannelOrder.rgba,
       );
       final jpegBytes = img.encodeJpg(imgFrame, quality: 95);
-
-      final blob = html.Blob([jpegBytes], 'image/jpeg');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      html.AnchorElement(href: url)
-        ..setAttribute('download', 'group_registration_qr_${widget.group.name}.jpg')
-        ..click();
-      html.Url.revokeObjectUrl(url);
+      await webDownloadBytes(jpegBytes, 'group_registration_qr_${widget.group.name}.jpg', mimeType: 'image/jpeg');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

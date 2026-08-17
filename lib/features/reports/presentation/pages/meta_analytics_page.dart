@@ -1,7 +1,6 @@
 import 'dart:ui' as ui;
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -467,7 +466,7 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
     };
   }
 
-  void _exportCSV() {
+  Future<void> _exportCSV() async {
     if (_rawDataPoints.isEmpty) return;
 
     final List<List<dynamic>> rows = [];
@@ -517,18 +516,10 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
 
     final csvData = const ListToCsvConverter().convert(rows);
     final bytes = utf8.encode(csvData);
-    final blob = html.Blob([bytes]);
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    
     final formattedStart = DateFormat('yyyyMMdd').format(_dateRange.start);
     final formattedEnd = DateFormat('yyyyMMdd').format(_dateRange.end);
     final fileName = 'meta_analytics_${formattedStart}_to_$formattedEnd.csv';
-
-    html.AnchorElement(href: url)
-      ..setAttribute('download', fileName)
-      ..click();
-      
-    html.Url.revokeObjectUrl(url);
+    await webDownloadBytes(bytes, fileName, mimeType: 'text/csv');
   }
 
   @override
