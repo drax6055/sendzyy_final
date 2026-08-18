@@ -19,6 +19,7 @@ import 'package:iFloraBuzz/features/templates/presentation/widgets/whatsapp_prev
 import 'package:iFloraBuzz/features/messages/presentation/widgets/campaign_result_dialog.dart';
 import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import 'package:iFloraBuzz/features/messages/presentation/widgets/phone_contacts_selection_dialog.dart';
+import 'package:iFloraBuzz/features/messages/presentation/widgets/call_button_composer.dart';
 
 class BulkSendPage extends StatefulWidget {
   const BulkSendPage({super.key});
@@ -28,8 +29,9 @@ class BulkSendPage extends StatefulWidget {
 }
 
 class _BulkSendPageState extends State<BulkSendPage> {
-  final TextEditingController _manualNumbersController = TextEditingController();
-  final List<RecipientData> _recipients = [];
+  final TextEditingController _manualNumbersController =
+      TextEditingController();
+  List<RecipientData> _recipients = [];
   String? _selectedTemplate;
   Map<String, dynamic>? _selectedTemplateData;
   PlatformFile? _campaignMedia;
@@ -57,12 +59,14 @@ class _BulkSendPageState extends State<BulkSendPage> {
   final Map<int, Map<int, TextEditingController>> _perRecipientControllers = {};
 
   // Per-recipient HEADER variable controllers: recipientIndex -> {varIndex -> controller}
-  final Map<int, Map<int, TextEditingController>> _perRecipientHeaderControllers = {};
+  final Map<int, Map<int, TextEditingController>>
+  _perRecipientHeaderControllers = {};
 
   /// Returns how many {{n}} variables the selected template BODY has
   int get _templateVariableCount {
     if (_selectedTemplateData == null) return 0;
-    final components = _selectedTemplateData!['components'] as List<dynamic>? ?? [];
+    final components =
+        _selectedTemplateData!['components'] as List<dynamic>? ?? [];
     final body = components.firstWhere(
       (c) => c['type'] == 'BODY',
       orElse: () => null,
@@ -71,16 +75,19 @@ class _BulkSendPageState extends State<BulkSendPage> {
     final text = body['text'] as String? ?? '';
     final matches = RegExp(r'\{\{\d+\}\}').allMatches(text);
     if (matches.isEmpty) return 0;
-    return matches.map((m) {
-      final inner = m.group(0)!.replaceAll(RegExp(r'[{}]'), '');
-      return int.tryParse(inner) ?? 0;
-    }).fold(0, (a, b) => a > b ? a : b);
+    return matches
+        .map((m) {
+          final inner = m.group(0)!.replaceAll(RegExp(r'[{}]'), '');
+          return int.tryParse(inner) ?? 0;
+        })
+        .fold(0, (a, b) => a > b ? a : b);
   }
 
   /// Returns how many {{n}} variables the selected template TEXT HEADER has
   int get _templateHeaderVariableCount {
     if (_selectedTemplateData == null) return 0;
-    final components = _selectedTemplateData!['components'] as List<dynamic>? ?? [];
+    final components =
+        _selectedTemplateData!['components'] as List<dynamic>? ?? [];
     final header = components.firstWhere(
       (c) => c['type'] == 'HEADER' && c['format'] == 'TEXT',
       orElse: () => null,
@@ -89,10 +96,12 @@ class _BulkSendPageState extends State<BulkSendPage> {
     final text = header['text'] as String? ?? '';
     final matches = RegExp(r'\{\{\d+\}\}').allMatches(text);
     if (matches.isEmpty) return 0;
-    return matches.map((m) {
-      final inner = m.group(0)!.replaceAll(RegExp(r'[{}]'), '');
-      return int.tryParse(inner) ?? 0;
-    }).fold(0, (a, b) => a > b ? a : b);
+    return matches
+        .map((m) {
+          final inner = m.group(0)!.replaceAll(RegExp(r'[{}]'), '');
+          return int.tryParse(inner) ?? 0;
+        })
+        .fold(0, (a, b) => a > b ? a : b);
   }
 
   void _syncVariableControllers(int count) {
@@ -109,7 +118,10 @@ class _BulkSendPageState extends State<BulkSendPage> {
       }
       // Remove extra variable controllers
       _perRecipientControllers[ri]!.removeWhere((k, v) {
-        if (k > count) { v.dispose(); return true; }
+        if (k > count) {
+          v.dispose();
+          return true;
+        }
         return false;
       });
     }
@@ -130,15 +142,22 @@ class _BulkSendPageState extends State<BulkSendPage> {
       }
       // Remove extra controllers beyond current count
       _perRecipientHeaderControllers[ri]!.removeWhere((k, v) {
-        if (k > count) { v.dispose(); return true; }
+        if (k > count) {
+          v.dispose();
+          return true;
+        }
         return false;
       });
     }
-    _perRecipientHeaderControllers.removeWhere((ri, _) => ri >= _recipients.length);
+    _perRecipientHeaderControllers.removeWhere(
+      (ri, _) => ri >= _recipients.length,
+    );
   }
 
   Future<void> _addFromClients() async {
-    debugPrint('[BulkSend] "Add from Clients" clicked — opening client selection dialog');
+    debugPrint(
+      '[BulkSend] "Add from Clients" clicked — opening client selection dialog',
+    );
     final existingNumbers = _recipients.map((r) => r.mobileNumber).toList();
     final selected = await showDialog<List<ClientModel>>(
       context: context,
@@ -146,12 +165,18 @@ class _BulkSendPageState extends State<BulkSendPage> {
     );
     if (selected != null && selected.isNotEmpty) {
       setState(() {
-        _recipients.addAll(selected.map((client) => RecipientData(
-          mobileNumber: client.mobileNumber,
-          name: client.name.trim().isNotEmpty ? client.name.trim() : null,
-          // Pre-fill {{1}} with client name so user doesn't have to type it
-          variables: client.name.trim().isNotEmpty ? {1: client.name.trim()} : {},
-        )));
+        _recipients.addAll(
+          selected.map(
+            (client) => RecipientData(
+              mobileNumber: client.mobileNumber,
+              name: client.name.trim().isNotEmpty ? client.name.trim() : null,
+              // Pre-fill {{1}} with client name so user doesn't have to type it
+              variables: client.name.trim().isNotEmpty
+                  ? {1: client.name.trim()}
+                  : {},
+            ),
+          ),
+        );
         if (_templateVariableCount > 0) {
           _syncVariableControllers(_templateVariableCount);
         }
@@ -187,30 +212,44 @@ class _BulkSendPageState extends State<BulkSendPage> {
         .toList();
 
     setState(() {
-      _recipients.addAll(toAdd.map((c) => RecipientData(
-        mobileNumber: c.mobileNumber,
-        name: c.name.trim().isNotEmpty ? c.name.trim() : null,
-        variables: c.name.trim().isNotEmpty ? {1: c.name.trim()} : {},
-      )));
-      if (_templateVariableCount > 0) _syncVariableControllers(_templateVariableCount);
-      if (_templateHeaderVariableCount > 0) _syncHeaderVariableControllers(_templateHeaderVariableCount);
+      _recipients.addAll(
+        toAdd.map(
+          (c) => RecipientData(
+            mobileNumber: c.mobileNumber,
+            name: c.name.trim().isNotEmpty ? c.name.trim() : null,
+            variables: c.name.trim().isNotEmpty ? {1: c.name.trim()} : {},
+          ),
+        ),
+      );
+      if (_templateVariableCount > 0)
+        _syncVariableControllers(_templateVariableCount);
+      if (_templateHeaderVariableCount > 0)
+        _syncHeaderVariableControllers(_templateHeaderVariableCount);
     });
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Added ${toAdd.length} client(s) from group "${selected.name}"')),
+        SnackBar(
+          content: Text(
+            'Added ${toAdd.length} client(s) from group "${selected.name}"',
+          ),
+        ),
       );
     }
   }
 
   Future<void> _addFromPhoneContacts() async {
     if (!kIsWeb) {
-      final permission = await FlutterContacts.requestPermission(readonly: true);
+      final permission = await FlutterContacts.requestPermission(
+        readonly: true,
+      );
       if (!permission) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Contact permission is required to select device contacts. Please allow it in Settings.'),
+              content: Text(
+                'Contact permission is required to select device contacts. Please allow it in Settings.',
+              ),
               backgroundColor: Colors.orange,
             ),
           );
@@ -219,7 +258,6 @@ class _BulkSendPageState extends State<BulkSendPage> {
       }
     }
 
-    if (!mounted) return;
     final existingNumbers = _recipients.map((r) => r.mobileNumber).toList();
     final selected = await PhoneContactsSelectionDialog.show(
       context,
@@ -227,15 +265,23 @@ class _BulkSendPageState extends State<BulkSendPage> {
     );
     if (selected != null && selected.isNotEmpty) {
       setState(() {
-        _recipients.addAll(selected.map((client) => RecipientData(
-          mobileNumber: client.mobileNumber,
-          name: client.name.trim().isNotEmpty && client.name.trim() != 'Phone Contact'
-              ? client.name.trim()
-              : null,
-          variables: client.name.trim().isNotEmpty && client.name.trim() != 'Phone Contact'
-              ? {1: client.name.trim()}
-              : {},
-        )));
+        _recipients.addAll(
+          selected.map(
+            (client) => RecipientData(
+              mobileNumber: client.mobileNumber,
+              name:
+                  client.name.trim().isNotEmpty &&
+                      client.name.trim() != 'Phone Contact'
+                  ? client.name.trim()
+                  : null,
+              variables:
+                  client.name.trim().isNotEmpty &&
+                      client.name.trim() != 'Phone Contact'
+                  ? {1: client.name.trim()}
+                  : {},
+            ),
+          ),
+        );
         if (_templateVariableCount > 0) {
           _syncVariableControllers(_templateVariableCount);
         }
@@ -272,7 +318,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
       if (invalid.isNotEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Invalid number(s) skipped: ${invalid.join(', ')}. Use 10 digits or 12 digits with country code 91.'),
+            content: Text(
+              'Invalid number(s) skipped: ${invalid.join(', ')}. Use 10 digits or 12 digits with country code 91.',
+            ),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 4),
           ),
@@ -282,7 +330,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
       if (newNumbers.isEmpty) {
         if (invalid.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Number(s) already added or invalid.')),
+            const SnackBar(
+              content: Text('Number(s) already added or invalid.'),
+            ),
           );
         }
         _manualNumbersController.clear();
@@ -303,9 +353,15 @@ class _BulkSendPageState extends State<BulkSendPage> {
     }
   }
 
-  void _onCsvParsed(List<RecipientData> parsed, {required int invalidCount, required int duplicateCount}) {
+  void _onCsvParsed(
+    List<RecipientData> parsed, {
+    required int invalidCount,
+    required int duplicateCount,
+  }) {
     final existing = _recipients.map((r) => r.mobileNumber).toSet();
-    final unique = parsed.where((r) => !existing.contains(r.mobileNumber)).toList();
+    final unique = parsed
+        .where((r) => !existing.contains(r.mobileNumber))
+        .toList();
     final alreadyExisting = parsed.length - unique.length;
 
     setState(() {
@@ -330,7 +386,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(parts.join(' · ')),
-        backgroundColor: invalidCount > 0 || duplicateCount > 0 ? Colors.orange : Colors.green,
+        backgroundColor: invalidCount > 0 || duplicateCount > 0
+            ? Colors.orange
+            : Colors.green,
         duration: const Duration(seconds: 4),
       ),
     );
@@ -375,24 +433,35 @@ class _BulkSendPageState extends State<BulkSendPage> {
     );
     if (time == null) return;
     setState(() {
-      _scheduledAt = DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      _scheduledAt = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
     });
   }
 
   Future<void> _sendMessages() async {
     if (_recipients.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Add recipients first')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Add recipients first')));
       return;
     }
     if (_selectedTemplate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Select a template first')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Select a template first')));
       return;
     }
 
     String? mediaId;
     String? mediaType;
 
-    final components = _selectedTemplateData?['components'] as List<dynamic>? ?? [];
+    final components =
+        _selectedTemplateData?['components'] as List<dynamic>? ?? [];
     final headerComp = components.firstWhere(
       (c) => c['type'] == 'HEADER',
       orElse: () => null,
@@ -401,7 +470,11 @@ class _BulkSendPageState extends State<BulkSendPage> {
     if (headerComp != null && headerComp['format'] != 'TEXT') {
       if (_campaignMedia == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please select an image/video/document for this template')),
+          const SnackBar(
+            content: Text(
+              'Please select an image/video/document for this template',
+            ),
+          ),
         );
         return;
       }
@@ -412,7 +485,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
         mediaId = await repo.uploadMedia(_campaignMedia!);
         mediaType = headerComp['format'];
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
         setState(() => _isUploadingMedia = false);
         return;
       }
@@ -423,7 +498,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
 
     if (_isScheduled) {
       if (_scheduledAt == null) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pick a schedule date & time first')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pick a schedule date & time first')),
+        );
         return;
       }
       try {
@@ -432,30 +509,47 @@ class _BulkSendPageState extends State<BulkSendPage> {
           campaignName: 'Campaign ${DateTime.now().millisecondsSinceEpoch}',
           template: _selectedTemplate!,
           language: _selectedTemplateData?['language'] ?? 'en_US',
-          recipients: finalRecipients.map((r) => {
-            'mobileNumber': r.mobileNumber,
-            if (r.name != null && r.name!.isNotEmpty) 'name': r.name,
-            'variables': r.variables.map((k, v) => MapEntry(k.toString(), v)),
-            if (r.headerVariables.isNotEmpty)
-              'headerVariables': r.headerVariables.map((k, v) => MapEntry(k.toString(), v)),
-          }).toList(),
+          recipients: finalRecipients
+              .map(
+                (r) => {
+                  'mobileNumber': r.mobileNumber,
+                  if (r.name != null && r.name!.isNotEmpty) 'name': r.name,
+                  'variables': r.variables.map(
+                    (k, v) => MapEntry(k.toString(), v),
+                  ),
+                  if (r.headerVariables.isNotEmpty)
+                    'headerVariables': r.headerVariables.map(
+                      (k, v) => MapEntry(k.toString(), v),
+                    ),
+                },
+              )
+              .toList(),
           scheduledAt: _scheduledAt!,
           mediaId: mediaId,
           mediaType: mediaType,
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Campaign scheduled for ${_formatScheduledAt(_scheduledAt!)}')),
+            SnackBar(
+              content: Text(
+                'Campaign scheduled for ${_formatScheduledAt(_scheduledAt!)}',
+              ),
+            ),
           );
-          setState(() { _isScheduled = false; _scheduledAt = null; });
+          setState(() {
+            _isScheduled = false;
+            _scheduledAt = null;
+          });
         }
       } catch (e) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to schedule: $e')));
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Failed to schedule: $e')));
       }
       return;
     }
 
-    if (!mounted) return;
     context.read<MessageBloc>().add(
       SendBulkMessages(
         finalRecipients,
@@ -471,10 +565,10 @@ class _BulkSendPageState extends State<BulkSendPage> {
   @override
   void dispose() {
     for (final m in _perRecipientControllers.values) {
-      for (final c in m.values) { c.dispose(); }
+      for (final c in m.values) c.dispose();
     }
     for (final m in _perRecipientHeaderControllers.values) {
-      for (final c in m.values) { c.dispose(); }
+      for (final c in m.values) c.dispose();
     }
     super.dispose();
   }
@@ -501,7 +595,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
               if (state.failureCount > 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('${state.failureCount} recipient(s) failed to receive message.'),
+                    content: Text(
+                      '${state.failureCount} recipient(s) failed to receive message.',
+                    ),
                     backgroundColor: Colors.redAccent,
                   ),
                 );
@@ -553,7 +649,8 @@ class _BulkSendPageState extends State<BulkSendPage> {
                   _buildTemplateSelector(),
                   const SizedBox(height: 16),
                   if (_selectedTemplateData != null) ...[
-                    if (_templateVariableCount > 0 || _templateHeaderVariableCount > 0)
+                    if (_templateVariableCount > 0 ||
+                        _templateHeaderVariableCount > 0)
                       _buildVariableMapping(),
                     const SizedBox(height: 16),
                     _buildMediaSelector(),
@@ -572,7 +669,8 @@ class _BulkSendPageState extends State<BulkSendPage> {
                         _buildTemplateSelector(),
                         const SizedBox(height: 16),
                         if (_selectedTemplateData != null) ...[
-                          if (_templateVariableCount > 0 || _templateHeaderVariableCount > 0)
+                          if (_templateVariableCount > 0 ||
+                              _templateHeaderVariableCount > 0)
                             _buildVariableMapping(),
                           const SizedBox(height: 16),
                           _buildMediaSelector(),
@@ -604,15 +702,17 @@ class _BulkSendPageState extends State<BulkSendPage> {
       color: const Color(0xFFF9FBFB),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.green.withOpacity(0.1)),
+        side: BorderSide(color: Colors.green.withValues(alpha: 0.1)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Add Recipients',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Add Recipients',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -661,7 +761,10 @@ class _BulkSendPageState extends State<BulkSendPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                   ),
                 ),
                 OutlinedButton.icon(
@@ -674,7 +777,10 @@ class _BulkSendPageState extends State<BulkSendPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                   ),
                 ),
                 if (ResponsiveHelper.isMobile(context))
@@ -688,7 +794,10 @@ class _BulkSendPageState extends State<BulkSendPage> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                     ),
                   ),
               ],
@@ -706,7 +815,10 @@ class _BulkSendPageState extends State<BulkSendPage> {
                     backgroundColor: Colors.white,
                     side: const BorderSide(color: Colors.black12),
                     onDeleted: () => setState(
-                        () => _recipients.removeWhere((x) => x.mobileNumber == r.mobileNumber)),
+                      () => _recipients.removeWhere(
+                        (x) => x.mobileNumber == r.mobileNumber,
+                      ),
+                    ),
                   );
                 }).toList(),
               ),
@@ -736,7 +848,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.blue.withOpacity(0.15)),
+        side: BorderSide(color: Colors.blue.withValues(alpha: 0.15)),
       ),
       color: const Color(0xFFF0F4FF),
       child: Padding(
@@ -748,8 +860,10 @@ class _BulkSendPageState extends State<BulkSendPage> {
               children: [
                 const Icon(Icons.tune, size: 18, color: Colors.blueAccent),
                 const SizedBox(width: 8),
-                const Text('Personalisation Variables',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Personalisation Variables',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -766,61 +880,78 @@ class _BulkSendPageState extends State<BulkSendPage> {
                 children: [
                   const SizedBox(
                     width: 160,
-                    child: Text('Mobile Number',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Mobile Number',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   // Header variable columns (orange label)
-                  ...List.generate(headerCount, (i) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.shade100,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'Header {{${i + 1}}}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange.shade800,
+                  ...List.generate(
+                    headerCount,
+                    (i) => Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.shade100,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Header {{${i + 1}}}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange.shade800,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  )),
+                  ),
                   // Body variable columns (blue label)
-                  ...List.generate(bodyCount, (i) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade100,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'Body {{${i + 1}}}',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.blue.shade800,
+                  ...List.generate(
+                    bodyCount,
+                    (i) => Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade100,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Body {{${i + 1}}}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade800,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
-                  )),
+                  ),
                   const SizedBox(width: 32), // delete btn space
                 ],
               ),
@@ -846,7 +977,8 @@ class _BulkSendPageState extends State<BulkSendPage> {
                       // Header variable inputs
                       ...List.generate(headerCount, (vi) {
                         final idx = vi + 1;
-                        final ctrl = headerCtrlMap[idx] ?? TextEditingController();
+                        final ctrl =
+                            headerCtrlMap[idx] ?? TextEditingController();
                         return Expanded(
                           child: Padding(
                             padding: const EdgeInsets.only(left: 8),
@@ -860,14 +992,20 @@ class _BulkSendPageState extends State<BulkSendPage> {
                                 filled: true,
                                 fillColor: Colors.orange.shade50,
                                 contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 10),
+                                  horizontal: 10,
+                                  vertical: 10,
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.orange.shade300),
+                                  borderSide: BorderSide(
+                                    color: Colors.orange.shade300,
+                                  ),
                                 ),
                                 enabledBorder: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.orange.shade200),
+                                  borderSide: BorderSide(
+                                    color: Colors.orange.shade200,
+                                  ),
                                 ),
                               ),
                             ),
@@ -877,7 +1015,8 @@ class _BulkSendPageState extends State<BulkSendPage> {
                       // Body variable inputs
                       ...List.generate(bodyCount, (vi) {
                         final idx = vi + 1;
-                        final ctrl = bodyCtrlMap[idx] ?? TextEditingController();
+                        final ctrl =
+                            bodyCtrlMap[idx] ?? TextEditingController();
                         return Expanded(
                           child: Padding(
                             padding: const EdgeInsets.only(left: 8),
@@ -891,10 +1030,14 @@ class _BulkSendPageState extends State<BulkSendPage> {
                                 filled: true,
                                 fillColor: Colors.white,
                                 contentPadding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 10),
+                                  horizontal: 10,
+                                  vertical: 10,
+                                ),
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(8),
-                                  borderSide: BorderSide(color: Colors.grey.shade300),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade300,
+                                  ),
                                 ),
                               ),
                             ),
@@ -902,26 +1045,43 @@ class _BulkSendPageState extends State<BulkSendPage> {
                         );
                       }),
                       IconButton(
-                        icon: const Icon(Icons.close, size: 16, color: Colors.redAccent),
+                        icon: const Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Colors.redAccent,
+                        ),
                         onPressed: () => setState(() {
                           // Dispose body controllers for this recipient
-                          _perRecipientControllers[ri]?.values.forEach((c) => c.dispose());
+                          _perRecipientControllers[ri]?.values.forEach(
+                            (c) => c.dispose(),
+                          );
                           _perRecipientControllers.remove(ri);
                           // Dispose header controllers for this recipient
-                          _perRecipientHeaderControllers[ri]?.values.forEach((c) => c.dispose());
+                          _perRecipientHeaderControllers[ri]?.values.forEach(
+                            (c) => c.dispose(),
+                          );
                           _perRecipientHeaderControllers.remove(ri);
                           _recipients.removeAt(ri);
                           // Re-key both controller maps
-                          final reKeyed = <int, Map<int, TextEditingController>>{};
-                          final reKeyedHeader = <int, Map<int, TextEditingController>>{};
+                          final reKeyed =
+                              <int, Map<int, TextEditingController>>{};
+                          final reKeyedHeader =
+                              <int, Map<int, TextEditingController>>{};
                           int newIdx = 0;
-                          for (int old = 0; old < _recipients.length + 1; old++) {
+                          for (
+                            int old = 0;
+                            old < _recipients.length + 1;
+                            old++
+                          ) {
                             if (old == ri) continue;
                             if (_perRecipientControllers.containsKey(old)) {
                               reKeyed[newIdx] = _perRecipientControllers[old]!;
                             }
-                            if (_perRecipientHeaderControllers.containsKey(old)) {
-                              reKeyedHeader[newIdx] = _perRecipientHeaderControllers[old]!;
+                            if (_perRecipientHeaderControllers.containsKey(
+                              old,
+                            )) {
+                              reKeyedHeader[newIdx] =
+                                  _perRecipientHeaderControllers[old]!;
                             }
                             newIdx++;
                           }
@@ -948,7 +1108,20 @@ class _BulkSendPageState extends State<BulkSendPage> {
 
   String _formatScheduledAt(DateTime dt) {
     final local = dt.toLocal();
-    final months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     final h = local.hour.toString().padLeft(2, '0');
     final m = local.minute.toString().padLeft(2, '0');
     return '${local.day} ${months[local.month - 1]} ${local.year}, $h:$m';
@@ -956,10 +1129,14 @@ class _BulkSendPageState extends State<BulkSendPage> {
 
   String _variableHint(int idx) {
     switch (idx) {
-      case 1: return 'John (Name)';
-      case 2: return '+919876543210 (Number)';
-      case 3: return 'ABC Company';
-      default: return 'Value $idx';
+      case 1:
+        return 'John (Name)';
+      case 2:
+        return '+919876543210 (Number)';
+      case 3:
+        return 'ABC Company';
+      default:
+        return 'Value $idx';
     }
   }
 
@@ -970,8 +1147,10 @@ class _BulkSendPageState extends State<BulkSendPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Select Template',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              'Select Template',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 16),
             BlocBuilder<TemplateBloc, TemplateState>(
               builder: (context, state) {
@@ -980,33 +1159,37 @@ class _BulkSendPageState extends State<BulkSendPage> {
                 }
                 if (state is TemplateLoaded) {
                   return DropdownButtonFormField<String>(
-                    initialValue: _selectedTemplate,
+                    value: _selectedTemplate,
                     decoration: const InputDecoration(
                       hintText: 'Choose from approved templates',
                     ),
                     items: state.templates
-                        .where((t) =>
-                            t['status'] == 'APPROVED' &&
-                            t['category'] != 'AUTHENTICATION')
+                        .where(
+                          (t) =>
+                              t['status'] == 'APPROVED' &&
+                              t['category'] != 'AUTHENTICATION',
+                        )
                         .map<DropdownMenuItem<String>>((t) {
-                      return DropdownMenuItem<String>(
-                        value: t['name'],
-                        child: Text(t['name']),
-                      );
-                    }).toList(),
+                          return DropdownMenuItem<String>(
+                            value: t['name'],
+                            child: Text(t['name']),
+                          );
+                        })
+                        .toList(),
                     onChanged: (val) {
                       setState(() {
                         _selectedTemplate = val;
-                        _selectedTemplateData =
-                            state.templates.firstWhere((t) => t['name'] == val);
+                        _selectedTemplateData = state.templates.firstWhere(
+                          (t) => t['name'] == val,
+                        );
                         // Reset all per-recipient controllers on template change
                         for (final m in _perRecipientControllers.values) {
-                          for (final c in m.values) { c.dispose(); }
+                          for (final c in m.values) c.dispose();
                         }
                         _perRecipientControllers.clear();
                         // Also reset header variable controllers
                         for (final m in _perRecipientHeaderControllers.values) {
-                          for (final c in m.values) { c.dispose(); }
+                          for (final c in m.values) c.dispose();
                         }
                         _perRecipientHeaderControllers.clear();
                       });
@@ -1026,43 +1209,62 @@ class _BulkSendPageState extends State<BulkSendPage> {
     return BlocBuilder<MessageBloc, MessageState>(
       builder: (context, state) {
         final bool isSending = state is MessageSending;
-        final currentProgress =
-            isSending ? state.sentCount / state.totalCount : 0.0;
+        final currentProgress = isSending
+            ? state.sentCount / state.totalCount
+            : 0.0;
 
         return Card(
           elevation: 0,
           color: const Color(0xFFF9FBFB),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: Colors.green.withOpacity(0.1)),
+            side: BorderSide(color: Colors.green.withValues(alpha: 0.1)),
           ),
           child: Padding(
             padding: const EdgeInsets.all(24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Campaign Summary',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  'Campaign Summary',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 24),
                 Row(
                   children: [
                     Expanded(
                       child: _buildSummaryItem(
-                          'Duplicates Skipped', '$_totalDuplicates', Icons.content_copy,
-                          valueColor: _totalDuplicates > 0 ? Colors.orange.shade700 : null),
+                        'Duplicates Skipped',
+                        '$_totalDuplicates',
+                        Icons.content_copy,
+                        valueColor: _totalDuplicates > 0
+                            ? Colors.orange.shade700
+                            : null,
+                      ),
                     ),
                     Expanded(
                       child: _buildSummaryItem(
-                          'Invalid Numbers', '$_totalInvalid', Icons.error_outline,
-                          valueColor: _totalInvalid > 0 ? Colors.red.shade600 : null),
+                        'Invalid Numbers',
+                        '$_totalInvalid',
+                        Icons.error_outline,
+                        valueColor: _totalInvalid > 0
+                            ? Colors.red.shade600
+                            : null,
+                      ),
                     ),
                     Expanded(
                       child: _buildSummaryItem(
-                          'Total Recipients', '${_recipients.length}', Icons.people),
+                        'Total Recipients',
+                        '${_recipients.length}',
+                        Icons.people,
+                      ),
                     ),
                     Expanded(
                       child: _buildSummaryItem(
-                          'Template', _selectedTemplate ?? 'None', Icons.description),
+                        'Template',
+                        _selectedTemplate ?? 'None',
+                        Icons.description,
+                      ),
                     ),
                   ],
                 ),
@@ -1086,31 +1288,51 @@ class _BulkSendPageState extends State<BulkSendPage> {
                 const SizedBox(height: 32),
                 // Schedule toggle
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
-                    color: _isScheduled ? Colors.orange.shade50 : Colors.grey.shade50,
+                    color: _isScheduled
+                        ? Colors.orange.shade50
+                        : Colors.grey.shade50,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: _isScheduled ? Colors.orange.shade200 : Colors.grey.shade200),
+                    border: Border.all(
+                      color: _isScheduled
+                          ? Colors.orange.shade200
+                          : Colors.grey.shade200,
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Icon(Icons.schedule_rounded,
-                              size: 18,
-                              color: _isScheduled ? Colors.orange.shade700 : Colors.grey.shade500),
+                          Icon(
+                            Icons.schedule_rounded,
+                            size: 18,
+                            color: _isScheduled
+                                ? Colors.orange.shade700
+                                : Colors.grey.shade500,
+                          ),
                           const SizedBox(width: 10),
-                          const Text('Schedule for later',
-                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                          const Text(
+                            'Schedule for later',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
                           const Spacer(),
                           Switch(
                             value: _isScheduled,
-                            onChanged: isSending ? null : (v) => setState(() {
-                              _isScheduled = v;
-                              if (!v) _scheduledAt = null;
-                            }),
-                            activeThumbColor: Colors.orange.shade700,
+                            onChanged: isSending
+                                ? null
+                                : (v) => setState(() {
+                                    _isScheduled = v;
+                                    if (!v) _scheduledAt = null;
+                                  }),
+                            activeColor: Colors.orange.shade700,
                           ),
                         ],
                       ),
@@ -1120,7 +1342,10 @@ class _BulkSendPageState extends State<BulkSendPage> {
                           onTap: _pickScheduleDateTime,
                           borderRadius: BorderRadius.circular(8),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(8),
@@ -1128,8 +1353,11 @@ class _BulkSendPageState extends State<BulkSendPage> {
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.calendar_today_outlined,
-                                    size: 16, color: Colors.orange.shade700),
+                                Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: 16,
+                                  color: Colors.orange.shade700,
+                                ),
                                 const SizedBox(width: 10),
                                 Text(
                                   _scheduledAt != null
@@ -1153,7 +1381,8 @@ class _BulkSendPageState extends State<BulkSendPage> {
                 const SizedBox(height: 16),
                 Center(
                   child: ElevatedButton(
-                    onPressed: isSending ||
+                    onPressed:
+                        isSending ||
                             _isUploadingMedia ||
                             _recipients.isEmpty ||
                             _selectedTemplate == null ||
@@ -1164,21 +1393,22 @@ class _BulkSendPageState extends State<BulkSendPage> {
                       backgroundColor: isSending || _isUploadingMedia
                           ? Colors.grey
                           : _isScheduled
-                              ? Colors.orange.shade700
-                              : const Color(0xFF2E7D32),
+                          ? Colors.orange.shade700
+                          : const Color(0xFF2E7D32),
                       minimumSize: const Size(double.infinity, 56),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       elevation: 0,
                     ),
                     child: Text(
                       isSending
                           ? 'SENDING...'
                           : _isUploadingMedia
-                              ? 'UPLOADING MEDIA...'
-                              : _isScheduled
-                                  ? 'SCHEDULE CAMPAIGN'
-                                  : 'START CAMPAIGN',
+                          ? 'UPLOADING MEDIA...'
+                          : _isScheduled
+                          ? 'SCHEDULE CAMPAIGN'
+                          : 'START CAMPAIGN',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -1196,26 +1426,38 @@ class _BulkSendPageState extends State<BulkSendPage> {
     );
   }
 
-  Widget _buildSummaryItem(String label, String value, IconData icon, {Color? valueColor}) {
+  Widget _buildSummaryItem(
+    String label,
+    String value,
+    IconData icon, {
+    Color? valueColor,
+  }) {
     return Column(
       children: [
         Icon(icon, color: Colors.grey.shade400, size: 24),
         const SizedBox(height: 8),
-        Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 13), textAlign: TextAlign.center),
+        Text(
+          label,
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 4),
-        Text(value,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
-              color: valueColor,
-            ),
-            textAlign: TextAlign.center),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: valueColor,
+          ),
+          textAlign: TextAlign.center,
+        ),
       ],
     );
   }
 
   Widget _buildTemplatePreview() {
-    final components = _selectedTemplateData!['components'] as List<dynamic>? ?? [];
+    final components =
+        _selectedTemplateData!['components'] as List<dynamic>? ?? [];
     String? header;
     String? body;
     String? footer;
@@ -1251,10 +1493,14 @@ class _BulkSendPageState extends State<BulkSendPage> {
           previewBody = previewBody.replaceAll('{{$idx}}', ctrl.text.trim());
         }
       });
-      final headerCtrlMap = _perRecipientHeaderControllers[firstManualIdx] ?? {};
+      final headerCtrlMap =
+          _perRecipientHeaderControllers[firstManualIdx] ?? {};
       headerCtrlMap.forEach((idx, ctrl) {
         if (ctrl.text.trim().isNotEmpty) {
-          previewHeader = previewHeader.replaceAll('{{$idx}}', ctrl.text.trim());
+          previewHeader = previewHeader.replaceAll(
+            '{{$idx}}',
+            ctrl.text.trim(),
+          );
         }
       });
     } else {
@@ -1284,8 +1530,10 @@ class _BulkSendPageState extends State<BulkSendPage> {
             children: [
               Icon(Icons.person, size: 20, color: Colors.grey),
               SizedBox(width: 8),
-              Text('Preview',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              Text(
+                'Preview',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
               Spacer(),
               Icon(Icons.videocam, size: 20, color: Colors.grey),
               SizedBox(width: 12),
@@ -1297,8 +1545,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
           constraints: const BoxConstraints(maxHeight: 500),
           decoration: BoxDecoration(
             color: const Color(0xFFE5DDD5),
-            borderRadius:
-                const BorderRadius.vertical(bottom: Radius.circular(12)),
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(12),
+            ),
             border: Border.all(color: Colors.black12),
           ),
           child: WhatsAppPreview(
@@ -1315,7 +1564,8 @@ class _BulkSendPageState extends State<BulkSendPage> {
   }
 
   Widget _buildMediaSelector() {
-    final components = _selectedTemplateData!['components'] as List<dynamic>? ?? [];
+    final components =
+        _selectedTemplateData!['components'] as List<dynamic>? ?? [];
     final headerComp = components.firstWhere(
       (c) => c['type'] == 'HEADER',
       orElse: () => null,
@@ -1346,7 +1596,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: const Color(0xFFF9FBFB),
-              border: Border.all(color: Colors.green.withOpacity(0.1)),
+              border: Border.all(color: Colors.green.withValues(alpha: 0.1)),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(
@@ -1355,8 +1605,8 @@ class _BulkSendPageState extends State<BulkSendPage> {
                   format == 'IMAGE'
                       ? Icons.image
                       : format == 'VIDEO'
-                          ? Icons.play_circle
-                          : Icons.description,
+                      ? Icons.play_circle
+                      : Icons.description,
                   color: AppTheme.primaryColor,
                   size: 20,
                 ),
@@ -1366,7 +1616,9 @@ class _BulkSendPageState extends State<BulkSendPage> {
                     _campaignMedia?.name ?? 'Select $format file',
                     style: TextStyle(
                       fontSize: 13,
-                      color: _campaignMedia == null ? Colors.black54 : Colors.black87,
+                      color: _campaignMedia == null
+                          ? Colors.black54
+                          : Colors.black87,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),

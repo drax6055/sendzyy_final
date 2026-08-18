@@ -9,6 +9,9 @@ class SocketService {
   Stream<String> get systemUpdateStream => _systemUpdateController.stream;
   Stream<Map<String, dynamic>> get templateUpdateStream => _templateUpdateController.stream;
 
+  final _callUpdateController = StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get callUpdateStream => _callUpdateController.stream;
+
   void connect(String tenantId, String token, String serverUrl) {
     _socket = IO.io(serverUrl, {
       'transports': ['websocket'],
@@ -29,6 +32,12 @@ class SocketService {
     _socket!.on('template_status_update', (data) {
       if (data is Map) {
         _templateUpdateController.add(Map<String, dynamic>.from(data));
+      }
+    });
+
+    _socket!.on('whatsapp_call_event', (data) {
+      if (data is Map) {
+        _callUpdateController.add(Map<String, dynamic>.from(data));
       }
     });
   }

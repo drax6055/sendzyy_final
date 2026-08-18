@@ -130,7 +130,14 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        const Text('Category', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54)),
+                                        const Text(
+                                          'Category',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.black54,
+                                          ),
+                                        ),
                                         const SizedBox(height: 8),
                                         CategorySelectorWidget(
                                           selectedCategory: _category,
@@ -144,7 +151,8 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
                                               _buttons.clear();
                                               _mediaSample = 'NONE';
                                               _selectedFile = null;
-                                              _authFormState = const AuthFormState();
+                                              _authFormState =
+                                                  const AuthFormState();
                                               _validitySeconds = 0;
                                             });
                                           },
@@ -182,7 +190,9 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
                                       icon: Icons.edit_note_outlined,
                                       child: AuthenticationFormWidget(
                                         initialState: _authFormState,
-                                        onChanged: (state) => setState(() => _authFormState = state),
+                                        onChanged: (state) => setState(
+                                          () => _authFormState = state,
+                                        ),
                                       ),
                                     ),
                                   ] else ...[
@@ -219,8 +229,12 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
                                       MessageValidityPeriodWidget(
                                         defaultOn: false,
                                         enabled: _validitySeconds != 0,
-                                        selectedSeconds: _validitySeconds != 0 ? _validitySeconds : 600,
-                                        onChanged: (seconds) => setState(() => _validitySeconds = seconds),
+                                        selectedSeconds: _validitySeconds != 0
+                                            ? _validitySeconds
+                                            : 600,
+                                        onChanged: (seconds) => setState(
+                                          () => _validitySeconds = seconds,
+                                        ),
                                       ),
                                     ],
                                   ],
@@ -335,9 +349,9 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.05),
+        color: AppTheme.primaryColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.1)),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [
@@ -489,7 +503,10 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
         }
         if (mediaError != null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(mediaError), backgroundColor: Colors.redAccent),
+            SnackBar(
+              content: Text(mediaError),
+              backgroundColor: Colors.redAccent,
+            ),
           );
           return;
         }
@@ -498,21 +515,30 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
       // AUTHENTICATION-specific validations
       if (_category == 'AUTHENTICATION') {
         // ToS validation for ZERO_TAP
-        if (_authFormState.codeDeliveryType == 'ZERO_TAP' && !_authFormState.zeroTapTosAccepted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('You must agree to the Terms of Service to use zero-tap auto-fill.'),
-            backgroundColor: Colors.redAccent,
-          ));
+        if (_authFormState.codeDeliveryType == 'ZERO_TAP' &&
+            !_authFormState.zeroTapTosAccepted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'You must agree to the Terms of Service to use zero-tap auto-fill.',
+              ),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
           return;
         }
         // App entry validation for ZERO_TAP and ONE_TAP
         if (_authFormState.codeDeliveryType != 'COPY_CODE') {
           for (final entry in _authFormState.appEntries) {
             if (entry.packageName.isEmpty || entry.signatureHash.length != 11) {
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                content: Text('Please complete all app entries with valid package names and 11-character signature hashes.'),
-                backgroundColor: Colors.redAccent,
-              ));
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Please complete all app entries with valid package names and 11-character signature hashes.',
+                  ),
+                  backgroundColor: Colors.redAccent,
+                ),
+              );
               return;
             }
           }
@@ -526,21 +552,37 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
           category: _category,
           subCategory: isAuth ? null : _subCategory,
           language: _language,
-          header: isAuth ? null : (_headerController.text.isEmpty ? null : _headerController.text.trim()),
-          mediaSample: isAuth ? null : (_mediaSample == 'NONE' ? null : _mediaSample),
+          header: isAuth
+              ? null
+              : (_headerController.text.isEmpty
+                    ? null
+                    : _headerController.text.trim()),
+          mediaSample: isAuth
+              ? null
+              : (_mediaSample == 'NONE' ? null : _mediaSample),
           variableType: isAuth ? null : _variableType,
           body: isAuth ? '' : _bodyController.text.trim(),
-          footer: isAuth ? null : (_footerController.text.isEmpty ? null : _footerController.text.trim()),
+          footer: isAuth
+              ? null
+              : (_footerController.text.isEmpty
+                    ? null
+                    : _footerController.text.trim()),
           buttons: isAuth ? null : (_buttons.isEmpty ? null : _buttons),
           mediaFile: isAuth ? null : _selectedFile,
           messageSendTtlSeconds: isAuth
-              ? (_authFormState.validityEnabled ? _authFormState.validitySeconds : null)
+              ? (_authFormState.validityEnabled
+                    ? _authFormState.validitySeconds
+                    : null)
               : (_validitySeconds != 0 ? _validitySeconds : null),
           codeDeliveryType: isAuth ? _authFormState.codeDeliveryType : null,
           appEntries: isAuth ? _authFormState.appEntries : null,
-          addSecurityRecommendation: isAuth ? _authFormState.addSecurityRecommendation : null,
+          addSecurityRecommendation: isAuth
+              ? _authFormState.addSecurityRecommendation
+              : null,
           addExpiryTime: isAuth ? _authFormState.addExpiryTime : null,
-          codeExpirationMinutes: isAuth ? _authFormState.codeExpirationMinutes : null,
+          codeExpirationMinutes: isAuth
+              ? _authFormState.codeExpirationMinutes
+              : null,
           zeroTapTosAccepted: isAuth ? _authFormState.zeroTapTosAccepted : null,
         ),
       );
@@ -813,14 +855,21 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
             if (isMobile)
               IconButton(
                 onPressed: () => _insertNextVariable(_headerController),
-                icon: const Icon(Icons.add_circle_outline, size: 20, color: AppTheme.primaryColor),
+                icon: const Icon(
+                  Icons.add_circle_outline,
+                  size: 20,
+                  color: AppTheme.primaryColor,
+                ),
                 tooltip: 'Add variable',
               )
             else
               TextButton.icon(
                 onPressed: () => _insertNextVariable(_headerController),
                 icon: const Icon(Icons.add, size: 16),
-                label: const Text('Add variable', style: TextStyle(fontSize: 12)),
+                label: const Text(
+                  'Add variable',
+                  style: TextStyle(fontSize: 12),
+                ),
                 style: TextButton.styleFrom(
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
@@ -1007,7 +1056,11 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
             height: 350,
             checkPlatformCompatibility: true,
             emojiViewConfig: EmojiViewConfig(
-              emojiSizeMax: 28 * (foundation.defaultTargetPlatform == TargetPlatform.iOS ? 1.2 : 1.0),
+              emojiSizeMax:
+                  28 *
+                  (foundation.defaultTargetPlatform == TargetPlatform.iOS
+                      ? 1.2
+                      : 1.0),
             ),
             bottomActionBarConfig: const BottomActionBarConfig(enabled: false),
           ),
@@ -1117,7 +1170,9 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          border: Border.all(color: AppTheme.secondaryColor.withOpacity(0.3)),
+          border: Border.all(
+            color: AppTheme.secondaryColor.withValues(alpha: 0.3),
+          ),
           borderRadius: BorderRadius.circular(12),
         ),
         child: const Row(
@@ -1237,7 +1292,7 @@ class StickyPreview extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),

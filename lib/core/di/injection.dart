@@ -16,11 +16,20 @@ import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart'
 import 'package:iFloraBuzz/features/clients/data/repositories/group_repository.dart';
 import 'package:iFloraBuzz/features/clients/presentation/bloc/group_bloc.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/retry_repository.dart';
+import 'package:iFloraBuzz/features/catalog/data/repositories/catalog_repository.dart';
+import 'package:iFloraBuzz/features/catalog/presentation/bloc/catalog_bloc.dart';
 import '../constants/app_constants.dart';
 
 import 'package:iFloraBuzz/features/notifications/data/datasources/notification_remote_datasource.dart';
 import 'package:iFloraBuzz/features/notifications/data/repositories/notification_repository.dart';
 import 'package:iFloraBuzz/features/notifications/presentation/bloc/notification_bloc.dart';
+import 'package:iFloraBuzz/core/services/calling_webrtc_service.dart';
+import 'package:iFloraBuzz/features/calling/data/repositories/calling_repository.dart';
+import 'package:iFloraBuzz/features/calling/data/repositories/calling_repository_impl.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_control_bloc.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_permission_bloc.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_settings_bloc.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_log_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -99,4 +108,27 @@ Future<void> init() async {
 
   // Features - Notifications
   getIt.registerFactory(() => NotificationBloc(repository: getIt()));
+
+  // Features - Calling
+  getIt.registerLazySingleton<CallingRepository>(
+    () => CallingRepositoryImpl(getIt(), getIt()),
+  );
+  getIt.registerFactory<CallingWebRTCService>(
+    () => CallingWebRTCService.create(),
+  );
+  getIt.registerLazySingleton(
+    () => CallControlBloc(repository: getIt(), webrtcService: getIt()),
+  );
+  getIt.registerFactory(
+    () => CallPermissionBloc(getIt()),
+  );
+  getIt.registerFactory(
+    () => CallSettingsBloc(getIt()),
+  );
+  getIt.registerLazySingleton(
+    () => CallLogBloc(),
+  );
+  // Features - Catalog
+  getIt.registerLazySingleton(() => CatalogRepository(getIt()));
+  getIt.registerFactory(() => CatalogBloc(getIt()));
 }

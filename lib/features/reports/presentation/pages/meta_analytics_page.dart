@@ -10,6 +10,7 @@ import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/core/widgets/compact_date_range_picker.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
 
@@ -554,166 +555,326 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
 
   Widget _buildTopHeaderPanel() {
     final dateFormat = DateFormat('dd MMM yyyy');
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final isTablet = ResponsiveHelper.isTablet(context);
+    final isSmallScreen = isMobile || isTablet;
+
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : (isTablet ? 20 : 32),
+        vertical: isMobile ? 12 : 16,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Title and export
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Meta Analytics Insights',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.secondaryColor,
-                    ),
+          // Title and action buttons
+          if (isSmallScreen) ...[
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Meta Analytics Insights',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.secondaryColor,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Direct delivery, pricing, and volume stats from Meta Developer Account',
-                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-                  ),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _fetchAnalyticsData,
-                    icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text('Sync with Meta'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueGrey,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    onPressed: _rawDataPoints.isEmpty ? null : _exportCSV,
-                    icon: const Icon(Icons.download_rounded, size: 16),
-                    label: const Text('Export CSV'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          
-          // Tab segment and Filters Row
-          Row(
-            children: [
-              // Segmented Tab switcher
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F3F5),
-                  borderRadius: BorderRadius.circular(10),
                 ),
-                padding: const EdgeInsets.all(4),
-                child: TabBar(
-                  controller: _tabController,
-                  isScrollable: true,
-                  tabAlignment: TabAlignment.start,
-                  dividerColor: Colors.transparent,
-                  indicatorSize: TabBarIndicatorSize.tab,
-                  indicator: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: const [
-                      BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 1)),
-                    ],
-                  ),
-                  labelPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  labelColor: AppTheme.secondaryColor,
-                  unselectedLabelColor: Colors.grey.shade600,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
-                  tabs: const [
-                    Tab(text: 'Performance overview'),
-                    Tab(text: 'Message pricing'),
+                const SizedBox(height: 4),
+                Text(
+                  'Direct delivery, pricing, and volume stats from Meta Developer Account',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _isLoading ? null : _fetchAnalyticsData,
+                        icon: const Icon(Icons.refresh, size: 14),
+                        label: const Text('Sync', overflow: TextOverflow.ellipsis),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueGrey,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _rawDataPoints.isEmpty ? null : _exportCSV,
+                        icon: const Icon(Icons.download_rounded, size: 14),
+                        label: const Text('Export CSV', overflow: TextOverflow.ellipsis),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              const Spacer(),
-
-              // Filters
-              _buildFilterDropdown(
-                value: _selectedPhone,
-                items: _phoneNumbers,
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _selectedPhone = val);
-                    _fetchAnalyticsData();
-                  }
-                },
-              ),
-              const SizedBox(width: 8),
-              _buildFilterDropdown(
-                value: _selectedCountry,
-                items: _countryCodes,
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _selectedCountry = val);
-                    _fetchAnalyticsData();
-                  }
-                },
-              ),
-              const SizedBox(width: 8),
-              
-              // Date Range Button
-              OutlinedButton.icon(
-                onPressed: () async {
-                  final range = await showCompactDateRangePicker(
-                    context: context,
-                    initialDateRange: _dateRange,
-                    firstDate: DateTime(2022),
-                    lastDate: DateTime.now(),
-                  );
-                  if (range != null) {
-                    setState(() => _dateRange = range);
-                    _fetchAnalyticsData();
-                  }
-                },
-                icon: const Icon(Icons.date_range_rounded, size: 16, color: AppTheme.secondaryColor),
-                label: Text(
-                  '${dateFormat.format(_dateRange.start)} - ${dateFormat.format(_dateRange.end)}',
-                  style: const TextStyle(color: Colors.black87, fontSize: 12),
+              ],
+            ),
+          ] else ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Meta Analytics Insights',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.secondaryColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Direct delivery, pricing, and volume stats from Meta Developer Account',
+                      style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                    ),
+                  ],
                 ),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  side: BorderSide(color: Colors.grey.shade300),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _fetchAnalyticsData,
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text('Sync with Meta'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueGrey,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _rawDataPoints.isEmpty ? null : _exportCSV,
+                      icon: const Icon(Icons.download_rounded, size: 16),
+                      label: const Text('Export CSV'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 8),
-
-              // Granularity Dropdown
-              _buildFilterDropdown(
-                value: _selectedGranularity,
-                items: const ['DAILY', 'MONTHLY'],
-                onChanged: (val) {
-                  if (val != null) {
-                    setState(() => _selectedGranularity = val);
-                    _fetchAnalyticsData();
-                  }
-                },
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16),
+          
+          // Tab segment and Filters Row / Column
+          if (isSmallScreen) ...[
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Segmented Tab switcher
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F3F5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: TabBar(
+                    controller: _tabController,
+                    isScrollable: false,
+                    dividerColor: Colors.transparent,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicator: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 1)),
+                      ],
+                    ),
+                    labelPadding: const EdgeInsets.symmetric(vertical: 8),
+                    labelColor: AppTheme.secondaryColor,
+                    unselectedLabelColor: Colors.grey.shade600,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                    tabs: const [
+                      Tab(text: 'Performance'),
+                      Tab(text: 'Pricing'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                
+                // Horizontal Scrollable Filter Controls
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    children: [
+                      _buildFilterDropdown(
+                        value: _selectedPhone,
+                        items: _phoneNumbers,
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedPhone = val);
+                            _fetchAnalyticsData();
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFilterDropdown(
+                        value: _selectedCountry,
+                        items: _countryCodes,
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedCountry = val);
+                            _fetchAnalyticsData();
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final range = await showCompactDateRangePicker(
+                            context: context,
+                            initialDateRange: _dateRange,
+                            firstDate: DateTime(2022),
+                            lastDate: DateTime.now(),
+                          );
+                          if (range != null) {
+                            setState(() => _dateRange = range);
+                            _fetchAnalyticsData();
+                          }
+                        },
+                        icon: const Icon(Icons.date_range_rounded, size: 16, color: AppTheme.secondaryColor),
+                        label: Text(
+                          '${dateFormat.format(_dateRange.start)} - ${dateFormat.format(_dateRange.end)}',
+                          style: const TextStyle(color: Colors.black87, fontSize: 12),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          side: BorderSide(color: Colors.grey.shade300),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFilterDropdown(
+                        value: _selectedGranularity,
+                        items: const ['DAILY', 'MONTHLY'],
+                        onChanged: (val) {
+                          if (val != null) {
+                            setState(() => _selectedGranularity = val);
+                            _fetchAnalyticsData();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F3F5),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: TabBar(
+                    controller: _tabController,
+                    isScrollable: true,
+                    tabAlignment: TabAlignment.start,
+                    dividerColor: Colors.transparent,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicator: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 3, offset: Offset(0, 1)),
+                      ],
+                    ),
+                    labelPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    labelColor: AppTheme.secondaryColor,
+                    unselectedLabelColor: Colors.grey.shade600,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                    tabs: const [
+                      Tab(text: 'Performance overview'),
+                      Tab(text: 'Message pricing'),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                _buildFilterDropdown(
+                  value: _selectedPhone,
+                  items: _phoneNumbers,
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _selectedPhone = val);
+                      _fetchAnalyticsData();
+                    }
+                  },
+                ),
+                const SizedBox(width: 8),
+                _buildFilterDropdown(
+                  value: _selectedCountry,
+                  items: _countryCodes,
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _selectedCountry = val);
+                      _fetchAnalyticsData();
+                    }
+                  },
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: () async {
+                    final range = await showCompactDateRangePicker(
+                      context: context,
+                      initialDateRange: _dateRange,
+                      firstDate: DateTime(2022),
+                      lastDate: DateTime.now(),
+                    );
+                    if (range != null) {
+                      setState(() => _dateRange = range);
+                      _fetchAnalyticsData();
+                    }
+                  },
+                  icon: const Icon(Icons.date_range_rounded, size: 16, color: AppTheme.secondaryColor),
+                  label: Text(
+                    '${dateFormat.format(_dateRange.start)} - ${dateFormat.format(_dateRange.end)}',
+                    style: const TextStyle(color: Colors.black87, fontSize: 12),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    side: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildFilterDropdown(
+                  value: _selectedGranularity,
+                  items: const ['DAILY', 'MONTHLY'],
+                  onChanged: (val) {
+                    if (val != null) {
+                      setState(() => _selectedGranularity = val);
+                      _fetchAnalyticsData();
+                    }
+                  },
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -731,12 +892,13 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.grey.shade300),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      height: 44,
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: items.contains(value) ? value : items.first,
           dropdownColor: Colors.white,
+          isDense: true,
           items: items.map((item) {
             final displayText = item == 'DAILY'
                 ? 'Daily'
@@ -745,7 +907,11 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
                     : (isPhoneDropdown ? _getPhoneLabel(item) : item));
             return DropdownMenuItem<String>(
               value: item,
-              child: Text(displayText, style: const TextStyle(fontSize: 12, color: Colors.black87)),
+              child: Text(
+                displayText,
+                style: const TextStyle(fontSize: 12, color: Colors.black87),
+                overflow: TextOverflow.ellipsis,
+              ),
             );
           }).toList(),
           onChanged: onChanged,
@@ -778,6 +944,9 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
 
   // ==================== TAB 1: Performance overview ====================
   Widget _buildPerformanceOverviewTab() {
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final isTablet = ResponsiveHelper.isTablet(context);
+
     int totalSent = 0;
     int totalDelivered = 0;
     int totalReceived = 0;
@@ -804,45 +973,68 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
     }
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
+      padding: EdgeInsets.all(isMobile ? 12 : (isTablet ? 20 : 32)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildInfoBanner('Note: All insights data is approximate and may differ from what\'s shown on your invoices due to small variations in data processing.'),
           const SizedBox(height: 24),
 
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _buildDetailsGridCard(
-                  title: 'All messages',
-                  rows: [
-                    _buildDetailRow('Messages sent', totalSent.toString(), Colors.purple.shade300),
-                    _buildDetailRow('Messages delivered', totalDelivered.toString(), Colors.teal),
-                    _buildDetailRow('Messages received', totalReceived.toString(), Colors.brown.shade300),
-                  ],
+          if (isMobile || isTablet) ...[
+            _buildDetailsGridCard(
+              title: 'All messages',
+              rows: [
+                _buildDetailRow('Messages sent', totalSent.toString(), Colors.purple.shade300),
+                _buildDetailRow('Messages delivered', totalDelivered.toString(), Colors.teal),
+                _buildDetailRow('Messages received', totalReceived.toString(), Colors.brown.shade300),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildDetailsGridCard(
+              title: 'Messages delivered',
+              subtitleValue: totalDelivered.toString(),
+              rows: [
+                _buildDetailRow('Marketing', catMarketing.toString(), Colors.green),
+                _buildDetailRow('Marketing - lite', catMarketingLite.toString(), Colors.greenAccent),
+                _buildDetailRow('Utility', catUtility.toString(), Colors.blue),
+                _buildDetailRow('Authentication', catAuth.toString(), Colors.orange),
+                _buildDetailRow('Authentication - international', catAuthIntl.toString(), Colors.deepOrange),
+                _buildDetailRow('Service', catService.toString(), Colors.pinkAccent),
+              ],
+            ),
+          ] else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _buildDetailsGridCard(
+                    title: 'All messages',
+                    rows: [
+                      _buildDetailRow('Messages sent', totalSent.toString(), Colors.purple.shade300),
+                      _buildDetailRow('Messages delivered', totalDelivered.toString(), Colors.teal),
+                      _buildDetailRow('Messages received', totalReceived.toString(), Colors.brown.shade300),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 24),
-
-              Expanded(
-                child: _buildDetailsGridCard(
-                  title: 'Messages delivered',
-                  subtitleValue: totalDelivered.toString(),
-                  rows: [
-                    _buildDetailRow('Marketing', catMarketing.toString(), Colors.green),
-                    _buildDetailRow('Marketing - lite', catMarketingLite.toString(), Colors.greenAccent),
-                    _buildDetailRow('Utility', catUtility.toString(), Colors.blue),
-                    _buildDetailRow('Authentication', catAuth.toString(), Colors.orange),
-                    _buildDetailRow('Authentication - international', catAuthIntl.toString(), Colors.deepOrange),
-                    _buildDetailRow('Service', catService.toString(), Colors.pinkAccent),
-                  ],
+                const SizedBox(width: 24),
+                Expanded(
+                  child: _buildDetailsGridCard(
+                    title: 'Messages delivered',
+                    subtitleValue: totalDelivered.toString(),
+                    rows: [
+                      _buildDetailRow('Marketing', catMarketing.toString(), Colors.green),
+                      _buildDetailRow('Marketing - lite', catMarketingLite.toString(), Colors.greenAccent),
+                      _buildDetailRow('Utility', catUtility.toString(), Colors.blue),
+                      _buildDetailRow('Authentication', catAuth.toString(), Colors.orange),
+                      _buildDetailRow('Authentication - international', catAuthIntl.toString(), Colors.deepOrange),
+                      _buildDetailRow('Service', catService.toString(), Colors.pinkAccent),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
+              ],
+            ),
+          ],
+          const SizedBox(height: 24),
 
           _buildInteractiveChartSection(
             title: 'Messages delivered',
@@ -867,6 +1059,9 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
 
   // ==================== TAB 2: Message pricing ====================
   Widget _buildMessagePricingTab() {
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final isTablet = ResponsiveHelper.isTablet(context);
+
     double totalCharges = 0.0;
     double costMarketing = 0.0;
     double costMarketingLite = 0.0;
@@ -894,44 +1089,66 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
     totalFree = freeCustomerService + freeEntryPoint;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
+      padding: EdgeInsets.all(isMobile ? 12 : (isTablet ? 20 : 32)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildInfoBanner('Note: All insights data is approximate and may differ from what\'s shown on your invoices due to small variations in data processing.'),
           const SizedBox(height: 24),
 
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _buildDetailsGridCard(
-                  title: 'Approximate total charges',
-                  subtitleValue: '₹${totalCharges.toStringAsFixed(2)}',
-                  rows: [
-                    _buildDetailRow('Marketing', '₹${costMarketing.toStringAsFixed(2)}', Colors.green),
-                    _buildDetailRow('Marketing - lite', '₹${costMarketingLite.toStringAsFixed(2)}', Colors.greenAccent),
-                    _buildDetailRow('Utility', '₹${costUtility.toStringAsFixed(2)}', Colors.blue),
-                    _buildDetailRow('Authentication', '₹${costAuth.toStringAsFixed(2)}', Colors.orange),
-                    _buildDetailRow('Authentication - international', '₹${costAuthIntl.toStringAsFixed(2)}', Colors.deepOrange),
-                  ],
+          if (isMobile || isTablet) ...[
+            _buildDetailsGridCard(
+              title: 'Approximate total charges',
+              subtitleValue: '₹${totalCharges.toStringAsFixed(2)}',
+              rows: [
+                _buildDetailRow('Marketing', '₹${costMarketing.toStringAsFixed(2)}', Colors.green),
+                _buildDetailRow('Marketing - lite', '₹${costMarketingLite.toStringAsFixed(2)}', Colors.greenAccent),
+                _buildDetailRow('Utility', '₹${costUtility.toStringAsFixed(2)}', Colors.blue),
+                _buildDetailRow('Authentication', '₹${costAuth.toStringAsFixed(2)}', Colors.orange),
+                _buildDetailRow('Authentication - international', '₹${costAuthIntl.toStringAsFixed(2)}', Colors.deepOrange),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildDetailsGridCard(
+              title: 'Free messages delivered',
+              subtitleValue: totalFree.toString(),
+              rows: [
+                _buildDetailRow('Free customer service', freeCustomerService.toString(), Colors.teal),
+                _buildDetailRow('Free entry point', freeEntryPoint.toString(), Colors.purple),
+              ],
+            ),
+          ] else ...[
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _buildDetailsGridCard(
+                    title: 'Approximate total charges',
+                    subtitleValue: '₹${totalCharges.toStringAsFixed(2)}',
+                    rows: [
+                      _buildDetailRow('Marketing', '₹${costMarketing.toStringAsFixed(2)}', Colors.green),
+                      _buildDetailRow('Marketing - lite', '₹${costMarketingLite.toStringAsFixed(2)}', Colors.greenAccent),
+                      _buildDetailRow('Utility', '₹${costUtility.toStringAsFixed(2)}', Colors.blue),
+                      _buildDetailRow('Authentication', '₹${costAuth.toStringAsFixed(2)}', Colors.orange),
+                      _buildDetailRow('Authentication - international', '₹${costAuthIntl.toStringAsFixed(2)}', Colors.deepOrange),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 24),
-
-              Expanded(
-                child: _buildDetailsGridCard(
-                  title: 'Free messages delivered',
-                  subtitleValue: totalFree.toString(),
-                  rows: [
-                    _buildDetailRow('Free customer service', freeCustomerService.toString(), Colors.teal),
-                    _buildDetailRow('Free entry point', freeEntryPoint.toString(), Colors.purple),
-                  ],
+                const SizedBox(width: 24),
+                Expanded(
+                  child: _buildDetailsGridCard(
+                    title: 'Free messages delivered',
+                    subtitleValue: totalFree.toString(),
+                    rows: [
+                      _buildDetailRow('Free customer service', freeCustomerService.toString(), Colors.teal),
+                      _buildDetailRow('Free entry point', freeEntryPoint.toString(), Colors.purple),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
+              ],
+            ),
+          ],
+          const SizedBox(height: 24),
 
           _buildInteractiveChartSection(
             title: 'Free messages delivered',
@@ -952,7 +1169,7 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
             hoverIndex: _hoverIndexChart2,
             onHoverChanged: (idx) => setState(() => _hoverIndexChart2 = idx),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 24),
 
           _buildInteractiveChartSection(
             title: 'Paid messages delivered and approximate total charges',
@@ -995,7 +1212,7 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
           Icon(Icons.info_outline, size: 18, color: Colors.grey.shade700),
@@ -1016,13 +1233,15 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
     String? subtitleValue,
     required List<Widget> rows,
   }) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 16 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1034,12 +1253,16 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
             const SizedBox(height: 8),
             Text(
               subtitleValue,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.secondaryColor),
+              style: TextStyle(
+                fontSize: isMobile ? 22 : 28,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.secondaryColor,
+              ),
             ),
           ],
-          const SizedBox(height: 20),
-          const Divider(height: 1, color: Color(0xFFF0F2F5)),
           const SizedBox(height: 16),
+          const Divider(height: 1, color: Color(0xFFF0F2F5)),
+          const SizedBox(height: 12),
           ...rows,
         ],
       ),
@@ -1061,8 +1284,13 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(label, style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
+            child: Text(
+              label,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
+          const SizedBox(width: 8),
           Text(
             value,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
@@ -1081,6 +1309,8 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
     required ValueChanged<int?> onHoverChanged,
     bool showCostAxis = false,
   }) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+
     final dates = _rawDataPoints.map((d) {
       final start = d['start'] ?? 0;
       final dt = DateTime.fromMillisecondsSinceEpoch((start as int) * 1000);
@@ -1097,72 +1327,90 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.grey.shade200),
       ),
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 14 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.secondaryColor),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: isMobile ? 14 : 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.secondaryColor,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
               _buildChartFilterButton(filters),
             ],
           ),
-          const SizedBox(height: 28),
+          SizedBox(height: isMobile ? 16 : 28),
 
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final chartWidth = constraints.maxWidth - 50.0 - (showCostAxis ? 60.0 : 20.0);
-                  
-                  return MouseRegion(
-                    onHover: (event) {
-                      final localX = event.localPosition.dx;
-                      final relativeX = localX - 50.0;
-                      if (dates.isNotEmpty && relativeX >= 0 && relativeX <= chartWidth) {
-                        final stepX = dates.length > 1 ? chartWidth / (dates.length - 1) : chartWidth;
-                        final idx = (relativeX / stepX).round().clamp(0, dates.length - 1);
-                        onHoverChanged(idx);
-                      } else {
-                        onHoverChanged(null);
-                      }
-                    },
-                    onExit: (event) {
-                      onHoverChanged(null);
-                    },
-                    child: SizedBox(
-                      height: 260,
-                      width: double.infinity,
-                      child: CustomPaint(
-                        painter: _LineChartPainter(
-                          dates: dates,
-                          linesData: linesData,
-                          colors: colors,
-                          activeKeys: activeKeys,
-                          hoverIndex: hoverIndex,
-                          showCostAxis: showCostAxis,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final double paddingLeft = isMobile ? 40.0 : 50.0;
+              final double paddingRight = showCostAxis ? (isMobile ? 48.0 : 60.0) : (isMobile ? 14.0 : 20.0);
+              final chartWidth = (constraints.maxWidth - paddingLeft - paddingRight).clamp(1.0, double.infinity);
+
+              void handlePointerPosition(Offset localPosition) {
+                final relativeX = localPosition.dx - paddingLeft;
+                if (dates.isNotEmpty && relativeX >= -10 && relativeX <= chartWidth + 10) {
+                  final stepX = dates.length > 1 ? chartWidth / (dates.length - 1) : chartWidth;
+                  final idx = (relativeX / stepX).round().clamp(0, dates.length - 1);
+                  onHoverChanged(idx);
+                } else {
+                  onHoverChanged(null);
+                }
+              }
+
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  GestureDetector(
+                    onTapDown: (details) => handlePointerPosition(details.localPosition),
+                    onPanUpdate: (details) => handlePointerPosition(details.localPosition),
+                    child: MouseRegion(
+                      onHover: (event) => handlePointerPosition(event.localPosition),
+                      onExit: (_) => onHoverChanged(null),
+                      child: SizedBox(
+                        height: isMobile ? 220 : 260,
+                        width: double.infinity,
+                        child: CustomPaint(
+                          painter: _LineChartPainter(
+                            dates: dates,
+                            linesData: linesData,
+                            colors: colors,
+                            activeKeys: activeKeys,
+                            hoverIndex: hoverIndex,
+                            showCostAxis: showCostAxis,
+                            isMobile: isMobile,
+                          ),
                         ),
                       ),
                     ),
-                  );
-                },
-              ),
+                  ),
 
-              if (hoverIndex != null && hoverIndex < dates.length && activeKeys.isNotEmpty)
-                _buildHoverTooltipOverlay(
-                  index: hoverIndex,
-                  dates: dates,
-                  activeKeys: activeKeys,
-                  linesData: linesData,
-                  colors: colors,
-                  showCostAxis: showCostAxis,
-                ),
-            ],
+                  if (hoverIndex != null && hoverIndex < dates.length && activeKeys.isNotEmpty)
+                    _buildHoverTooltipOverlay(
+                      index: hoverIndex,
+                      dates: dates,
+                      activeKeys: activeKeys,
+                      linesData: linesData,
+                      colors: colors,
+                      showCostAxis: showCostAxis,
+                      containerWidth: constraints.maxWidth,
+                      paddingLeft: paddingLeft,
+                      chartWidth: chartWidth,
+                      isMobile: isMobile,
+                    ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -1177,13 +1425,13 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey.shade300),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Customise', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)),
-            const SizedBox(width: 6),
-            const Icon(Icons.arrow_drop_down, size: 16, color: Colors.black54),
+          children: const [
+            Text('Customise', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)),
+            SizedBox(width: 4),
+            Icon(Icons.arrow_drop_down, size: 16, color: Colors.black54),
           ],
         ),
       ),
@@ -1223,19 +1471,31 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
     required Map<String, List<double>> linesData,
     required Map<String, Color> colors,
     bool showCostAxis = false,
+    required double containerWidth,
+    required double paddingLeft,
+    required double chartWidth,
+    required bool isMobile,
   }) {
-    final double leftOffset = index * 40.0 + 80.0;
-    
+    final stepX = dates.length > 1 ? chartWidth / (dates.length - 1) : chartWidth;
+    final double pointX = paddingLeft + index * stepX;
+    final double tooltipWidth = isMobile ? 160.0 : 190.0;
+
+    double leftOffset = pointX + 10.0;
+    if (leftOffset + tooltipWidth > containerWidth) {
+      leftOffset = pointX - tooltipWidth - 10.0;
+    }
+    if (leftOffset < 0) leftOffset = 8.0;
+
     return Positioned(
       left: leftOffset,
-      top: 10,
+      top: 5,
       child: Material(
         elevation: 6,
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          width: 190,
-          padding: const EdgeInsets.all(12),
+          width: tooltipWidth,
+          padding: EdgeInsets.all(isMobile ? 8 : 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(color: Colors.grey.shade200),
@@ -1246,11 +1506,11 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
             children: [
               Text(
                 dates[index],
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: Colors.black54),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: isMobile ? 10 : 11, color: Colors.black54),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               const Divider(height: 1, color: Color(0xFFF0F2F5)),
-              const SizedBox(height: 6),
+              const SizedBox(height: 4),
               ...activeKeys.map((key) {
                 final values = linesData[key] ?? [];
                 final double val = index < values.length ? values[index] : 0.0;
@@ -1265,9 +1525,16 @@ class _MetaAnalyticsPageState extends State<MetaAnalyticsPage> with SingleTicker
                       Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
                       const SizedBox(width: 6),
                       Expanded(
-                        child: Text(key, style: const TextStyle(fontSize: 10, color: Colors.black54), overflow: TextOverflow.ellipsis),
+                        child: Text(
+                          key,
+                          style: TextStyle(fontSize: isMobile ? 9 : 10, color: Colors.black54),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      Text(valStr, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      Text(
+                        valStr,
+                        style: TextStyle(fontSize: isMobile ? 10 : 11, fontWeight: FontWeight.bold, color: Colors.black87),
+                      ),
                     ],
                   ),
                 );
@@ -1288,6 +1555,7 @@ class _LineChartPainter extends CustomPainter {
   final List<String> activeKeys;
   final int? hoverIndex;
   final bool showCostAxis;
+  final bool isMobile;
 
   _LineChartPainter({
     required this.dates,
@@ -1296,19 +1564,22 @@ class _LineChartPainter extends CustomPainter {
     required this.activeKeys,
     required this.hoverIndex,
     this.showCostAxis = false,
+    this.isMobile = false,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     if (dates.isEmpty || activeKeys.isEmpty) return;
 
-    final double paddingLeft = 50.0;
-    final double paddingRight = showCostAxis ? 60.0 : 20.0;
+    final double paddingLeft = isMobile ? 40.0 : 50.0;
+    final double paddingRight = showCostAxis ? (isMobile ? 48.0 : 60.0) : (isMobile ? 14.0 : 20.0);
     final double paddingTop = 20.0;
     final double paddingBottom = 30.0;
 
     final double chartWidth = size.width - paddingLeft - paddingRight;
     final double chartHeight = size.height - paddingTop - paddingBottom;
+
+    if (chartWidth <= 0 || chartHeight <= 0) return;
 
     // Determine max Y values for count and cost
     double maxCount = 0.0;
@@ -1334,7 +1605,7 @@ class _LineChartPainter extends CustomPainter {
       ..color = const Color(0xFFF0F2F5)
       ..strokeWidth = 1;
 
-    final textStyle = TextStyle(color: Colors.grey.shade500, fontSize: 10);
+    final textStyle = TextStyle(color: Colors.grey.shade500, fontSize: isMobile ? 9 : 10);
 
     for (int i = 0; i <= 4; i++) {
       final y = paddingTop + (chartHeight / 4) * i;
@@ -1346,7 +1617,7 @@ class _LineChartPainter extends CustomPainter {
         text: TextSpan(text: valCount.toString(), style: textStyle),
         textDirection: ui.TextDirection.ltr,
       )..layout();
-      tp.paint(canvas, Offset(paddingLeft - tp.width - 10, y - tp.height / 2));
+      tp.paint(canvas, Offset(paddingLeft - tp.width - (isMobile ? 4 : 8), y - tp.height / 2));
 
       // Right Y-axis cost labels if enabled
       if (showCostAxis) {
@@ -1355,13 +1626,14 @@ class _LineChartPainter extends CustomPainter {
           text: TextSpan(text: '₹${valCost.toStringAsFixed(0)}', style: textStyle),
           textDirection: ui.TextDirection.ltr,
         )..layout();
-        tpCost.paint(canvas, Offset(size.width - paddingRight + 10, y - tpCost.height / 2));
+        tpCost.paint(canvas, Offset(size.width - paddingRight + (isMobile ? 4 : 8), y - tpCost.height / 2));
       }
     }
 
-    // Draw X-axis date labels
+    // Draw X-axis date labels cleanly based on chart width
     final double stepX = dates.length > 1 ? chartWidth / (dates.length - 1) : chartWidth;
-    final int labelFrequency = (dates.length / 8).ceil().clamp(1, dates.length);
+    final int maxLabels = (chartWidth / (isMobile ? 65.0 : 55.0)).floor().clamp(2, dates.length);
+    final int labelFrequency = (dates.length / maxLabels).ceil().clamp(1, dates.length);
 
     for (int i = 0; i < dates.length; i++) {
       if (i % labelFrequency == 0 || i == dates.length - 1) {
@@ -1385,7 +1657,7 @@ class _LineChartPainter extends CustomPainter {
 
       final linePaint = Paint()
         ..color = color
-        ..strokeWidth = 2.5
+        ..strokeWidth = isMobile ? 2.0 : 2.5
         ..style = PaintingStyle.stroke
         ..strokeCap = StrokeCap.round;
 
@@ -1443,6 +1715,8 @@ class _LineChartPainter extends CustomPainter {
     return oldDelegate.dates != dates ||
         oldDelegate.hoverIndex != hoverIndex ||
         oldDelegate.activeKeys != activeKeys ||
-        oldDelegate.linesData != linesData;
+        oldDelegate.linesData != linesData ||
+        oldDelegate.isMobile != isMobile;
   }
 }
+

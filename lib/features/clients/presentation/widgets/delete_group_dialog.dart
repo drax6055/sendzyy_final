@@ -49,7 +49,9 @@ class DeleteGroupDialog extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 24,
-                    backgroundColor: AppTheme.secondaryColor.withOpacity(0.1),
+                    backgroundColor: AppTheme.secondaryColor.withValues(
+                      alpha: 0.1,
+                    ),
                     child: const Icon(
                       Icons.group,
                       color: AppTheme.secondaryColor,
@@ -96,7 +98,8 @@ class DeleteGroupDialog extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppTheme.primaryColor,
                       side: BorderSide(
-                          color: AppTheme.primaryColor.withOpacity(0.5)),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),

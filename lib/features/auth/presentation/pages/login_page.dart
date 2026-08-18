@@ -74,9 +74,9 @@ class _LoginPageState extends State<LoginPage> {
           body: Container(
             decoration: BoxDecoration(
               image: DecorationImage(
-      image: AssetImage('assets/images/home-bg-wp.png'),
-      fit: BoxFit.cover, // optional
-    ),
+                image: AssetImage('assets/images/home-bg-wp.png'),
+                fit: BoxFit.cover, // optional
+              ),
             ),
             child: Center(
               child: Container(
@@ -87,7 +87,7 @@ class _LoginPageState extends State<LoginPage> {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -99,10 +99,13 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Image.asset('assets/images/logo.png',height: 70),
-                  ),
-                      
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          height: 70,
+                        ),
+                      ),
+
                       const SizedBox(height: 32),
                       TextFormField(
                         controller: _emailController,
@@ -211,7 +214,11 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
     setState(() => _loading = true);
     try {
       await getIt<WhatsAppRepository>().forgotPassword(_emailCtrl.text.trim());
-      if (mounted) setState(() { _loading = false; _sent = true; });
+      if (mounted)
+        setState(() {
+          _loading = false;
+          _sent = true;
+        });
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
@@ -249,12 +256,17 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
                   color: AppTheme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.lock_reset_outlined, color: AppTheme.secondaryColor),
+                child: const Icon(
+                  Icons.lock_reset_outlined,
+                  color: AppTheme.secondaryColor,
+                ),
               ),
               const SizedBox(width: 12),
               const Expanded(
-                child: Text('Forgot Password',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Forgot Password',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.close),
@@ -276,7 +288,9 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
               prefixIcon: const Icon(Icons.email_outlined),
               filled: true,
               fillColor: Colors.grey.shade50,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Required';
@@ -293,17 +307,26 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
                 backgroundColor: AppTheme.primaryColor,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
               child: _loading
                   ? const SizedBox(
-                      height: 20, width: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Send New Password',
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Text(
+                      'Send New Password',
                       style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 15)),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                      ),
+                    ),
             ),
           ),
         ],
@@ -322,12 +345,17 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
             color: Colors.green.shade50,
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.mark_email_read_outlined,
-              size: 40, color: Colors.green.shade600),
+          child: Icon(
+            Icons.mark_email_read_outlined,
+            size: 40,
+            color: Colors.green.shade600,
+          ),
         ),
         const SizedBox(height: 20),
-        const Text('Email Sent!',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        const Text(
+          'Email Sent!',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 10),
         Text(
           'A new password has been sent to\n${_emailCtrl.text.trim()}',
@@ -349,10 +377,16 @@ class _ForgotPasswordDialogState extends State<_ForgotPasswordDialog> {
               backgroundColor: AppTheme.primaryColor,
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text('Back to Login',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Back to Login',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ),
       ],

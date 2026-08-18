@@ -19,9 +19,13 @@ import 'package:iFloraBuzz/features/help/presentation/pages/help_page.dart';
 import 'package:iFloraBuzz/features/scheduled/presentation/pages/scheduled_campaigns_page.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/pages/chatbot_list_page.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart';
+import 'package:iFloraBuzz/features/catalog/presentation/pages/catalog_page.dart';
+import 'package:iFloraBuzz/features/catalog/presentation/bloc/catalog_bloc.dart';
 import 'package:iFloraBuzz/features/leads/presentation/pages/lead_management_page.dart';
 import 'package:iFloraBuzz/features/integrations/presentation/pages/integration_settings_page.dart';
 import 'package:iFloraBuzz/features/retry/presentation/pages/retry_system_page.dart';
+import 'package:iFloraBuzz/features/calling/presentation/pages/call_log_page.dart';
+import 'package:iFloraBuzz/features/calling/presentation/pages/calling_settings_page.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/services/renewal_reminder_service.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
@@ -361,6 +365,9 @@ class _DashboardShellState extends State<DashboardShell> {
     ),
     const IntegrationSettingsPage(),
     const RetrySystemPage(),
+    const CallLogPage(),
+    const CallingSettingsPage(phoneNumberId: ''),
+    const CatalogPage(),
   ];
 
   Widget _buildSidebarContent({bool isDrawer = false}) {
@@ -392,6 +399,8 @@ class _DashboardShellState extends State<DashboardShell> {
                 _buildNavItem(4, Icons.contacts_rounded, 'Leads', isDrawer: isDrawer),
                 _buildExpandableReportsMenu(isDrawer: isDrawer),
                 _buildNavItem(8, Icons.smart_toy_rounded, 'Chatbot', isDrawer: isDrawer),
+                _buildNavItem(15, Icons.storefront_rounded, 'Catalog', isDrawer: isDrawer),
+                _buildNavItem(13, Icons.call_rounded, 'Call Logs', isDrawer: isDrawer),
                 _buildNavItem(9, Icons.help_outline_rounded, 'Q & A', isDrawer: isDrawer),
                 const SizedBox(height: 16),
                 const Divider(
@@ -444,6 +453,7 @@ class _DashboardShellState extends State<DashboardShell> {
         providers: [
           BlocProvider(create: (context) => getIt<ChatBloc>()),
           BlocProvider(create: (context) => getIt<ChatbotBloc>()),
+          BlocProvider(create: (context) => getIt<CatalogBloc>()),
         ],
         child: Scaffold(
           key: _scaffoldKey,
@@ -532,7 +542,7 @@ class _DashboardShellState extends State<DashboardShell> {
 
   Widget _buildExpandableSettingsMenu({bool isDrawer = false}) {
     final bool isAnySettingsSelected =
-        _selectedIndex >= 10 && _selectedIndex <= 12;
+        (_selectedIndex >= 10 && _selectedIndex <= 12) || _selectedIndex == 14;
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -608,6 +618,13 @@ class _DashboardShellState extends State<DashboardShell> {
                   12,
                   Icons.replay_circle_filled_outlined,
                   'Retry System',
+                  isSubItem: true,
+                  isDrawer: isDrawer,
+                ),
+                _buildNavItem(
+                  14,
+                  Icons.phone_in_talk_rounded,
+                  'Call Settings',
                   isSubItem: true,
                   isDrawer: isDrawer,
                 ),

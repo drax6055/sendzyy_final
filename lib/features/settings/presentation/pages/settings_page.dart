@@ -2147,7 +2147,8 @@ class _SettingsPageState extends State<SettingsPage> {
               phoneNumberId: phoneNumberId,
               sessionId: sessionId,
               sessionInfoResponse: sessionInfoResponse,
-              businessPortfolioId: result['businessPortfolioId'] as String?, // Step 3
+              businessPortfolioId:
+                  result['businessPortfolioId'] as String?, // Step 3
             );
 
         setState(() => _isConnecting = false);
@@ -3012,7 +3013,7 @@ class _SettingsPageState extends State<SettingsPage> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.grey.withOpacity(0.1)),
+          border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
         ),
         child: Row(
           children: [

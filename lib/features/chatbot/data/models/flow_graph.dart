@@ -8,7 +8,12 @@ enum FlowNodeType {
   listMessage,
   condition,
   action,
-  end;
+  end,
+  // ── Catalog / Commerce nodes ──────────────────────────────────────────────
+  catalogMessage,
+  singleProduct,
+  multiProduct,
+  productCarousel;
 
   static FlowNodeType fromString(String value) {
     final lower = value.toLowerCase();
@@ -31,6 +36,18 @@ enum FlowNodeType {
         return FlowNodeType.action;
       case 'end':
         return FlowNodeType.end;
+      case 'catalogmessage':
+      case 'catalog_message':
+        return FlowNodeType.catalogMessage;
+      case 'singleproduct':
+      case 'single_product':
+        return FlowNodeType.singleProduct;
+      case 'multiproduct':
+      case 'multi_product':
+        return FlowNodeType.multiProduct;
+      case 'productcarousel':
+      case 'product_carousel':
+        return FlowNodeType.productCarousel;
       default:
         throw FlowParseException('Unknown node type: $value');
     }
@@ -54,6 +71,14 @@ enum FlowNodeType {
         return 'action';
       case FlowNodeType.end:
         return 'end';
+      case FlowNodeType.catalogMessage:
+        return 'catalogMessage';
+      case FlowNodeType.singleProduct:
+        return 'singleProduct';
+      case FlowNodeType.multiProduct:
+        return 'multiProduct';
+      case FlowNodeType.productCarousel:
+        return 'productCarousel';
     }
   }
 }
@@ -251,6 +276,63 @@ class FlowGraph {
         final hasQuestion = question != null && (question as String).trim().isNotEmpty;
         if (!hasText && !hasQuestion) {
           errors.add('Question node "${node.id}" must have a non-empty text or question field.');
+        }
+      }
+      // Catalog Message node: must have non-empty body
+      if (node.nodeType == FlowNodeType.catalogMessage) {
+        final body = node.data['body'];
+        if (body == null || (body as String).trim().isEmpty) {
+          errors.add('Catalog Message node "${node.id}" must have a non-empty body field.');
+        }
+      }
+
+      // Single Product node: must have catalogId and productRetailerId
+      if (node.nodeType == FlowNodeType.singleProduct) {
+        final catId = node.data['catalogId'];
+        final prodId = node.data['productRetailerId'];
+        if (catId == null || (catId as String).trim().isEmpty) {
+          errors.add('Single Product node "${node.id}" must have a catalogId.');
+        }
+        if (prodId == null || (prodId as String).trim().isEmpty) {
+          errors.add('Single Product node "${node.id}" must have a productRetailerId.');
+        }
+      }
+
+      // Multi-Product node: must have catalogId and at least 1 section with 1 product
+      if (node.nodeType == FlowNodeType.multiProduct) {
+        final catId = node.data['catalogId'];
+        if (catId == null || (catId as String).trim().isEmpty) {
+          errors.add('Multi-Product node "${node.id}" must have a catalogId.');
+        }
+        final sections = node.data['sections'];
+        if (sections == null ||
+            sections is! List ||
+            sections.isEmpty) {
+          errors.add('Multi-Product node "${node.id}" must have at least one section.');
+        } else {
+          final hasProduct = sections.any((s) {
+            final items = (s as Map)['productItems'];
+            return items is List && items.isNotEmpty;
+          });
+          if (!hasProduct) {
+            errors.add('Multi-Product node "${node.id}" must have at least one product in a section.');
+          }
+        }
+      }
+
+      // Product Carousel node: must have catalogId and 2–10 cards
+      if (node.nodeType == FlowNodeType.productCarousel) {
+        final catId = node.data['catalogId'];
+        if (catId == null || (catId as String).trim().isEmpty) {
+          errors.add('Product Carousel node "${node.id}" must have a catalogId.');
+        }
+        final cards = node.data['cards'];
+        if (cards == null || cards is! List) {
+          errors.add('Product Carousel node "${node.id}" must have a cards list.');
+        } else if ((cards as List).length < 2 || cards.length > 10) {
+          errors.add(
+            'Product Carousel node "${node.id}" must have between 2 and 10 cards (found ${cards.length}).',
+          );
         }
       }
     }

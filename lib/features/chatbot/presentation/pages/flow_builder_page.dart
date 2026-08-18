@@ -409,6 +409,7 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
   void _showNodePaletteBottomSheet() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -421,10 +422,17 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
           _NodeOptionItem(type: FlowNodeType.listMessage, label: 'List Message', icon: Icons.list_alt_outlined, color: Colors.indigo),
           _NodeOptionItem(type: FlowNodeType.condition, label: 'Condition', icon: Icons.call_split_outlined, color: Colors.orange),
           _NodeOptionItem(type: FlowNodeType.action, label: 'Action', icon: Icons.bolt_outlined, color: Colors.amber),
+          _NodeOptionItem(type: FlowNodeType.catalogMessage, label: 'Catalog Msg', icon: Icons.storefront_outlined, color: Color(0xFF25D366)),
+          _NodeOptionItem(type: FlowNodeType.singleProduct, label: 'Single Product', icon: Icons.inventory_2_outlined, color: Color(0xFF06B6D4)),
+          _NodeOptionItem(type: FlowNodeType.multiProduct, label: 'Multi Product', icon: Icons.grid_view_outlined, color: Color(0xFF6366F1)),
+          _NodeOptionItem(type: FlowNodeType.productCarousel, label: 'Carousel', icon: Icons.view_carousel_outlined, color: Color(0xFF7C3AED)),
           _NodeOptionItem(type: FlowNodeType.end, label: 'End', icon: Icons.stop_circle_outlined, color: Colors.red),
         ];
 
-        return Padding(
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -447,54 +455,58 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
                 ],
               ),
               const SizedBox(height: 12),
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 2.8,
-                ),
-                itemCount: items.length,
-                itemBuilder: (context, i) {
-                  final item = items[i];
-                  return InkWell(
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      final offset = Offset(
-                        100.0 + (_graph.nodes.length * 20),
-                        100.0 + (_graph.nodes.length * 20),
-                      );
-                      _addNode(item.type, offset);
-                    },
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: item.color.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: item.color.withValues(alpha: 0.3)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(item.icon, color: item.color, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              item.label,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
-                                color: item.color,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      childAspectRatio: 2.8,
                     ),
-                  );
-                },
+                    itemCount: items.length,
+                    itemBuilder: (context, i) {
+                      final item = items[i];
+                      return InkWell(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          final offset = Offset(
+                            100.0 + (_graph.nodes.length * 20),
+                            100.0 + (_graph.nodes.length * 20),
+                          );
+                          _addNode(item.type, offset);
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: item.color.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: item.color.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(item.icon, color: item.color, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: item.color,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ),
             ],
           ),
@@ -911,6 +923,10 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
       case FlowNodeType.condition: return 'Condition';
       case FlowNodeType.action: return 'Action';
       case FlowNodeType.end: return 'End';
+      case FlowNodeType.catalogMessage: return 'Catalog Msg';
+      case FlowNodeType.singleProduct: return 'Single Product';
+      case FlowNodeType.multiProduct: return 'Multi Product';
+      case FlowNodeType.productCarousel: return 'Carousel';
     }
   }
 }

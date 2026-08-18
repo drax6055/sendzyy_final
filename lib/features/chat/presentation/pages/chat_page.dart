@@ -11,6 +11,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_control_bloc.dart';
+import 'package:iFloraBuzz/features/calling/presentation/pages/active_call_page.dart';
+import 'package:iFloraBuzz/features/catalog/presentation/widgets/catalog_product_picker_sheet.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -169,12 +172,8 @@ class _ChatPageState extends State<ChatPage> {
         : state.conversations.where((c) {
             final name = (c['name'] as String? ?? '').toLowerCase();
             final number = (c['id'] as String? ?? '').toLowerCase();
-            final lastMessage = (c['lastMessage'] as String? ?? '')
-                .toLowerCase();
             final q = _searchQuery.toLowerCase();
-            return name.contains(q) ||
-                number.contains(q) ||
-                lastMessage.contains(q);
+            return name.contains(q) || number.contains(q);
           }).toList();
 
     // Step 2: apply All / Unread chip filter
@@ -272,7 +271,7 @@ class _ChatPageState extends State<ChatPage> {
               controller: _searchController,
               onChanged: (val) => setState(() => _searchQuery = val),
               decoration: InputDecoration(
-                hintText: 'Search by Name, Number, or Message......',
+                hintText: 'Search by Name or Number......',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
                   borderSide: BorderSide.none,
@@ -366,8 +365,8 @@ class _ChatPageState extends State<ChatPage> {
                           );
                         },
                         selected: isSelected,
-                        selectedTileColor: AppTheme.primaryColor.withOpacity(
-                          0.05,
+                        selectedTileColor: AppTheme.primaryColor.withValues(
+                          alpha: 0.05,
                         ),
                         leading: CircleAvatar(
                           backgroundColor: AppTheme.secondaryColor,
@@ -485,8 +484,8 @@ class _ChatPageState extends State<ChatPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.white.withOpacity(0.3)
-                      : color.withOpacity(0.15),
+                      ? Colors.white.withValues(alpha: 0.3)
+                      : color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -610,6 +609,29 @@ class _ChatPageState extends State<ChatPage> {
                   const SizedBox(width: 4),
                   _WindowTimerWidget(lastActive: lastActive),
                 ],
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.call_rounded, color: Color(0xFF128C7E)),
+                  tooltip: 'Start Voice Call',
+                  onPressed: () {
+                    final toPhone = contact['id']?.toString() ?? '';
+                    final callerName = contact['name']?.toString() ?? 'Contact';
+                    if (toPhone.isEmpty) return;
+
+                    context.read<CallControlBloc>().add(
+                          InitiateCallEvent(
+                            phoneNumberId: '',
+                            to: toPhone,
+                            callerName: callerName,
+                          ),
+                        );
+
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ActiveCallPage()),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -806,6 +828,22 @@ class _ChatPageState extends State<ChatPage> {
                         );
                       },
                     ),
+                    _attachmentOption(
+                      icon: Icons.storefront_rounded,
+                      color: const Color(0xFF10B981),
+                      label: 'Catalog\nMessage',
+                      onTap: () {
+                        Navigator.pop(context);
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (ctx) => CatalogProductPickerSheet(
+                            contactId: contactId,
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ],
@@ -832,7 +870,7 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundColor: color.withOpacity(0.1),
+              backgroundColor: color.withValues(alpha: 0.1),
               child: Icon(icon, color: color, size: 28),
             ),
             const SizedBox(height: 8),
@@ -1365,12 +1403,12 @@ class MessageRenderer extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isMe
-                ? Colors.teal.shade800.withOpacity(0.3)
+                ? Colors.teal.shade800.withValues(alpha: 0.3)
                 : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isMe
-                  ? Colors.teal.shade700.withOpacity(0.5)
+                  ? Colors.teal.shade700.withValues(alpha: 0.5)
                   : Colors.grey.shade300,
             ),
           ),
@@ -1381,7 +1419,9 @@ class MessageRenderer extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.15),
+                    backgroundColor: AppTheme.primaryColor.withValues(
+                      alpha: 0.15,
+                    ),
                     child: Icon(
                       Icons.person,
                       color: AppTheme.primaryColor,
@@ -1987,9 +2027,9 @@ class _WindowTimerWidgetState extends State<_WindowTimerWidget> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.1),
+        color: AppTheme.primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

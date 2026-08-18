@@ -329,6 +329,14 @@ class _FlowCanvasWidgetState extends State<FlowCanvasWidget> {
         return Colors.amber.shade700;
       case FlowNodeType.end:
         return Colors.red;
+      case FlowNodeType.catalogMessage:
+        return const Color(0xFF25D366);
+      case FlowNodeType.singleProduct:
+        return const Color(0xFF06B6D4);
+      case FlowNodeType.multiProduct:
+        return const Color(0xFF6366F1);
+      case FlowNodeType.productCarousel:
+        return const Color(0xFF7C3AED);
     }
   }
 
@@ -350,6 +358,14 @@ class _FlowCanvasWidgetState extends State<FlowCanvasWidget> {
         return Icons.bolt_outlined;
       case FlowNodeType.end:
         return Icons.stop_circle_outlined;
+      case FlowNodeType.catalogMessage:
+        return Icons.storefront_outlined;
+      case FlowNodeType.singleProduct:
+        return Icons.inventory_2_outlined;
+      case FlowNodeType.multiProduct:
+        return Icons.grid_view_outlined;
+      case FlowNodeType.productCarousel:
+        return Icons.view_carousel_outlined;
     }
   }
 
@@ -371,6 +387,14 @@ class _FlowCanvasWidgetState extends State<FlowCanvasWidget> {
         return 'Action';
       case FlowNodeType.end:
         return 'End';
+      case FlowNodeType.catalogMessage:
+        return 'Catalog Msg';
+      case FlowNodeType.singleProduct:
+        return 'Single Product';
+      case FlowNodeType.multiProduct:
+        return 'Multi Product';
+      case FlowNodeType.productCarousel:
+        return 'Carousel';
     }
   }
 
@@ -395,6 +419,17 @@ class _FlowCanvasWidgetState extends State<FlowCanvasWidget> {
         return node.data['subType'] ?? 'No sub-type';
       case FlowNodeType.end:
         return 'End conversation';
+      case FlowNodeType.catalogMessage:
+        return node.data['body'] ?? 'View catalog';
+      case FlowNodeType.singleProduct:
+        final pid = node.data['productRetailerId'];
+        return pid != null && (pid as String).isNotEmpty ? 'SKU: $pid' : 'Single product';
+      case FlowNodeType.multiProduct:
+        final sections = node.data['sections'] as List?;
+        return sections != null ? '${sections.length} section(s)' : 'Multi product';
+      case FlowNodeType.productCarousel:
+        final cards = node.data['cards'] as List?;
+        return cards != null ? '${cards.length} card(s)' : 'Carousel';
     }
   }
 }

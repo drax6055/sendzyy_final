@@ -53,12 +53,14 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
   Future<void> _downloadQr() async {
     try {
       final boundary =
-          _frameKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+          _frameKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) return;
 
       final uiImage = await boundary.toImage(pixelRatio: 3.0);
-      final byteData =
-          await uiImage.toByteData(format: ui.ImageByteFormat.rawRgba);
+      final byteData = await uiImage.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      );
       if (byteData == null) return;
 
       final rawBytes = byteData.buffer.asUint8List();
@@ -69,7 +71,11 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
         order: img.ChannelOrder.rgba,
       );
       final jpegBytes = img.encodeJpg(imgFrame, quality: 95);
-      await webDownloadBytes(jpegBytes, 'group_registration_qr_${widget.group.name}.jpg', mimeType: 'image/jpeg');
+      await webDownloadBytes(
+        jpegBytes,
+        'group_registration_qr_${widget.group.name}.jpg',
+        mimeType: 'image/jpeg',
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -83,8 +89,9 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Download failed: $e'),
-              backgroundColor: Colors.red),
+            content: Text('Download failed: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -124,7 +131,7 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
             Text(
               widget.group.name,
               style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
+                color: Colors.white.withValues(alpha: 0.85),
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.3,
@@ -150,7 +157,7 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
+                    color: Colors.black.withValues(alpha: 0.15),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -177,7 +184,7 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
             Text(
               'Join us in seconds — no forms, no fuss.\nJust scan and you\'re in!',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
+                color: Colors.white.withValues(alpha: 0.85),
                 fontSize: 12,
                 height: 1.5,
               ),
@@ -186,13 +193,14 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
             const SizedBox(height: 16),
             // Footer badge
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.2),
+                color: AppTheme.primaryColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: AppTheme.primaryColor.withOpacity(0.5), width: 1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                  width: 1,
+                ),
               ),
               child: const Text(
                 'Powered by Sendzyy',
@@ -270,8 +278,10 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
                 const SizedBox(height: 16),
                 // URL display
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.grey.shade100,
                     borderRadius: BorderRadius.circular(8),
@@ -282,7 +292,9 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
                         child: Text(
                           _registrationUrl,
                           style: const TextStyle(
-                              fontSize: 11, color: Colors.black54),
+                            fontSize: 11,
+                            color: Colors.black54,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -291,11 +303,13 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
                         tooltip: 'Copy URL',
                         onPressed: () {
                           Clipboard.setData(
-                              ClipboardData(text: _registrationUrl));
+                            ClipboardData(text: _registrationUrl),
+                          );
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                                content: Text('URL copied'),
-                                backgroundColor: Colors.green),
+                              content: Text('URL copied'),
+                              backgroundColor: Colors.green,
+                            ),
                           );
                         },
                       ),
@@ -313,12 +327,14 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppTheme.secondaryColor,
                           side: BorderSide(
-                              color:
-                                  AppTheme.secondaryColor.withOpacity(0.4)),
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 12),
+                            color: AppTheme.secondaryColor.withValues(
+                              alpha: 0.4,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ),
@@ -331,10 +347,10 @@ class _GroupQrDialogState extends State<GroupQrDialog> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primaryColor,
                           foregroundColor: Colors.white,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 12),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ),
