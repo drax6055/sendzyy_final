@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,16 +12,45 @@ import 'calling_repository.dart';
 class CallingRepositoryImpl implements CallingRepository {
   final Dio _dio;
   final SharedPreferences _prefs;
+  final Dio _metaClient = Dio();
 
   CallingRepositoryImpl(this._dio, this._prefs);
 
-  String? get _accessToken => _prefs.getString(AppConstants.keyAccessToken);
-  String? get _phoneNumberId => _prefs.getString(AppConstants.keyPhoneNumberId);
+  String? get _accessToken {
+    final token = _prefs.getString(AppConstants.keyAccessToken);
+    if (token != null && token.isNotEmpty) return token;
+    try {
+      final tenantJson = _prefs.getString('tenant_data');
+      if (tenantJson != null) {
+        final tenant = jsonDecode(tenantJson) as Map<String, dynamic>;
+        final config = tenant['whatsappConfig'] as Map<String, dynamic>?;
+        final t = config?['accessToken']?.toString();
+        if (t != null && t.isNotEmpty) return t;
+      }
+    } catch (_) {}
+    return AppConstants.metaAccessToken;
+  }
+
+  String? get _phoneNumberId {
+    final id = _prefs.getString(AppConstants.keyPhoneNumberId);
+    if (id != null && id.isNotEmpty) return id;
+    try {
+      final tenantJson = _prefs.getString('tenant_data');
+      if (tenantJson != null) {
+        final tenant = jsonDecode(tenantJson) as Map<String, dynamic>;
+        final config = tenant['whatsappConfig'] as Map<String, dynamic>?;
+        final pid = config?['phoneNumberId']?.toString();
+        if (pid != null && pid.isNotEmpty) return pid;
+      }
+    } catch (_) {}
+    return null;
+  }
 
   Options _getAuthOptions() {
+    final token = _accessToken ?? '';
     return Options(
       headers: {
-        'Authorization': 'Bearer ${_accessToken ?? ''}',
+        'Authorization': 'Bearer $token',
         'Content-Type': 'application/json',
       },
     );
@@ -29,15 +59,28 @@ class CallingRepositoryImpl implements CallingRepository {
   String _buildGraphUrl(String path) {
     // If path starts with slash, trim it
     final cleanPath = path.startsWith('/') ? path.substring(1) : path;
-    return 'https://graph.facebook.com/v21.0/$cleanPath';
+    return '${AppConstants.metaGraphUrl}/$cleanPath';
   }
 
   @override
   Future<CallSettingsModel> getCallSettings(String phoneNumberId) async {
     final targetId = phoneNumberId.isNotEmpty ? phoneNumberId : (_phoneNumberId ?? '');
-    final url = _buildGraphUrl('$targetId/settings');
-    final response = await _dio.get(url, options: _getAuthOptions());
-    return CallSettingsModel.fromJson(response.data as Map<String, dynamic>);
+    if (targetId.isEmpty) {
+      throw Exception('WhatsApp Phone Number ID is missing. Please configure your WhatsApp API credentials in General Settings.');
+    }
+    final url = _buildGraphUrl('$targetId?fields=whatsapp_calling_config');
+    try {
+      final response = await _metaClient.get(url, options: _getAuthOptions());
+      final data = response.data as Map<String, dynamic>;
+      final config = data['whatsapp_calling_config'] as Map<String, dynamic>? ?? data;
+      return CallSettingsModel.fromJson(config);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized API request (401). Please verify your Meta Access Token and Phone Number ID in General Settings.');
+      }
+      final msg = e.response?.data?['error']?['message'] ?? e.message ?? 'Failed to load call settings';
+      throw Exception(msg);
+    }
   }
 
   @override
@@ -46,13 +89,26 @@ class CallingRepositoryImpl implements CallingRepository {
     required CallSettingsModel settings,
   }) async {
     final targetId = phoneNumberId.isNotEmpty ? phoneNumberId : (_phoneNumberId ?? '');
-    final url = _buildGraphUrl('$targetId/settings');
-    final response = await _dio.post(
-      url,
-      data: settings.toJson(),
-      options: _getAuthOptions(),
-    );
-    return response.statusCode == 200 && (response.data['success'] == true);
+    if (targetId.isEmpty) {
+      throw Exception('WhatsApp Phone Number ID is missing. Please configure your WhatsApp API credentials in General Settings.');
+    }
+    final url = _buildGraphUrl(targetId);
+    try {
+      final response = await _metaClient.post(
+        url,
+        data: {
+          'whatsapp_calling_config': settings.toJson()['calling'] ?? settings.toJson(),
+        },
+        options: _getAuthOptions(),
+      );
+      return response.statusCode == 200 && (response.data['success'] == true || response.data['id'] != null);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized API request (401). Please verify your Meta Access Token in General Settings.');
+      }
+      final msg = e.response?.data?['error']?['message'] ?? e.message ?? 'Failed to update call settings';
+      throw Exception(msg);
+    }
   }
 
   @override
@@ -70,7 +126,7 @@ class CallingRepositoryImpl implements CallingRepository {
     }
 
     final url = _buildGraphUrl('$targetId/call_permissions');
-    final response = await _dio.get(
+    final response = await _metaClient.get(
       url,
       queryParameters: queryParams,
       options: _getAuthOptions(),
@@ -101,7 +157,7 @@ class CallingRepositoryImpl implements CallingRepository {
       }
     };
 
-    final response = await _dio.post(
+    final response = await _metaClient.post(
       url,
       data: payload,
       options: _getAuthOptions(),
@@ -145,7 +201,7 @@ class CallingRepositoryImpl implements CallingRepository {
       }
     };
 
-    final response = await _dio.post(
+    final response = await _metaClient.post(
       url,
       data: bodyPayload,
       options: _getAuthOptions(),
@@ -171,6 +227,9 @@ class CallingRepositoryImpl implements CallingRepository {
     String announcementLanguage = 'en_US',
   }) async {
     final targetId = phoneNumberId.isNotEmpty ? phoneNumberId : (_phoneNumberId ?? '');
+    if (targetId.isEmpty) {
+      throw Exception('WhatsApp Phone Number ID is missing. Please configure your WhatsApp API credentials in General Settings.');
+    }
     final url = _buildGraphUrl('$targetId/calls');
     final payload = <String, dynamic>{
       'messaging_product': 'whatsapp',
@@ -196,27 +255,35 @@ class CallingRepositoryImpl implements CallingRepository {
       };
     }
 
-    final response = await _dio.post(
-      url,
-      data: payload,
-      options: _getAuthOptions(),
-    );
+    try {
+      final response = await _metaClient.post(
+        url,
+        data: payload,
+        options: _getAuthOptions(),
+      );
 
-    final calls = response.data['calls'] as List<dynamic>?;
-    final callId = (calls != null && calls.isNotEmpty)
-        ? calls.first['id'] as String? ?? ''
-        : '';
+      final calls = response.data['calls'] as List<dynamic>?;
+      final callId = (calls != null && calls.isNotEmpty)
+          ? calls.first['id'] as String? ?? ''
+          : '';
 
-    return CallModel(
-      callId: callId,
-      to: to,
-      from: targetId,
-      direction: CallDirection.businessInitiated,
-      status: CallStatus.connecting,
-      timestamp: DateTime.now(),
-      session: session,
-      bizOpaqueCallbackData: bizOpaqueCallbackData,
-    );
+      return CallModel(
+        callId: callId,
+        to: to,
+        from: targetId,
+        direction: CallDirection.businessInitiated,
+        status: CallStatus.connecting,
+        timestamp: DateTime.now(),
+        session: session,
+        bizOpaqueCallbackData: bizOpaqueCallbackData,
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 401) {
+        throw Exception('Unauthorized Meta API Request (401). Please verify your Meta System User Access Token in General Settings.');
+      }
+      final msg = e.response?.data?['error']?['message'] ?? e.message ?? 'Failed to initiate Meta voice call';
+      throw Exception(msg);
+    }
   }
 
   @override
@@ -227,7 +294,7 @@ class CallingRepositoryImpl implements CallingRepository {
   }) async {
     final targetId = phoneNumberId.isNotEmpty ? phoneNumberId : (_phoneNumberId ?? '');
     final url = _buildGraphUrl('$targetId/calls');
-    final response = await _dio.post(
+    final response = await _metaClient.post(
       url,
       data: {
         'messaging_product': 'whatsapp',
@@ -276,7 +343,7 @@ class CallingRepositoryImpl implements CallingRepository {
       };
     }
 
-    final response = await _dio.post(
+    final response = await _metaClient.post(
       url,
       data: payload,
       options: _getAuthOptions(),
@@ -291,7 +358,7 @@ class CallingRepositoryImpl implements CallingRepository {
   }) async {
     final targetId = phoneNumberId.isNotEmpty ? phoneNumberId : (_phoneNumberId ?? '');
     final url = _buildGraphUrl('$targetId/calls');
-    final response = await _dio.post(
+    final response = await _metaClient.post(
       url,
       data: {
         'messaging_product': 'whatsapp',
@@ -310,7 +377,7 @@ class CallingRepositoryImpl implements CallingRepository {
   }) async {
     final targetId = phoneNumberId.isNotEmpty ? phoneNumberId : (_phoneNumberId ?? '');
     final url = _buildGraphUrl('$targetId/calls');
-    final response = await _dio.post(
+    final response = await _metaClient.post(
       url,
       data: {
         'messaging_product': 'whatsapp',
@@ -337,7 +404,7 @@ class CallingRepositoryImpl implements CallingRepository {
       'description': description,
     });
 
-    final response = await _dio.post(
+    final response = await _metaClient.post(
       url,
       data: formData,
       options: Options(

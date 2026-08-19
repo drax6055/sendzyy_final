@@ -60,6 +60,9 @@ class _ActiveCallPageState extends State<ActiveCallPage> {
               isSpeaker = state.isSpeaker;
               durationSecs = state.durationSeconds;
               subtitleStatus = _formatDuration(durationSecs);
+            } else if (state is CallErrorState) {
+              titleName = 'Call Failed';
+              subtitleStatus = state.message;
             }
 
             return Stack(

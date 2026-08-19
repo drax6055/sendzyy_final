@@ -38,7 +38,16 @@ class MobileWebRTCService implements CallingWebRTCService {
       'video': false,
     };
 
-    _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    try {
+      _localStream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
+    } catch (e) {
+      try {
+        _localStream = await navigator.mediaDevices.getUserMedia({'audio': true, 'video': false});
+      } catch (fallbackErr) {
+        throw Exception('No microphone device detected on your system. Please connect a microphone or headset to make voice calls.');
+      }
+    }
+
     _peerConnection = await createPeerConnection(_configuration, _offerAnswerConstraints);
 
     for (final track in _localStream!.getAudioTracks()) {

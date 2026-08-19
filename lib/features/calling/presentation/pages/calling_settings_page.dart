@@ -49,7 +49,53 @@ class _CallingSettingsPageState extends State<CallingSettingsPage> {
             return const Center(child: CircularProgressIndicator());
           }
           if (state is CallSettingsError) {
-            return Center(child: Text(state.message));
+            return Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 550),
+                margin: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.error_outline_rounded, size: 48, color: Colors.red.shade700),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Call Settings Unavailable',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red.shade900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      state.message,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 14, color: Colors.red.shade800, height: 1.4),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        context.read<CallSettingsBloc>().add(
+                              LoadCallSettingsEvent(widget.phoneNumberId),
+                            );
+                      },
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Retry'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade700,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
 
           return SingleChildScrollView(
