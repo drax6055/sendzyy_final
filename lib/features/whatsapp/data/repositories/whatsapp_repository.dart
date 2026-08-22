@@ -169,27 +169,42 @@ class WhatsAppRepository {
     }
   }
 
-  Future<bool> sendFreeFormMessage({
+  Future<String?> sendFreeFormMessage({
     required String to,
     required String text,
+    String? replyToMessageId,
+    String? replyToWamid,
   }) async {
     try {
       final response = await _dio.post(
         '/send-message',
-        data: {'to': to, 'type': 'text', 'text': text},
+        data: {
+          'to': to,
+          'type': 'text',
+          'text': text,
+          if (replyToMessageId != null) 'replyToMessageId': replyToMessageId,
+          if (replyToWamid != null) 'replyToWamid': replyToWamid,
+        },
       );
-
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map) {
+          return data['wamid']?.toString() ?? data['id']?.toString();
+        }
+      }
+      return null;
     } catch (e) {
-      return false;
+      return null;
     }
   }
 
-  Future<bool> sendDirectMediaMessage({
+  Future<String?> sendDirectMediaMessage({
     required String to,
     required String mediaId,
     required String type, // 'image' | 'video' | 'audio' | 'document'
     String? filename,     // optional filename for document
+    String? replyToMessageId,
+    String? replyToWamid,
   }) async {
     try {
       final response = await _dio.post(
@@ -199,13 +214,21 @@ class WhatsAppRepository {
           'type': type,
           'mediaId': mediaId,
           if (filename != null) 'text': filename,
+          if (replyToMessageId != null) 'replyToMessageId': replyToMessageId,
+          if (replyToWamid != null) 'replyToWamid': replyToWamid,
         },
       );
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map) {
+          return data['wamid']?.toString() ?? data['id']?.toString();
+        }
+      }
+      return null;
     } catch (e) {
       final errorMessage = parseErrorMessage(e, 'Failed to send direct media message');
       showGlobalSnackBar(errorMessage);
-      return false;
+      return null;
     }
   }
 

@@ -357,70 +357,75 @@ class _ChatPageState extends State<ChatPage> {
                       final bool isWithin24h =
                           DateTime.now().difference(lastActive).inHours < 24;
 
-                      return ListTile(
-                        onTap: () {
-                          _markAsRead(conv['id'] as String);
-                          context.read<ChatBloc>().add(
-                            SelectConversation(conv['id']),
-                          );
-                        },
-                        selected: isSelected,
-                        selectedTileColor: AppTheme.primaryColor.withValues(
-                          alpha: 0.05,
-                        ),
-                        leading: CircleAvatar(
-                          backgroundColor: AppTheme.secondaryColor,
-                          child: Text(
-                            (conv['name'] as String?)?.isNotEmpty == true
-                                ? conv['name'][0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(color: Colors.white),
+                      return Material(
+                        color: Colors.transparent,
+                        child: ListTile(
+                          onTap: () {
+                            _markAsRead(conv['id'] as String);
+                            context.read<ChatBloc>().add(
+                              SelectConversation(conv['id']),
+                            );
+                          },
+                          selected: isSelected,
+                          selectedTileColor: AppTheme.primaryColor.withValues(
+                            alpha: 0.05,
                           ),
-                        ),
-                        title: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                conv['name'] ?? 'Unknown',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                          leading: CircleAvatar(
+                            backgroundColor: AppTheme.secondaryColor,
+                            child: Text(
+                              (conv['name'] as String?)?.isNotEmpty == true
+                                  ? conv['name'][0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  conv['name'] ?? 'Unknown',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _formatDate(lastActive),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade500,
+                              Text(
+                                _formatDate(lastActive),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        subtitle: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                conv['lastMessage'] ?? '',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                            ],
+                          ),
+                          subtitle: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  conv['lastMessage'] ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            // 24h Indicator
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isWithin24h
-                                    ? Colors.green
-                                    : Colors.grey.shade300,
+                              const SizedBox(width: 8),
+                              // 24h Indicator
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isWithin24h
+                                      ? Colors.green
+                                      : Colors.grey.shade300,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       );
                     },
@@ -637,6 +642,7 @@ class _ChatPageState extends State<ChatPage> {
           ),
 
           // Messages Areas
+          // Messages Areas
           Expanded(
             child: Container(
               color: AppTheme.backgroundColor,
@@ -648,109 +654,211 @@ class _ChatPageState extends State<ChatPage> {
                 itemCount: state.messages.length,
                 itemBuilder: (context, index) {
                   final msg = state.messages[index];
-                  return _buildMessageBubble(msg);
+                  return _buildMessageBubble(msg, state.messages);
                 },
               ),
             ),
           ),
 
           // Input Area
-          _buildInputArea(state.selectedContactId!, isWithin24h),
+          _buildInputArea(state.selectedContactId!, isWithin24h, state.replyingToMessage),
         ],
       ),
     );
   }
 
-  Widget _buildMessageBubble(Map<String, dynamic> msg) {
+  Widget _buildMessageBubble(Map<String, dynamic> msg, List<Map<String, dynamic>> allMessages) {
     final bloc = context.read<ChatBloc>();
     final isMobile = ResponsiveHelper.isMobile(context);
     return MessageRenderer(
       msg: msg,
+      allMessages: allMessages,
       maxWidth: MediaQuery.of(context).size.width * (isMobile ? 0.75 : 0.4),
       formatTime: _formatMessageTime,
       baseUrl: AppConstants.baseUrl,
       authToken: bloc.authToken,
+      onReplyTap: () {
+        context.read<ChatBloc>().add(SetReplyMessage(msg));
+      },
     );
   }
 
-  Widget _buildInputArea(String contactId, bool isWithin24h) {
+  Widget _buildInputArea(
+    String contactId,
+    bool isWithin24h,
+    Map<String, dynamic>? replyingToMessage,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey.shade200)),
       ),
-      child: isWithin24h
-          ? Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.attach_file, color: Colors.grey.shade600),
-                  onPressed: () => _showAttachmentMenu(context, contactId),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (replyingToMessage != null) ...[
+            _buildReplyingToBanner(replyingToMessage),
+            const SizedBox(height: 10),
+          ],
+          isWithin24h
+              ? Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.attach_file, color: Colors.grey.shade600),
+                      onPressed: () => _showAttachmentMenu(context, contactId, replyingToMessage),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: InputDecoration(
+                          hintText: 'Type a message...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                        onSubmitted: (_) => _handleSend(contactId, replyingToMessage),
                       ),
                     ),
-                    onSubmitted: (_) => _handleSend(contactId),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                IconButton.filled(
-                  onPressed: () => _handleSend(contactId),
-                  icon: const Icon(Icons.send),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    padding: const EdgeInsets.all(16),
-                  ),
-                ),
-              ],
-            )
-          : Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange.shade200),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, color: Colors.orange),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'The 24-hour conversation window has expired. You can only send templates to this customer.',
-                      style: TextStyle(color: Colors.orange),
+                    const SizedBox(width: 16),
+                    IconButton.filled(
+                      onPressed: () => _handleSend(contactId, replyingToMessage),
+                      icon: const Icon(Icons.send),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.all(16),
+                      ),
                     ),
+                  ],
+                )
+              : Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade200),
                   ),
-                ],
-              ),
-            ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.orange),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'The 24-hour conversation window has expired. You can only send templates to this customer.',
+                          style: TextStyle(color: Colors.orange),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        ],
+      ),
     );
   }
 
-  void _handleSend(String contactId) {
+  Widget _buildReplyingToBanner(Map<String, dynamic> replyingMsg) {
+    final String senderName = replyingMsg['isMe'] == true ? 'You' : 'Contact';
+    final String? type = replyingMsg['messageType'] as String?;
+    final String text = replyingMsg['text']?.toString() ?? '';
+    String snippet = 'Original message';
+    if (text.isNotEmpty) {
+      snippet = text;
+    } else if (type == 'image') {
+      snippet = '📷 Photo';
+    } else if (type == 'video') {
+      snippet = '🎥 Video';
+    } else if (type == 'audio' || type == 'voice') {
+      snippet = '🎵 Audio';
+    } else if (type == 'document') {
+      snippet = '📄 Document';
+    } else if (type == 'template') {
+      snippet = '📋 Template';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(10),
+        border: Border(
+          left: BorderSide(color: AppTheme.primaryColor, width: 4),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.reply_rounded, size: 14, color: AppTheme.primaryColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Replying to $senderName',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  snippet,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: () {
+              context.read<ChatBloc>().add(SetReplyMessage(null));
+            },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleSend(String contactId, Map<String, dynamic>? replyingToMessage) {
     if (_messageController.text.trim().isNotEmpty) {
+      final replyId = replyingToMessage?['id']?.toString();
+      final replyWamid = replyingToMessage?['wamid']?.toString();
       context.read<ChatBloc>().add(
-        SendMessage(contactId, _messageController.text.trim()),
+        SendMessage(
+          contactId,
+          _messageController.text.trim(),
+          replyToMessageId: replyId,
+          replyToWamid: replyWamid,
+        ),
       );
       _messageController.clear();
     }
   }
 
-  void _showAttachmentMenu(BuildContext context, String contactId) {
+  void _showAttachmentMenu(
+    BuildContext context,
+    String contactId,
+    Map<String, dynamic>? replyingToMessage,
+  ) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -783,6 +891,7 @@ class _ChatPageState extends State<ChatPage> {
                           type: 'image',
                           extensions: ['jpg', 'jpeg', 'png'],
                           maxSize: 5 * 1024 * 1024,
+                          replyingToMessage: replyingToMessage,
                         );
                       },
                     ),
@@ -797,6 +906,7 @@ class _ChatPageState extends State<ChatPage> {
                           type: 'video',
                           extensions: ['mp4', '3gp'],
                           maxSize: 16 * 1024 * 1024,
+                          replyingToMessage: replyingToMessage,
                         );
                       },
                     ),
@@ -811,6 +921,7 @@ class _ChatPageState extends State<ChatPage> {
                           type: 'audio',
                           extensions: ['aac', 'mp3', 'amr', 'ogg'],
                           maxSize: 16 * 1024 * 1024,
+                          replyingToMessage: replyingToMessage,
                         );
                       },
                     ),
@@ -825,6 +936,7 @@ class _ChatPageState extends State<ChatPage> {
                           type: 'document',
                           extensions: [], // Allow all extensions
                           maxSize: 100 * 1024 * 1024,
+                          replyingToMessage: replyingToMessage,
                         );
                       },
                     ),
@@ -890,6 +1002,7 @@ class _ChatPageState extends State<ChatPage> {
     required String type,
     required List<String> extensions,
     required int maxSize,
+    Map<String, dynamic>? replyingToMessage,
   }) async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -918,13 +1031,13 @@ class _ChatPageState extends State<ChatPage> {
         return;
       }
 
+      final chatBloc = context.read<ChatBloc>();
       bool isDialogShowing = false;
       if (mounted) {
         isDialogShowing = true;
         _showSendingOverlay(context, file.name);
       }
 
-      final chatBloc = context.read<ChatBloc>();
       final mediaId = await chatBloc.uploadMedia(file);
 
       if (isDialogShowing && mounted) {
@@ -932,12 +1045,16 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       if (mediaId.isNotEmpty) {
+        final replyId = replyingToMessage?['id']?.toString();
+        final replyWamid = replyingToMessage?['wamid']?.toString();
         chatBloc.add(
           SendMediaMessage(
             contactId: contactId,
             mediaId: mediaId,
             type: type,
             filename: type == 'document' ? file.name : null,
+            replyToMessageId: replyId,
+            replyToWamid: replyWamid,
           ),
         );
         if (mounted) {
@@ -1022,23 +1139,121 @@ class _ChatPageState extends State<ChatPage> {
 /// show the appropriate content (text, template, image, video, etc.).
 class MessageRenderer extends StatelessWidget {
   final Map<String, dynamic> msg;
+  final List<Map<String, dynamic>>? allMessages;
   final double maxWidth;
   final String Function(Map<String, dynamic>) formatTime;
-
-  /// Base URL of the backend server (used to construct media proxy URLs).
   final String? baseUrl;
-
-  /// JWT auth token for authenticated media requests.
   final String? authToken;
+  final VoidCallback? onReplyTap;
 
   const MessageRenderer({
     super.key,
     required this.msg,
+    this.allMessages,
     required this.maxWidth,
     required this.formatTime,
     this.baseUrl,
     this.authToken,
+    this.onReplyTap,
   });
+
+  Widget _buildQuotedReply(BuildContext context, bool isMe) {
+    final contextMessageId = msg['contextMessageId'] as String?;
+    final fallbackPreview = msg['replyContextPreview'] as String?;
+
+    if ((contextMessageId == null || contextMessageId.isEmpty) &&
+        (fallbackPreview == null || fallbackPreview.isEmpty)) {
+      return const SizedBox.shrink();
+    }
+
+    Map<String, dynamic>? parentMsg;
+    if (allMessages != null && contextMessageId != null && contextMessageId.isNotEmpty) {
+      for (final m in allMessages!) {
+        if (m['wamid'] == contextMessageId || m['id'] == contextMessageId) {
+          parentMsg = m;
+          break;
+        }
+      }
+    }
+
+    final String parentSender = parentMsg == null
+        ? (isMe ? 'Contact' : 'You')
+        : (parentMsg['isMe'] == true ? 'You' : 'Contact');
+
+    String snippet = (fallbackPreview != null && fallbackPreview.isNotEmpty)
+        ? fallbackPreview
+        : 'Original message';
+
+    if (parentMsg != null) {
+      final String? type = parentMsg['messageType'] as String?;
+      final String text = parentMsg['text']?.toString() ?? '';
+      if (text.isNotEmpty) {
+        snippet = text;
+      } else if (parentMsg['templateBody'] != null &&
+          parentMsg['templateBody'].toString().isNotEmpty) {
+        snippet = parentMsg['templateBody'].toString();
+      } else if (parentMsg['templateName'] != null &&
+          parentMsg['templateName'].toString().isNotEmpty) {
+        snippet = '📋 ${parentMsg['templateName']}';
+      } else if (type == 'image') {
+        snippet = '📷 Photo';
+      } else if (type == 'video') {
+        snippet = '🎥 Video';
+      } else if (type == 'audio' || type == 'voice') {
+        snippet = '🎵 Audio';
+      } else if (type == 'document') {
+        snippet = '📄 Document';
+      } else if (type == 'template') {
+        snippet = '📋 Template';
+      } else if (type == 'location') {
+        snippet = '📍 Location';
+      } else if (type == 'contacts') {
+        snippet = '👤 Contact';
+      }
+    }
+
+    final Color bgColor = isMe
+        ? Colors.black.withValues(alpha: 0.15)
+        : Colors.grey.shade100;
+    final Color barColor = isMe ? Colors.white : AppTheme.primaryColor;
+    final Color textColor = isMe ? Colors.white : Colors.black87;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border(
+          left: BorderSide(color: barColor, width: 3.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            parentSender,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: barColor,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            snippet,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: textColor.withValues(alpha: 0.85),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1076,6 +1291,7 @@ class MessageRenderer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          _buildQuotedReply(context, isMe),
           Align(
             alignment: Alignment.centerLeft,
             child: _buildContent(
@@ -1106,6 +1322,12 @@ class MessageRenderer extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    Widget hoverBubble = _HoverableMessageBubble(
+      isMe: isMe,
+      onReply: onReplyTap,
+      child: bubble,
     );
 
     return Align(
@@ -1140,7 +1362,7 @@ class MessageRenderer extends StatelessWidget {
                     ],
                   ),
                 ),
-              bubble,
+              hoverBubble,
               const SizedBox(height: 8),
             ],
           ),
@@ -2048,6 +2270,55 @@ class _WindowTimerWidgetState extends State<_WindowTimerWidget> {
               fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HoverableMessageBubble extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onReply;
+  final bool isMe;
+
+  const _HoverableMessageBubble({
+    required this.child,
+    this.onReply,
+    required this.isMe,
+  });
+
+  @override
+  State<_HoverableMessageBubble> createState() => _HoverableMessageBubbleState();
+}
+
+class _HoverableMessageBubbleState extends State<_HoverableMessageBubble> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final replyBtn = IconButton(
+      icon: Icon(
+        Icons.reply_rounded,
+        size: 18,
+        color: Colors.grey.shade600,
+      ),
+      tooltip: 'Reply',
+      onPressed: widget.onReply,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+    );
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (_isHovered && !widget.isMe && widget.onReply != null) replyBtn,
+          Flexible(child: widget.child),
+          if (_isHovered && widget.isMe && widget.onReply != null) replyBtn,
         ],
       ),
     );

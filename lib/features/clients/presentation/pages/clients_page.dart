@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:intl/intl.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
@@ -15,6 +17,7 @@ import 'package:iFloraBuzz/features/clients/presentation/widgets/qr_code_dialog.
 import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
 import 'package:iFloraBuzz/features/clients/presentation/utils/csv_export_helper.dart';
 import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
+import 'package:iFloraBuzz/features/messages/presentation/widgets/phone_contacts_selection_dialog.dart';
 
 class ClientsPage extends StatefulWidget {
   const ClientsPage({super.key});
@@ -208,6 +211,47 @@ class _ClientsViewState extends State<_ClientsView> {
     }
   }
 
+  Future<void> _importFromPhoneContacts() async {
+    final clientsBloc = context.read<ClientsBloc>();
+
+    if (!kIsWeb) {
+      final permission = await FlutterContacts.requestPermission(
+        readonly: true,
+      );
+      if (!permission) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Contact permission is required to access device contacts. Please allow it in Settings.',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    final selected = await PhoneContactsSelectionDialog.show(
+      context,
+      existingNumbers: const [],
+    );
+
+    if (selected != null && selected.isNotEmpty) {
+      clientsBloc.add(BulkImportClients(selected));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Importing ${selected.length} contact(s) as clients...'),
+            backgroundColor: AppTheme.primaryColor,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _searchDebounce?.cancel();
@@ -330,6 +374,13 @@ class _ClientsViewState extends State<_ClientsView> {
                         icon: const Icon(Icons.qr_code, color: Colors.white, size: 20),
                         style: IconButton.styleFrom(backgroundColor: AppTheme.secondaryColor),
                         tooltip: 'Generate QR',
+                      ),
+                      const SizedBox(width: 6),
+                      IconButton.filled(
+                        onPressed: _importFromPhoneContacts,
+                        icon: const Icon(Icons.contacts_outlined, color: Colors.white, size: 20),
+                        style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+                        tooltip: 'Pick from Contacts',
                       ),
                     ],
                   ),
@@ -495,7 +546,7 @@ class _ClientsViewState extends State<_ClientsView> {
                     label: const Text('bulk_import'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blueGrey,
-                      minimumSize: const Size(150, 45),
+                      minimumSize: const Size(130, 45),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -511,7 +562,18 @@ class _ClientsViewState extends State<_ClientsView> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.secondaryColor,
                       foregroundColor: Colors.white,
-                      minimumSize: const Size(150, 45),
+                      minimumSize: const Size(130, 45),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: _importFromPhoneContacts,
+                    icon: const Icon(Icons.contacts_outlined),
+                    label: const Text('Pick Contacts'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(130, 45),
                     ),
                   ),
                 ],
