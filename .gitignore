@@ -41,6 +41,7 @@ migrate.json
 **/android/key.properties
 **/android/app/src/main/assets/flutter_assets
 **/android/app/build
+**/android/build/
 **/android/app/debug.keystore
 **/android/app/profile.keystore
 **/android/app/release.keystore
