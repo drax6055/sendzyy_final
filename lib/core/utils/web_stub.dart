@@ -34,3 +34,5 @@ Future<void> webDownloadBytes(
 
 void registerWebAudioElement(String viewId, String audioUrl) {}
 void registerWebVideoElement(String viewId, String videoUrl) {}
+
+void setupWebBeforeUnload() {}

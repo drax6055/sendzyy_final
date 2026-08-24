@@ -57,6 +57,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    setupWebBeforeUnload();
     _authBloc = di.getIt<AuthBloc>()..add(AuthCheckRequested());
 
     // Check subscription expiry every 5 minutes while app is running
