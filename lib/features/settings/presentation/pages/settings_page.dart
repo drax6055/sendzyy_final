@@ -342,11 +342,17 @@ class _SettingsPageState extends State<SettingsPage> {
           }
         }
 
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 0),
+        return LayoutBuilder(
+          builder: (context, outerConstraints) {
+          final isMobileLayout = outerConstraints.maxWidth < 600;
+          return Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: isMobileLayout ? 0 : 25,
+            vertical: 0,
+          ),
           color: AppTheme.backgroundColor,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(32),
+            padding: EdgeInsets.all(isMobileLayout ? 16 : 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -432,6 +438,8 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
           ),
+        );
+        },
         );
       },
     );
@@ -2535,12 +2543,13 @@ class _SettingsPageState extends State<SettingsPage> {
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(20),
         width: double.infinity,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -2551,12 +2560,15 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: const Icon(Icons.check, color: Colors.white, size: 24),
                 ),
                 const SizedBox(width: 16),
-                const Text(
-                  'Meta Account Connected',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                Flexible(
+                  child: Text(
+                    'Meta Account Connected',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 2,
                   ),
                 ),
               ],
@@ -2950,11 +2962,18 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildDetailRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 16)),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 15)),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            textAlign: TextAlign.end,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+          ),
         ),
       ],
     );

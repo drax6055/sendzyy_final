@@ -12,8 +12,11 @@ class RetrySystemPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: AppTheme.backgroundColor,
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return SingleChildScrollView(
+        padding: EdgeInsets.all(isMobile ? 16 : 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -107,6 +110,8 @@ class RetrySystemPage extends StatelessWidget {
             ),
           ],
         ),
+      );
+        },
       ),
     );
   }

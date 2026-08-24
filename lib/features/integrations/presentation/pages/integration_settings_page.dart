@@ -794,8 +794,11 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return SingleChildScrollView(
+        padding: EdgeInsets.all(isMobile ? 16 : 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -825,23 +828,43 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
               onRegenerate: _regenerateSecret,
             ),
             const SizedBox(height: 24),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _ShopifyCard(
-                    webhookUrl: _webhookUrl,
-                    secret: _displaySecret,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _WordPressCard(
-                    webhookUrl: _webhookUrl,
-                    secret: _displaySecret,
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, cardConstraints) {
+                final isMobileCard = cardConstraints.maxWidth < 550;
+                if (isMobileCard) {
+                  return Column(
+                    children: [
+                      _ShopifyCard(
+                        webhookUrl: _webhookUrl,
+                        secret: _displaySecret,
+                      ),
+                      const SizedBox(height: 16),
+                      _WordPressCard(
+                        webhookUrl: _webhookUrl,
+                        secret: _displaySecret,
+                      ),
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _ShopifyCard(
+                        webhookUrl: _webhookUrl,
+                        secret: _displaySecret,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _WordPressCard(
+                        webhookUrl: _webhookUrl,
+                        secret: _displaySecret,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 24),
             _TriggersSection(
@@ -868,6 +891,8 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
             ),
           ],
         ),
+      );
+        },
       ),
     );
   }
