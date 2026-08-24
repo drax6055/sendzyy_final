@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
-import 'package:iFloraBuzz/core/js/contact_picker_helper.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
@@ -21,41 +20,13 @@ class PhoneContactsSelectionDialog extends StatefulWidget {
     BuildContext context, {
     required List<String> existingNumbers,
   }) async {
-    // 1. If running on Web with Contact Picker API support (Mobile browsers like Chrome Android / iOS Safari)
-    if (kIsWeb && isWebContactPickerSupported()) {
-      try {
-        final webRaw = await pickWebContacts(multiple: true);
-        if (webRaw == null || webRaw.isEmpty) return null;
-        final List<ClientModel> parsedList = [];
-        final now = DateTime.now();
-        for (int i = 0; i < webRaw.length; i++) {
-          final c = webRaw[i];
-          final names = (c['names'] as List?)?.map((e) => e.toString()).toList() ?? [];
-          final tels = (c['tels'] as List?)?.map((e) => e.toString()).toList() ?? [];
-          final name = names.isNotEmpty && names.first.trim().isNotEmpty
-              ? names.first.trim()
-              : 'Phone Contact';
-          for (final phone in tels) {
-            final clean = phone.replaceAll(RegExp(r'[^\d+]'), '');
-            if (clean.isNotEmpty) {
-              parsedList.add(ClientModel(
-                id: 'web_contact_${now.millisecondsSinceEpoch}_${parsedList.length}',
-                tenantId: 'device_contact',
-                name: name,
-                mobileNumber: clean,
-                companyName: 'Device Contact',
-                createdAt: now,
-              ));
-            }
-          }
-        }
-        return parsedList;
-      } catch (e) {
-        debugPrint('[PhoneContactsSelectionDialog] Error picking web contacts: $e');
-      }
-    }
+    // Always open the Flutter dialog directly with full contact list and Select All.
+    // We do NOT use the native browser Contact Picker API (navigator.contacts.select)
+    // because it does not support "Select All" — users can only pick one by one.
+    // Instead we load all contacts into our own modal which has full Select All support.
 
-    // 2. Mobile Native App or Desktop Web fallback modal
+    if (!context.mounted) return null;
+
     if (ResponsiveHelper.isMobile(context)) {
       return showModalBottomSheet<List<ClientModel>>(
         context: context,
@@ -67,7 +38,9 @@ class PhoneContactsSelectionDialog extends StatefulWidget {
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           ),
-          child: PhoneContactsSelectionDialog(existingNumbers: existingNumbers),
+          child: PhoneContactsSelectionDialog(
+            existingNumbers: existingNumbers,
+          ),
         ),
       );
     }
@@ -79,7 +52,9 @@ class PhoneContactsSelectionDialog extends StatefulWidget {
         child: SizedBox(
           width: ResponsiveHelper.getModalWidth(context, desktopWidth: 550),
           height: 650,
-          child: PhoneContactsSelectionDialog(existingNumbers: existingNumbers),
+          child: PhoneContactsSelectionDialog(
+            existingNumbers: existingNumbers,
+          ),
         ),
       ),
     );
@@ -122,9 +97,9 @@ class _PhoneContactsSelectionDialogState
 
     try {
       if (kIsWeb) {
-        // Desktop Web fallback (since Web Contact Picker API is not available on desktop browsers)
+        // On web (mobile browser or desktop), load from server client list
         final repo = getIt<ClientRepository>();
-        final result = await repo.getClients(page: 1, limit: 1000);
+        final result = await repo.getClients(page: 1, limit: 5000);
         setState(() {
           _allContacts = result.clients;
           _filteredContacts = List.from(_allContacts);
@@ -133,7 +108,9 @@ class _PhoneContactsSelectionDialogState
         return;
       }
 
-      final bool permissionGranted = await FlutterContacts.requestPermission(readonly: true);
+      // Native mobile app — request permission and load device contacts
+      final bool permissionGranted =
+          await FlutterContacts.requestPermission(readonly: true);
       if (!permissionGranted) {
         setState(() {
           _errorMessage =
@@ -143,8 +120,8 @@ class _PhoneContactsSelectionDialogState
         return;
       }
 
-      final deviceContacts =
-          await FlutterContacts.getContacts(withProperties: true, withPhoto: false);
+      final deviceContacts = await FlutterContacts.getContacts(
+          withProperties: true, withPhoto: false);
 
       final List<ClientModel> parsedList = [];
       for (final c in deviceContacts) {
@@ -173,15 +150,16 @@ class _PhoneContactsSelectionDialogState
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Failed to load device contacts: $e';
+        _errorMessage = 'Failed to load contacts: $e';
         _isLoading = false;
       });
     }
   }
 
+
   void _onSearchChanged(String query) {
     _searchDebounce?.cancel();
-    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+    _searchDebounce = Timer(const Duration(milliseconds: 200), () {
       final q = query.trim().toLowerCase();
       setState(() {
         if (q.isEmpty) {
@@ -200,9 +178,10 @@ class _PhoneContactsSelectionDialogState
 
   bool get _isAllFilteredSelected {
     if (_filteredContacts.isEmpty) return false;
-    return _filteredContacts.every((c) =>
-        _selectedContacts.containsKey(c.mobileNumber) ||
-        widget.existingNumbers.contains(c.mobileNumber));
+    final available = _filteredContacts
+        .where((c) => !widget.existingNumbers.contains(c.mobileNumber));
+    if (available.isEmpty) return false;
+    return available.every((c) => _selectedContacts.containsKey(c.mobileNumber));
   }
 
   void _toggleSelectAll(bool? selected) {
@@ -323,12 +302,27 @@ class _PhoneContactsSelectionDialogState
                       ),
                     ],
                   ),
-                  Text(
-                    'Selected: ${_selectedContacts.length}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                      fontSize: 13,
+                  TextButton.icon(
+                    onPressed: availableCount > 0
+                        ? () => _toggleSelectAll(!_isAllFilteredSelected)
+                        : null,
+                    icon: Icon(
+                      _isAllFilteredSelected
+                          ? Icons.clear_all_rounded
+                          : Icons.done_all_rounded,
+                      size: 18,
+                    ),
+                    label: Text(
+                      _isAllFilteredSelected ? 'Clear All' : 'Select All',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: availableCount > 0
+                          ? AppTheme.primaryColor
+                          : Colors.grey,
                     ),
                   ),
                 ],
@@ -345,7 +339,22 @@ class _PhoneContactsSelectionDialogState
               : _errorMessage != null
                   ? Center(child: Text(_errorMessage!))
                   : _filteredContacts.isEmpty
-                      ? const Center(child: Text('No contacts found'))
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.contacts_outlined,
+                                  size: 48, color: Colors.grey.shade400),
+                              const SizedBox(height: 12),
+                              Text(
+                                _searchController.text.isNotEmpty
+                                    ? 'No contacts match your search.'
+                                    : 'No contacts found.',
+                                style: TextStyle(color: Colors.grey.shade600),
+                              ),
+                            ],
+                          ),
+                        )
                       : ListView.separated(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           itemCount: _filteredContacts.length,
