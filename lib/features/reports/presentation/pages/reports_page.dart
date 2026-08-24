@@ -151,68 +151,153 @@ class _ReportsPageState extends State<ReportsPage> {
                         ),
                       ),
                     ] else ...[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              'Campaign Reports',
-                              style: Theme.of(ctx).textTheme.headlineMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppTheme.secondaryColor,
-                                  ),
-                            ),
-                          ),
-                          // Template filter dropdown
-                          SizedBox(
-                            width: 170,
-                            child: DropdownButtonFormField<String>(
-                              value: templateOptions.contains(_templateFilter) ? _templateFilter : 'all',
-                              decoration: InputDecoration(
-                                filled: true,
-                                fillColor: Colors.grey.shade100,
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(30),
-                                  borderSide: BorderSide.none,
+                      LayoutBuilder(
+                        builder: (context, headerConstraints) {
+                          final isNarrowHeader = headerConstraints.maxWidth < 900;
+                          if (isNarrowHeader) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        'Campaign Reports',
+                                        style: Theme.of(ctx).textTheme.headlineMedium?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: AppTheme.secondaryColor,
+                                            ),
+                                      ),
+                                    ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.download),
+                                          onPressed: () {
+                                            showDialog(
+                                              context: ctx,
+                                              builder: (_) => ReportDownloadDialog(
+                                                campaigns: filtered,
+                                              ),
+                                            );
+                                          },
+                                          tooltip: 'Download Report',
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.refresh),
+                                          onPressed: () =>
+                                              ctx.read<ReportBloc>().add(FetchReportHistory()),
+                                          tooltip: 'Reload History',
+                                        ),
+                                      ],
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              items: [
-                                const DropdownMenuItem(value: 'all', child: Text('All Templates')),
-                                ...templateOptions.map(
-                                  (t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis)),
+                                const SizedBox(height: 12),
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 170,
+                                        child: DropdownButtonFormField<String>(
+                                          value: templateOptions.contains(_templateFilter) ? _templateFilter : 'all',
+                                          decoration: InputDecoration(
+                                            filled: true,
+                                            fillColor: Colors.grey.shade100,
+                                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                            border: OutlineInputBorder(
+                                              borderRadius: BorderRadius.circular(30),
+                                              borderSide: BorderSide.none,
+                                            ),
+                                          ),
+                                          items: [
+                                            const DropdownMenuItem(value: 'all', child: Text('All Templates')),
+                                            ...templateOptions.map(
+                                              (t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis)),
+                                            ),
+                                          ],
+                                          onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      _DateRangeButton(
+                                        dateRange: _dateRange,
+                                        onChanged: (r) => setState(() => _dateRange = r),
+                                        onClear: () => setState(() => _dateRange = null),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
-                              onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Date range filter button
-                          _DateRangeButton(
-                            dateRange: _dateRange,
-                            onChanged: (r) => setState(() => _dateRange = r),
-                            onClear: () => setState(() => _dateRange = null),
-                          ),
-                          const SizedBox(width: 4),
-                          IconButton(
-                            icon: const Icon(Icons.download),
-                            onPressed: () {
-                              showDialog(
-                                context: ctx,
-                                builder: (_) => ReportDownloadDialog(
-                                  campaigns: filtered,
+                            );
+                          }
+                          return Row(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  'Campaign Reports',
+                                  style: Theme.of(ctx).textTheme.headlineMedium?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppTheme.secondaryColor,
+                                      ),
                                 ),
-                              );
-                            },
-                            tooltip: 'Download Report',
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.refresh),
-                            onPressed: () =>
-                                ctx.read<ReportBloc>().add(FetchReportHistory()),
-                            tooltip: 'Reload History',
-                          ),
-                        ],
+                              ),
+                              // Template filter dropdown
+                              SizedBox(
+                                width: 170,
+                                child: DropdownButtonFormField<String>(
+                                  value: templateOptions.contains(_templateFilter) ? _templateFilter : 'all',
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: Colors.grey.shade100,
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(30),
+                                      borderSide: BorderSide.none,
+                                    ),
+                                  ),
+                                  items: [
+                                    const DropdownMenuItem(value: 'all', child: Text('All Templates')),
+                                    ...templateOptions.map(
+                                      (t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis)),
+                                    ),
+                                  ],
+                                  onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Date range filter button
+                              _DateRangeButton(
+                                dateRange: _dateRange,
+                                onChanged: (r) => setState(() => _dateRange = r),
+                                onClear: () => setState(() => _dateRange = null),
+                              ),
+                              const SizedBox(width: 4),
+                              IconButton(
+                                icon: const Icon(Icons.download),
+                                onPressed: () {
+                                  showDialog(
+                                    context: ctx,
+                                    builder: (_) => ReportDownloadDialog(
+                                      campaigns: filtered,
+                                    ),
+                                  );
+                                },
+                                tooltip: 'Download Report',
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.refresh),
+                                onPressed: () =>
+                                    ctx.read<ReportBloc>().add(FetchReportHistory()),
+                                tooltip: 'Reload History',
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                     const SizedBox(height: 32),
