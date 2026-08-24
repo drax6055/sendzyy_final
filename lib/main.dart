@@ -41,6 +41,7 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _authBloc = di.getIt<AuthBloc>()..add(AuthCheckRequested());
+    _handleInstagramCallback();
 
     // Check subscription expiry every 5 minutes while app is running
     _expiryTimer = Timer.periodic(const Duration(minutes: 5), (_) {
@@ -50,6 +51,55 @@ class _MyAppState extends State<MyApp> {
     _systemUpdateSubscription = di.getIt<SocketService>().systemUpdateStream.listen((message) {
       _showUpdateAlertDialog(message);
     });
+  }
+
+  void _handleInstagramCallback() {
+    try {
+      final currentUrl = html.window.location.href;
+      final uri = Uri.parse(currentUrl);
+      final code = uri.queryParameters['code'];
+      final state = uri.queryParameters['state'];
+      final error = uri.queryParameters['error'];
+
+      if (code != null && state != null) {
+        // We are on the redirect URI containing code and state from Instagram
+        final backendUrl = dotenv.env['BASE_URL'] ?? '';
+        final frontendUrl = html.window.location.origin;
+
+        final callbackUrl = '$backendUrl/api/instagram/callback'
+            '?code=$code'
+            '&state=$state'
+            '&frontend_url=${Uri.encodeComponent(frontendUrl)}';
+
+        // Redirect the user's browser tab to the backend callback endpoint
+        html.window.location.href = callbackUrl;
+      } else if (error != null) {
+        // Clear query parameters from address bar to avoid showing error again on reload
+        final newUrl = currentUrl.split('?').first;
+        html.window.history.replaceState(null, 'Sendzyy', newUrl);
+
+        // Show the error popup
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final context = navigatorKey.currentContext;
+          if (context != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Instagram connection failed: $error',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                backgroundColor: Colors.red.shade700,
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.all(16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            );
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error handling Instagram callback: $e');
+    }
   }
 
   @override

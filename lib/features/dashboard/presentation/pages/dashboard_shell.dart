@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/pages/login_page.dart';
@@ -20,8 +21,11 @@ import 'package:iFloraBuzz/features/scheduled/presentation/pages/scheduled_campa
 import 'package:iFloraBuzz/features/chatbot/presentation/pages/chatbot_list_page.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart';
 import 'package:iFloraBuzz/features/leads/presentation/pages/lead_management_page.dart';
+import 'package:iFloraBuzz/features/leads/presentation/pages/indiamart_leads_page.dart';
 import 'package:iFloraBuzz/features/integrations/presentation/pages/integration_settings_page.dart';
 import 'package:iFloraBuzz/features/retry/presentation/pages/retry_system_page.dart';
+import 'package:iFloraBuzz/features/instagram/presentation/pages/instagram_profile_setup_page.dart';
+import 'package:iFloraBuzz/features/instagram/presentation/pages/instagram_automation_page.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/services/renewal_reminder_service.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
@@ -43,6 +47,8 @@ class _DashboardShellState extends State<DashboardShell> {
   int _selectedIndex = 0;
   bool _isReportsExpanded = false;
   bool _isSettingsExpanded = false;
+  bool _isLeadsExpanded = false;
+  bool _isInstagramExpanded = false;
   late final RenewalReminderService _reminderService;
   bool _onboardingIncomplete = false;
   bool _checkingOnboarding = true;
@@ -144,6 +150,12 @@ class _DashboardShellState extends State<DashboardShell> {
         if (saved >= 10 && saved <= 12) {
           _isSettingsExpanded = true;
         }
+        if (saved == 4 || saved == 13) {
+          _isLeadsExpanded = true;
+        }
+        if (saved == 14 || saved == 15) {
+          _isInstagramExpanded = true;
+        }
       });
     }
   }
@@ -156,6 +168,12 @@ class _DashboardShellState extends State<DashboardShell> {
       }
       if (index >= 10 && index <= 12) {
         _isSettingsExpanded = true;
+      }
+      if (index == 4 || index == 13) {
+        _isLeadsExpanded = true;
+      }
+      if (index == 14 || index == 15) {
+        _isInstagramExpanded = true;
       }
     });
     final prefs = await SharedPreferences.getInstance();
@@ -331,6 +349,9 @@ class _DashboardShellState extends State<DashboardShell> {
     ),
     const IntegrationSettingsPage(),
     const RetrySystemPage(),
+    const IndiaMartLeadsPage(),
+    const InstagramProfileSetupPage(),
+    const InstagramAutomationPage(),
   ];
 
   @override
@@ -365,7 +386,7 @@ class _DashboardShellState extends State<DashboardShell> {
                           _buildNavItem(1, Icons.forum_rounded, 'Chats'),
                           _buildNavItem(2, Icons.copy_rounded, 'Templates'),
                           _buildNavItem(3, Icons.people_alt_rounded, 'Clients'),
-                          _buildNavItem(4, Icons.contacts_rounded, 'Leads'),
+                          _buildExpandableLeadsMenu(),
                           _buildExpandableReportsMenu(),
                           _buildNavItem(8, Icons.smart_toy_rounded, 'Chatbot'),
                           _buildNavItem(9, Icons.help_outline_rounded, 'Q & A'),
@@ -376,6 +397,13 @@ class _DashboardShellState extends State<DashboardShell> {
                             endIndent: 20,
                           ),
                           _buildExpandableSettingsMenu(),
+                          const SizedBox(height: 16),
+                          const Divider(
+                            color: AppTheme.secondaryColor,
+                            indent: 20,
+                            endIndent: 20,
+                          ),
+                          _buildExpandableInstagramMenu(),
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -501,6 +529,91 @@ class _DashboardShellState extends State<DashboardShell> {
     );
   }
 
+  Widget _buildExpandableInstagramMenu() {
+    final bool isAnyInstagramSelected =
+        _selectedIndex == 14 || _selectedIndex == 15;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: () {
+            setState(() {
+              _isInstagramExpanded = !_isInstagramExpanded;
+            });
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isAnyInstagramSelected && !_isInstagramExpanded
+                  ? AppTheme.primaryColor.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const FaIcon(
+                  FontAwesomeIcons.instagram,
+                  color: AppTheme.secondaryColor,
+                  size: 20,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    'Instagram',
+                    style: TextStyle(
+                      color: AppTheme.secondaryColor,
+                      fontWeight: isAnyInstagramSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _isInstagramExpanded ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppTheme.secondaryColor,
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox(width: double.infinity, height: 0),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Column(
+              children: [
+                _buildNavItem(
+                  14,
+                  Icons.account_circle_outlined,
+                  'Profile & Setup',
+                  isSubItem: true,
+                ),
+                _buildNavItem(
+                  15,
+                  Icons.auto_awesome_outlined,
+                  'Automation',
+                  isSubItem: true,
+                ),
+              ],
+            ),
+          ),
+          crossFadeState: _isInstagramExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+        ),
+      ],
+    );
+  }
+
   Widget _buildExpandableReportsMenu() {
     final bool isAnyReportSelected = _selectedIndex >= 5 && _selectedIndex <= 7;
 
@@ -582,6 +695,89 @@ class _DashboardShellState extends State<DashboardShell> {
             ),
           ),
           crossFadeState: _isReportsExpanded
+              ? CrossFadeState.showSecond
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 200),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildExpandableLeadsMenu() {
+    final bool isAnyLeadSelected = _selectedIndex == 4 || _selectedIndex == 13;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        InkWell(
+          onTap: () {
+            setState(() {
+              _isLeadsExpanded = !_isLeadsExpanded;
+            });
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isAnyLeadSelected && !_isLeadsExpanded
+                  ? AppTheme.primaryColor.withValues(alpha: 0.12)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.contacts_rounded,
+                  color: AppTheme.secondaryColor,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    'Leads',
+                    style: TextStyle(
+                      color: AppTheme.secondaryColor,
+                      fontWeight: isAnyLeadSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _isLeadsExpanded ? 0.5 : 0.0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppTheme.secondaryColor,
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox(width: double.infinity, height: 0),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: Column(
+              children: [
+                _buildNavItem(
+                  4,
+                  Icons.language,
+                  'Website',
+                  isSubItem: true,
+                ),
+                _buildNavItem(
+                  13,
+                  Icons.store_rounded,
+                  'IndiaMART',
+                  isSubItem: true,
+                ),
+              ],
+            ),
+          ),
+          crossFadeState: _isLeadsExpanded
               ? CrossFadeState.showSecond
               : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 200),

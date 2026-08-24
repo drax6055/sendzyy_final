@@ -279,7 +279,7 @@ class _LeadManagementPageState extends State<LeadManagementPage> {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
-                  'Leads',
+                  'Website Leads',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: AppTheme.secondaryColor,
