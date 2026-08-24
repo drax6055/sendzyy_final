@@ -399,8 +399,9 @@ class _DashboardShellState extends State<DashboardShell> {
                 _buildNavItem(4, Icons.contacts_rounded, 'Leads', isDrawer: isDrawer),
                 _buildExpandableReportsMenu(isDrawer: isDrawer),
                 _buildNavItem(8, Icons.smart_toy_rounded, 'Chatbot', isDrawer: isDrawer),
-                _buildNavItem(15, Icons.storefront_rounded, 'Catalog', isDrawer: isDrawer),
-                _buildNavItem(13, Icons.call_rounded, 'Call Logs', isDrawer: isDrawer),
+                // TODO: Work on this module later
+                // _buildNavItem(15, Icons.storefront_rounded, 'Catalog', isDrawer: isDrawer),
+                // _buildNavItem(13, Icons.call_rounded, 'Call Logs', isDrawer: isDrawer),
                 _buildNavItem(9, Icons.help_outline_rounded, 'Q & A', isDrawer: isDrawer),
                 const SizedBox(height: 16),
                 const Divider(
@@ -621,13 +622,14 @@ class _DashboardShellState extends State<DashboardShell> {
                   isSubItem: true,
                   isDrawer: isDrawer,
                 ),
-                _buildNavItem(
-                  14,
-                  Icons.phone_in_talk_rounded,
-                  'Call Settings',
-                  isSubItem: true,
-                  isDrawer: isDrawer,
-                ),
+                // TODO: Work on this module later
+                // _buildNavItem(
+                //   14,
+                //   Icons.phone_in_talk_rounded,
+                //   'Call Settings',
+                //   isSubItem: true,
+                //   isDrawer: isDrawer,
+                // ),
               ],
             ),
           ),
