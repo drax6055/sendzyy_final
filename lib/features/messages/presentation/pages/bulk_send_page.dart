@@ -19,7 +19,6 @@ import 'package:iFloraBuzz/features/templates/presentation/widgets/whatsapp_prev
 import 'package:iFloraBuzz/features/messages/presentation/widgets/campaign_result_dialog.dart';
 import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import 'package:iFloraBuzz/features/messages/presentation/widgets/phone_contacts_selection_dialog.dart';
-import 'package:iFloraBuzz/features/messages/presentation/widgets/call_button_composer.dart';
 
 class BulkSendPage extends StatefulWidget {
   const BulkSendPage({super.key});

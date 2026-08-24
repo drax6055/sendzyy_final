@@ -794,8 +794,11 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final isMobile = constraints.maxWidth < 600;
+          return SingleChildScrollView(
+        padding: EdgeInsets.all(isMobile ? 16 : 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -825,23 +828,43 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
               onRegenerate: _regenerateSecret,
             ),
             const SizedBox(height: 24),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _ShopifyCard(
-                    webhookUrl: _webhookUrl,
-                    secret: _displaySecret,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _WordPressCard(
-                    webhookUrl: _webhookUrl,
-                    secret: _displaySecret,
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (context, cardConstraints) {
+                final isMobileCard = cardConstraints.maxWidth < 550;
+                if (isMobileCard) {
+                  return Column(
+                    children: [
+                      _ShopifyCard(
+                        webhookUrl: _webhookUrl,
+                        secret: _displaySecret,
+                      ),
+                      const SizedBox(height: 16),
+                      _WordPressCard(
+                        webhookUrl: _webhookUrl,
+                        secret: _displaySecret,
+                      ),
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _ShopifyCard(
+                        webhookUrl: _webhookUrl,
+                        secret: _displaySecret,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: _WordPressCard(
+                        webhookUrl: _webhookUrl,
+                        secret: _displaySecret,
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 24),
             _TriggersSection(
@@ -868,6 +891,8 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
             ),
           ],
         ),
+      );
+        },
       ),
     );
   }
@@ -1871,6 +1896,9 @@ class _OpenAIKeySectionState extends State<_OpenAIKeySection> {
   bool _obscure = true;
   bool _loading = true;
   bool _saving = false;
+  bool _revealing = false;
+  bool _isMasked = false;
+  String _revealedKey = '';
   String? _validationError;
 
   @override
@@ -1894,6 +1922,8 @@ class _OpenAIKeySectionState extends State<_OpenAIKeySection> {
         final configured = data['configured'] == true;
         final maskedKey = data['maskedKey']?.toString() ?? '';
         if (configured && maskedKey.isNotEmpty) {
+          _isMasked = true;
+          _revealedKey = '';
           _keyController.text = maskedKey;
         }
       }
@@ -1904,10 +1934,47 @@ class _OpenAIKeySectionState extends State<_OpenAIKeySection> {
     }
   }
 
+  Future<void> _toggleVisibility() async {
+    if (!_obscure) {
+      setState(() => _obscure = true);
+      return;
+    }
+
+    // User wants to reveal key
+    if (_isMasked && _revealedKey.isEmpty) {
+      setState(() => _revealing = true);
+      try {
+        final res = await widget.dio.get('/api/tenant/openai-key/reveal');
+        if (res.statusCode == 200) {
+          final data = res.data as Map<String, dynamic>;
+          final fullKey = data['key']?.toString() ?? '';
+          _revealedKey = fullKey;
+          _keyController.text = fullKey;
+          _isMasked = false;
+        }
+      } catch (_) {
+        // Fallback
+      } finally {
+        if (mounted) {
+          setState(() {
+            _revealing = false;
+            _obscure = false;
+          });
+        }
+      }
+    } else {
+      setState(() => _obscure = false);
+    }
+  }
+
   Future<void> _save() async {
     final key = _keyController.text.trim();
     if (key.isEmpty) {
       setState(() => _validationError = 'API key cannot be empty');
+      return;
+    }
+    if (_isMasked && _revealedKey.isEmpty) {
+      widget.onToast('API key is unchanged');
       return;
     }
     setState(() {
@@ -1917,6 +1984,8 @@ class _OpenAIKeySectionState extends State<_OpenAIKeySection> {
     try {
       final res = await widget.dio.put('/api/tenant/openai-key', data: {'apiKey': key});
       if (res.statusCode == 200) {
+        _isMasked = false;
+        _revealedKey = key;
         widget.onToast('OpenAI API key saved successfully');
       } else {
         widget.onToast('Failed to save API key', isError: true);
@@ -1952,7 +2021,9 @@ class _OpenAIKeySectionState extends State<_OpenAIKeySection> {
                   controller: _keyController,
                   obscureText: _obscure,
                   style: const TextStyle(fontSize: 13, fontFamily: 'monospace'),
-                  onChanged: (_) {
+                  onChanged: (val) {
+                    _isMasked = false;
+                    _revealedKey = val;
                     if (_validationError != null) {
                       setState(() => _validationError = null);
                     }
@@ -1971,15 +2042,24 @@ class _OpenAIKeySectionState extends State<_OpenAIKeySection> {
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide(color: Colors.grey.shade300),
                     ),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                        size: 18,
-                        color: Colors.grey.shade600,
-                      ),
-                      onPressed: () => setState(() => _obscure = !_obscure),
-                      tooltip: _obscure ? 'Show key' : 'Hide key',
-                    ),
+                    suffixIcon: _revealing
+                        ? const Padding(
+                            padding: EdgeInsets.all(12),
+                            child: SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          )
+                        : IconButton(
+                            icon: Icon(
+                              _obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                              size: 18,
+                              color: Colors.grey.shade600,
+                            ),
+                            onPressed: _toggleVisibility,
+                            tooltip: _obscure ? 'Show key' : 'Hide key',
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),
