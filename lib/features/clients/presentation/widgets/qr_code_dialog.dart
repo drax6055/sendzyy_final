@@ -1,6 +1,5 @@
-// ignore: avoid_web_libraries_in_flutter
 import 'dart:convert';
-import 'dart:html' as html;
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -52,12 +51,14 @@ class _QrCodeDialogState extends State<QrCodeDialog> {
   Future<void> _downloadQr() async {
     try {
       final boundary =
-          _frameKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+          _frameKey.currentContext?.findRenderObject()
+              as RenderRepaintBoundary?;
       if (boundary == null) return;
 
       final uiImage = await boundary.toImage(pixelRatio: 3.0);
-      final byteData =
-          await uiImage.toByteData(format: ui.ImageByteFormat.rawRgba);
+      final byteData = await uiImage.toByteData(
+        format: ui.ImageByteFormat.rawRgba,
+      );
       if (byteData == null) return;
 
       final rawBytes = byteData.buffer.asUint8List();
@@ -68,13 +69,11 @@ class _QrCodeDialogState extends State<QrCodeDialog> {
         order: img.ChannelOrder.rgba,
       );
       final jpegBytes = img.encodeJpg(imgFrame, quality: 95);
-
-      final blob = html.Blob([jpegBytes], 'image/jpeg');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      html.AnchorElement(href: url)
-        ..setAttribute('download', 'client_registration_qr.jpg')
-        ..click();
-      html.Url.revokeObjectUrl(url);
+      await webDownloadBytes(
+        jpegBytes,
+        'client_registration_qr.jpg',
+        mimeType: 'image/jpeg',
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -88,8 +87,9 @@ class _QrCodeDialogState extends State<QrCodeDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Download failed: $e'),
-              backgroundColor: Colors.red),
+            content: Text('Download failed: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -143,7 +143,7 @@ class _QrCodeDialogState extends State<QrCodeDialog> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.15),
+                    color: Colors.black.withValues(alpha: 0.15),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -170,7 +170,7 @@ class _QrCodeDialogState extends State<QrCodeDialog> {
             Text(
               'Join us in seconds — no forms, no fuss.\nJust scan and you\'re in!',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.85),
+                color: Colors.white.withValues(alpha: 0.85),
                 fontSize: 12,
                 height: 1.5,
               ),
@@ -179,13 +179,14 @@ class _QrCodeDialogState extends State<QrCodeDialog> {
             const SizedBox(height: 16),
             // Footer badge
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.2),
+                color: AppTheme.primaryColor.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                    color: AppTheme.primaryColor.withOpacity(0.5), width: 1),
+                  color: AppTheme.primaryColor.withValues(alpha: 0.5),
+                  width: 1,
+                ),
               ),
               child: const Text(
                 'Powered by Sendzyy',
@@ -215,113 +216,121 @@ class _QrCodeDialogState extends State<QrCodeDialog> {
         padding: const EdgeInsets.all(32),
         child: SingleChildScrollView(
           child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Client Registration QR',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.secondaryColor,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Print or display this QR at your front desk. Customers scan it to self-register.',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            if (_tenantId == null)
-              const CircularProgressIndicator()
-            else ...[
-              // Preview of the styled frame shown in dialog
-              _buildStyledFrame(),
-              const SizedBox(height: 16),
-              // URL display
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _registrationUrl,
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.black54),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy, size: 18),
-                      tooltip: 'Copy URL',
-                      onPressed: () {
-                        Clipboard.setData(
-                            ClipboardData(text: _registrationUrl));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('URL copied'),
-                              backgroundColor: Colors.green),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+            mainAxisSize: MainAxisSize.min,
+            children: [
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
-                      label: const Text('Close'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppTheme.secondaryColor,
-                        side: BorderSide(
-                            color:
-                                AppTheme.secondaryColor.withOpacity(0.4)),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
+                  const Text(
+                    'Client Registration QR',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.secondaryColor,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _downloadQr,
-                      icon: const Icon(Icons.download),
-                      label: const Text('Download'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Print or display this QR at your front desk. Customers scan it to self-register.',
+                style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              if (_tenantId == null)
+                const CircularProgressIndicator()
+              else ...[
+                // Preview of the styled frame shown in dialog
+                _buildStyledFrame(),
+                const SizedBox(height: 16),
+                // URL display
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _registrationUrl,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.black54,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.copy, size: 18),
+                        tooltip: 'Copy URL',
+                        onPressed: () {
+                          Clipboard.setData(
+                            ClipboardData(text: _registrationUrl),
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('URL copied'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                        label: const Text('Close'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.secondaryColor,
+                          side: BorderSide(
+                            color: AppTheme.secondaryColor.withValues(
+                              alpha: 0.4,
+                            ),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _downloadQr,
+                        icon: const Icon(Icons.download),
+                        label: const Text('Download'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ],
-        ),
+          ),
         ),
       ),
     );

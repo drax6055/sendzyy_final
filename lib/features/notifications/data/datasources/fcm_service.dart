@@ -67,7 +67,9 @@ class FCMService {
 
       // 6. Foreground message listener
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('[FCM] Foreground message received: ${message.notification?.title}');
+        debugPrint(
+          '[FCM] Foreground message received: ${message.notification?.title}',
+        );
         showLocalNotification(message);
       });
 
@@ -78,8 +80,7 @@ class FCMService {
   }
 
   static String get webVapidKey =>
-      dotenv.env['FIREBASE_WEB_VAPID_KEY'] ??
-      'BEFA95xRHMzgBX1mJgXh3UaBpYf1kKaTSvSgFjN3viKOqkALCYsUCsxl0bgrlVBxT8hpY90FK4CQyn8-wRwO9qE';
+      dotenv.env['FIREBASE_WEB_VAPID_KEY'] ?? 'error';
 
   static Future<String?> _getToken() async {
     try {
@@ -95,17 +96,35 @@ class FCMService {
   }
 
   static Future<void> _initLocalNotifications() async {
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
     );
 
     const initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
+
+    const androidChannel = AndroidNotificationChannel(
+      'sendzyy_notifications',
+      'Sendzyy Notifications',
+      description: 'All Sendzyy platform notifications',
+      importance: Importance.max,
+      playSound: true,
+    );
+
+    final androidPlugin = _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (androidPlugin != null) {
+      await androidPlugin.createNotificationChannel(androidChannel);
+    }
 
     await _localNotifications.initialize(initSettings);
   }
@@ -126,9 +145,15 @@ class FCMService {
       presentSound: true,
     );
 
-    const details = NotificationDetails(android: androidDetails, iOS: iosDetails);
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
 
-    final title = message.notification?.title ?? message.data['title'] ?? 'Sendzyy Notification';
+    final title =
+        message.notification?.title ??
+        message.data['title'] ??
+        'Sendzyy Notification';
     final body = message.notification?.body ?? message.data['body'] ?? '';
 
     await _localNotifications.show(

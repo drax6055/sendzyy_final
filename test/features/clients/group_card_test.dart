@@ -61,18 +61,44 @@ void main() {
               onEdit: () {},
               onDelete: () {},
               onQrCode: () {},
+              onDownloadCsv: () {},
             ),
           ),
         ),
       );
 
+      final downloadBtn = tester.getCenter(find.byIcon(Icons.download_outlined));
       final editBtn = tester.getCenter(find.byIcon(Icons.edit_outlined));
       final qrBtn = tester.getCenter(find.byIcon(Icons.qr_code));
       final deleteBtn = tester.getCenter(find.byIcon(Icons.delete_outline));
 
-      // QR button x-position is between edit and delete
+      // Buttons ordered: download, edit, qr, delete
+      expect(editBtn.dx, greaterThan(downloadBtn.dx));
       expect(qrBtn.dx, greaterThan(editBtn.dx));
-      expect(qrBtn.dx, lessThan(deleteBtn.dx));
+      expect(deleteBtn.dx, greaterThan(qrBtn.dx));
+    });
+
+    testWidgets('renders CSV download button and invokes callback when tapped', (tester) async {
+      var called = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GroupCard(
+              group: _makeGroup(),
+              onEdit: () {},
+              onDelete: () {},
+              onQrCode: () {},
+              onDownloadCsv: () => called = true,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.download_outlined), findsOneWidget);
+      expect(find.byTooltip('Download Group CSV'), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.download_outlined));
+      expect(called, isTrue);
     });
   });
 }

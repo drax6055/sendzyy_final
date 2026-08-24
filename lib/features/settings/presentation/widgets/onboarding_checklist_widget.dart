@@ -3,7 +3,7 @@ import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:dio/dio.dart';
 // ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 
 class OnboardingChecklistWidget extends StatefulWidget {
   final VoidCallback? onSetupWhatsApp;
@@ -160,12 +160,14 @@ class _OnboardingChecklistWidgetState extends State<OnboardingChecklistWidget> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'WhatsApp Onboarding Checklist',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
+                    const Expanded(
+                      child: Text(
+                        'WhatsApp Onboarding Checklist',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.secondaryColor,
+                        ),
                       ),
                     ),
                     IconButton(
@@ -244,7 +246,7 @@ class _OnboardingChecklistWidgetState extends State<OnboardingChecklistWidget> {
             isWarning: _metaBusinessVerified == 'PENDING',
             actionLabel: 'Verify Business',
             onActionTap: () {
-              html.window.open('https://business.facebook.com/settings/security', '_blank');
+              webOpenUrl('https://business.facebook.com/settings/security');
             },
           ),
           const Divider(height: 1),

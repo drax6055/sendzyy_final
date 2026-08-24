@@ -1,9 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:html' as html;
-// ignore: avoid_web_libraries_in_flutter
-import 'dart:ui_web' as ui_web;
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,10 +9,15 @@ import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/chat/presentation/bloc/chat_bloc.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+// import 'package:iFloraBuzz/features/calling/presentation/bloc/call_control_bloc.dart';
+// import 'package:iFloraBuzz/features/calling/presentation/pages/active_call_page.dart';
+import 'package:iFloraBuzz/features/catalog/presentation/widgets/catalog_product_picker_sheet.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
+  
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -45,7 +47,9 @@ class _ChatPageState extends State<ChatPage> {
       final prefs = await SharedPreferences.getInstance();
       _prefs = prefs;
       final tenantId = prefs.getString('tenant_id') ?? 'default';
-      final String? jsonStr = prefs.getString('read_contacts_timestamps_$tenantId');
+      final String? jsonStr = prefs.getString(
+        'read_contacts_timestamps_$tenantId',
+      );
       if (jsonStr != null) {
         final Map<String, dynamic> decoded = jsonDecode(jsonStr);
         setState(() {
@@ -127,10 +131,25 @@ class _ChatPageState extends State<ChatPage> {
         }
 
         if (state is ChatLoaded) {
+          final isMobile = ResponsiveHelper.isMobile(context);
+          if (isMobile) {
+            if (state.selectedContactId == null) {
+              return _buildConversationSidebar(state);
+            } else {
+              return PopScope(
+                canPop: false,
+                onPopInvokedWithResult: (didPop, result) {
+                  if (didPop) return;
+                  context.read<ChatBloc>().add(SelectConversation(null));
+                },
+                child: _buildChatWindow(state),
+              );
+            }
+          }
           return Row(
             children: [
               // 1. Conversation Sidebar
-              _buildConversationSidebar(state),
+              SizedBox(width: 320, child: _buildConversationSidebar(state)),
 
               // 2. Chat Window
               Expanded(
@@ -162,7 +181,7 @@ class _ChatPageState extends State<ChatPage> {
     final filtered = _selectedFilter == 'unread'
         ? searchFiltered.where((c) {
             final contactId = c['id'] as String? ?? '';
-            
+
             // Check if client replied to our template or message
             final hasReply = c['hasReply'] == true;
             if (!hasReply) {
@@ -173,8 +192,8 @@ class _ChatPageState extends State<ChatPage> {
             final lastActive = c['lastActive'] is DateTime
                 ? (c['lastActive'] as DateTime).toLocal()
                 : (DateTime.tryParse(c['lastActive']?.toString() ?? '') ??
-                        DateTime.now())
-                    .toLocal();
+                          DateTime.now())
+                      .toLocal();
 
             // Check if it was read after the last activity
             final lastReadStr = _readContactTimestamps[contactId];
@@ -193,7 +212,7 @@ class _ChatPageState extends State<ChatPage> {
     // Count for badge on Unread chip
     final unreadCount = state.conversations.where((c) {
       final contactId = c['id'] as String? ?? '';
-      
+
       // Check if client replied to our template or message
       final hasReply = c['hasReply'] == true;
       if (!hasReply) {
@@ -204,8 +223,8 @@ class _ChatPageState extends State<ChatPage> {
       final lastActive = c['lastActive'] is DateTime
           ? (c['lastActive'] as DateTime).toLocal()
           : (DateTime.tryParse(c['lastActive']?.toString() ?? '') ??
-                  DateTime.now())
-              .toLocal();
+                    DateTime.now())
+                .toLocal();
 
       // Check if it was read after the last activity
       final lastReadStr = _readContactTimestamps[contactId];
@@ -219,8 +238,9 @@ class _ChatPageState extends State<ChatPage> {
       return DateTime.now().difference(lastActive).inHours < 24;
     }).length;
 
+    final isMobileSidebar = ResponsiveHelper.isMobile(context);
     return Container(
-      width: 350,
+      width: isMobileSidebar ? double.infinity : 350,
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(right: BorderSide(color: Colors.grey.shade200)),
@@ -338,70 +358,75 @@ class _ChatPageState extends State<ChatPage> {
                       final bool isWithin24h =
                           DateTime.now().difference(lastActive).inHours < 24;
 
-                      return ListTile(
-                        onTap: () {
-                          _markAsRead(conv['id'] as String);
-                          context.read<ChatBloc>().add(
-                            SelectConversation(conv['id']),
-                          );
-                        },
-                        selected: isSelected,
-                        selectedTileColor: AppTheme.primaryColor.withOpacity(
-                          0.05,
-                        ),
-                        leading: CircleAvatar(
-                          backgroundColor: AppTheme.secondaryColor,
-                          child: Text(
-                            (conv['name'] as String?)?.isNotEmpty == true
-                                ? conv['name'][0].toUpperCase()
-                                : '?',
-                            style: const TextStyle(color: Colors.white),
+                      return Material(
+                        color: Colors.transparent,
+                        child: ListTile(
+                          onTap: () {
+                            _markAsRead(conv['id'] as String);
+                            context.read<ChatBloc>().add(
+                              SelectConversation(conv['id']),
+                            );
+                          },
+                          selected: isSelected,
+                          selectedTileColor: AppTheme.primaryColor.withValues(
+                            alpha: 0.05,
                           ),
-                        ),
-                        title: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                conv['name'] ?? 'Unknown',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
+                          leading: CircleAvatar(
+                            backgroundColor: AppTheme.secondaryColor,
+                            child: Text(
+                              (conv['name'] as String?)?.isNotEmpty == true
+                                  ? conv['name'][0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  conv['name'] ?? 'Unknown',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _formatDate(lastActive),
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey.shade500,
+                              Text(
+                                _formatDate(lastActive),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade500,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        subtitle: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                conv['lastMessage'] ?? '',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                            ],
+                          ),
+                          subtitle: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  conv['lastMessage'] ?? '',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            // 24h Indicator
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isWithin24h
-                                    ? Colors.green
-                                    : Colors.grey.shade300,
+                              const SizedBox(width: 8),
+                              // 24h Indicator
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: isWithin24h
+                                      ? Colors.green
+                                      : Colors.grey.shade300,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       );
                     },
@@ -465,8 +490,8 @@ class _ChatPageState extends State<ChatPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? Colors.white.withOpacity(0.3)
-                      : color.withOpacity(0.15),
+                      ? Colors.white.withValues(alpha: 0.3)
+                      : color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -501,13 +526,25 @@ class _ChatPageState extends State<ChatPage> {
         children: [
           // Chat Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: ResponsiveHelper.isMobile(context) ? 8 : 24,
+              vertical: 14,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
             ),
             child: Row(
               children: [
+                if (ResponsiveHelper.isMobile(context)) ...[
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () {
+                      context.read<ChatBloc>().add(SelectConversation(null));
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                ],
                 CircleAvatar(
                   backgroundColor: AppTheme.secondaryColor,
                   child: Text(
@@ -517,171 +554,313 @@ class _ChatPageState extends State<ChatPage> {
                     style: const TextStyle(color: Colors.white),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Text(
-                          contact['name'] ?? 'Unknown',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              contact['name'] ?? 'Unknown',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          contact['id'] ?? '',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: const Color.fromARGB(255, 99, 99, 99),
+                          const SizedBox(width: 8),
+                          Text(
+                            contact['id'] ?? '',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color.fromARGB(255, 99, 99, 99),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: isWithin24h ? Colors.green : Colors.grey,
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isWithin24h ? Colors.green : Colors.grey,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          isWithin24h
-                              ? '24h Window Open'
-                              : '24h Window Expired (Requires Template)',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey.shade600,
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              isWithin24h
+                                  ? '24h Window Open'
+                                  : '24h Window Expired (Requires Template)',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-                const Spacer(),
-                if (isWithin24h) _WindowTimerWidget(lastActive: lastActive),
+                if (isWithin24h) ...[
+                  const SizedBox(width: 4),
+                  _WindowTimerWidget(lastActive: lastActive),
+                ],
+                // TODO: Work on this module later
+                // const SizedBox(width: 8),
+                // IconButton(
+                //   icon: const Icon(Icons.call_rounded, color: Color(0xFF128C7E)),
+                //   tooltip: 'Start Voice Call',
+                //   onPressed: () {
+                //     final toPhone = contact['id']?.toString() ?? '';
+                //     final callerName = contact['name']?.toString() ?? 'Contact';
+                //     if (toPhone.isEmpty) return;
+                //
+                //     context.read<CallControlBloc>().add(
+                //           InitiateCallEvent(
+                //             phoneNumberId: '',
+                //             to: toPhone,
+                //             callerName: callerName,
+                //           ),
+                //         );
+                //
+                //     Navigator.push(
+                //       context,
+                //       MaterialPageRoute(builder: (_) => const ActiveCallPage()),
+                //     );
+                //   },
+                // ),
               ],
             ),
           ),
 
           // Messages Areas
+          // Messages Areas
           Expanded(
             child: Container(
               color: AppTheme.backgroundColor,
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(
+                ResponsiveHelper.isMobile(context) ? 12 : 24,
+              ),
               child: ListView.builder(
                 controller: _messagesScrollController,
                 itemCount: state.messages.length,
                 itemBuilder: (context, index) {
                   final msg = state.messages[index];
-                  return _buildMessageBubble(msg);
+                  return _buildMessageBubble(msg, state.messages);
                 },
               ),
             ),
           ),
 
           // Input Area
-          _buildInputArea(state.selectedContactId!, isWithin24h),
+          _buildInputArea(state.selectedContactId!, isWithin24h, state.replyingToMessage),
         ],
       ),
     );
   }
 
-  Widget _buildMessageBubble(Map<String, dynamic> msg) {
+  Widget _buildMessageBubble(Map<String, dynamic> msg, List<Map<String, dynamic>> allMessages) {
     final bloc = context.read<ChatBloc>();
+    final isMobile = ResponsiveHelper.isMobile(context);
     return MessageRenderer(
       msg: msg,
-      maxWidth: MediaQuery.of(context).size.width * 0.4,
+      allMessages: allMessages,
+      maxWidth: MediaQuery.of(context).size.width * (isMobile ? 0.75 : 0.4),
       formatTime: _formatMessageTime,
       baseUrl: AppConstants.baseUrl,
       authToken: bloc.authToken,
+      onReplyTap: () {
+        context.read<ChatBloc>().add(SetReplyMessage(msg));
+      },
     );
   }
 
-  Widget _buildInputArea(String contactId, bool isWithin24h) {
+  Widget _buildInputArea(
+    String contactId,
+    bool isWithin24h,
+    Map<String, dynamic>? replyingToMessage,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.grey.shade200)),
       ),
-      child: isWithin24h
-          ? Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.attach_file, color: Colors.grey.shade600),
-                  onPressed: () => _showAttachmentMenu(context, contactId),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Type a message...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                      filled: true,
-                      fillColor: Colors.grey.shade100,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (replyingToMessage != null) ...[
+            _buildReplyingToBanner(replyingToMessage),
+            const SizedBox(height: 10),
+          ],
+          isWithin24h
+              ? Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.attach_file, color: Colors.grey.shade600),
+                      onPressed: () => _showAttachmentMenu(context, contactId, replyingToMessage),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _messageController,
+                        decoration: InputDecoration(
+                          hintText: 'Type a message...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                        ),
+                        onSubmitted: (_) => _handleSend(contactId, replyingToMessage),
                       ),
                     ),
-                    onSubmitted: (_) => _handleSend(contactId),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                IconButton.filled(
-                  onPressed: () => _handleSend(contactId),
-                  icon: const Icon(Icons.send),
-                  style: IconButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    padding: const EdgeInsets.all(16),
-                  ),
-                ),
-              ],
-            )
-          : Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.orange.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.orange.shade200),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline, color: Colors.orange),
-                  const SizedBox(width: 12),
-                  const Expanded(
-                    child: Text(
-                      'The 24-hour conversation window has expired. You can only send templates to this customer.',
-                      style: TextStyle(color: Colors.orange),
+                    const SizedBox(width: 16),
+                    IconButton.filled(
+                      onPressed: () => _handleSend(contactId, replyingToMessage),
+                      icon: const Icon(Icons.send),
+                      style: IconButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        padding: const EdgeInsets.all(16),
+                      ),
                     ),
+                  ],
+                )
+              : Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.shade200),
                   ),
-                ],
-              ),
-            ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, color: Colors.orange),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'The 24-hour conversation window has expired. You can only send templates to this customer.',
+                          style: TextStyle(color: Colors.orange),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        ],
+      ),
     );
   }
 
-  void _handleSend(String contactId) {
+  Widget _buildReplyingToBanner(Map<String, dynamic> replyingMsg) {
+    final String senderName = replyingMsg['isMe'] == true ? 'You' : 'Contact';
+    final String? type = replyingMsg['messageType'] as String?;
+    final String text = replyingMsg['text']?.toString() ?? '';
+    String snippet = 'Original message';
+    if (text.isNotEmpty) {
+      snippet = text;
+    } else if (type == 'image') {
+      snippet = '📷 Photo';
+    } else if (type == 'video') {
+      snippet = '🎥 Video';
+    } else if (type == 'audio' || type == 'voice') {
+      snippet = '🎵 Audio';
+    } else if (type == 'document') {
+      snippet = '📄 Document';
+    } else if (type == 'template') {
+      snippet = '📋 Template';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(10),
+        border: Border(
+          left: BorderSide(color: AppTheme.primaryColor, width: 4),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.reply_rounded, size: 14, color: AppTheme.primaryColor),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Replying to $senderName',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  snippet,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: () {
+              context.read<ChatBloc>().add(SetReplyMessage(null));
+            },
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _handleSend(String contactId, Map<String, dynamic>? replyingToMessage) {
     if (_messageController.text.trim().isNotEmpty) {
+      final replyId = replyingToMessage?['id']?.toString();
+      final replyWamid = replyingToMessage?['wamid']?.toString();
       context.read<ChatBloc>().add(
-        SendMessage(contactId, _messageController.text.trim()),
+        SendMessage(
+          contactId,
+          _messageController.text.trim(),
+          replyToMessageId: replyId,
+          replyToWamid: replyWamid,
+        ),
       );
       _messageController.clear();
     }
   }
 
-  void _showAttachmentMenu(BuildContext context, String contactId) {
+  void _showAttachmentMenu(
+    BuildContext context,
+    String contactId,
+    Map<String, dynamic>? replyingToMessage,
+  ) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -714,6 +893,7 @@ class _ChatPageState extends State<ChatPage> {
                           type: 'image',
                           extensions: ['jpg', 'jpeg', 'png'],
                           maxSize: 5 * 1024 * 1024,
+                          replyingToMessage: replyingToMessage,
                         );
                       },
                     ),
@@ -728,6 +908,7 @@ class _ChatPageState extends State<ChatPage> {
                           type: 'video',
                           extensions: ['mp4', '3gp'],
                           maxSize: 16 * 1024 * 1024,
+                          replyingToMessage: replyingToMessage,
                         );
                       },
                     ),
@@ -742,6 +923,7 @@ class _ChatPageState extends State<ChatPage> {
                           type: 'audio',
                           extensions: ['aac', 'mp3', 'amr', 'ogg'],
                           maxSize: 16 * 1024 * 1024,
+                          replyingToMessage: replyingToMessage,
                         );
                       },
                     ),
@@ -756,6 +938,23 @@ class _ChatPageState extends State<ChatPage> {
                           type: 'document',
                           extensions: [], // Allow all extensions
                           maxSize: 100 * 1024 * 1024,
+                          replyingToMessage: replyingToMessage,
+                        );
+                      },
+                    ),
+                    _attachmentOption(
+                      icon: Icons.storefront_rounded,
+                      color: const Color(0xFF10B981),
+                      label: 'Catalog\nMessage',
+                      onTap: () {
+                        Navigator.pop(context);
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (ctx) => CatalogProductPickerSheet(
+                            contactId: contactId,
+                          ),
                         );
                       },
                     ),
@@ -785,7 +984,7 @@ class _ChatPageState extends State<ChatPage> {
           children: [
             CircleAvatar(
               radius: 28,
-              backgroundColor: color.withOpacity(0.1),
+              backgroundColor: color.withValues(alpha: 0.1),
               child: Icon(icon, color: color, size: 28),
             ),
             const SizedBox(height: 8),
@@ -805,6 +1004,7 @@ class _ChatPageState extends State<ChatPage> {
     required String type,
     required List<String> extensions,
     required int maxSize,
+    Map<String, dynamic>? replyingToMessage,
   }) async {
     try {
       final result = await FilePicker.platform.pickFiles(
@@ -833,13 +1033,13 @@ class _ChatPageState extends State<ChatPage> {
         return;
       }
 
+      final chatBloc = context.read<ChatBloc>();
       bool isDialogShowing = false;
       if (mounted) {
         isDialogShowing = true;
         _showSendingOverlay(context, file.name);
       }
 
-      final chatBloc = context.read<ChatBloc>();
       final mediaId = await chatBloc.uploadMedia(file);
 
       if (isDialogShowing && mounted) {
@@ -847,12 +1047,16 @@ class _ChatPageState extends State<ChatPage> {
       }
 
       if (mediaId.isNotEmpty) {
+        final replyId = replyingToMessage?['id']?.toString();
+        final replyWamid = replyingToMessage?['wamid']?.toString();
         chatBloc.add(
           SendMediaMessage(
             contactId: contactId,
             mediaId: mediaId,
             type: type,
             filename: type == 'document' ? file.name : null,
+            replyToMessageId: replyId,
+            replyToWamid: replyWamid,
           ),
         );
         if (mounted) {
@@ -937,23 +1141,121 @@ class _ChatPageState extends State<ChatPage> {
 /// show the appropriate content (text, template, image, video, etc.).
 class MessageRenderer extends StatelessWidget {
   final Map<String, dynamic> msg;
+  final List<Map<String, dynamic>>? allMessages;
   final double maxWidth;
   final String Function(Map<String, dynamic>) formatTime;
-
-  /// Base URL of the backend server (used to construct media proxy URLs).
   final String? baseUrl;
-
-  /// JWT auth token for authenticated media requests.
   final String? authToken;
+  final VoidCallback? onReplyTap;
 
   const MessageRenderer({
     super.key,
     required this.msg,
+    this.allMessages,
     required this.maxWidth,
     required this.formatTime,
     this.baseUrl,
     this.authToken,
+    this.onReplyTap,
   });
+
+  Widget _buildQuotedReply(BuildContext context, bool isMe) {
+    final contextMessageId = msg['contextMessageId'] as String?;
+    final fallbackPreview = msg['replyContextPreview'] as String?;
+
+    if ((contextMessageId == null || contextMessageId.isEmpty) &&
+        (fallbackPreview == null || fallbackPreview.isEmpty)) {
+      return const SizedBox.shrink();
+    }
+
+    Map<String, dynamic>? parentMsg;
+    if (allMessages != null && contextMessageId != null && contextMessageId.isNotEmpty) {
+      for (final m in allMessages!) {
+        if (m['wamid'] == contextMessageId || m['id'] == contextMessageId) {
+          parentMsg = m;
+          break;
+        }
+      }
+    }
+
+    final String parentSender = parentMsg == null
+        ? (isMe ? 'Contact' : 'You')
+        : (parentMsg['isMe'] == true ? 'You' : 'Contact');
+
+    String snippet = (fallbackPreview != null && fallbackPreview.isNotEmpty)
+        ? fallbackPreview
+        : 'Original message';
+
+    if (parentMsg != null) {
+      final String? type = parentMsg['messageType'] as String?;
+      final String text = parentMsg['text']?.toString() ?? '';
+      if (text.isNotEmpty) {
+        snippet = text;
+      } else if (parentMsg['templateBody'] != null &&
+          parentMsg['templateBody'].toString().isNotEmpty) {
+        snippet = parentMsg['templateBody'].toString();
+      } else if (parentMsg['templateName'] != null &&
+          parentMsg['templateName'].toString().isNotEmpty) {
+        snippet = '📋 ${parentMsg['templateName']}';
+      } else if (type == 'image') {
+        snippet = '📷 Photo';
+      } else if (type == 'video') {
+        snippet = '🎥 Video';
+      } else if (type == 'audio' || type == 'voice') {
+        snippet = '🎵 Audio';
+      } else if (type == 'document') {
+        snippet = '📄 Document';
+      } else if (type == 'template') {
+        snippet = '📋 Template';
+      } else if (type == 'location') {
+        snippet = '📍 Location';
+      } else if (type == 'contacts') {
+        snippet = '👤 Contact';
+      }
+    }
+
+    final Color bgColor = isMe
+        ? Colors.black.withValues(alpha: 0.15)
+        : Colors.grey.shade100;
+    final Color barColor = isMe ? Colors.white : AppTheme.primaryColor;
+    final Color textColor = isMe ? Colors.white : Colors.black87;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border(
+          left: BorderSide(color: barColor, width: 3.5),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            parentSender,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+              color: barColor,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            snippet,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 12,
+              color: textColor.withValues(alpha: 0.85),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -991,9 +1293,15 @@ class MessageRenderer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          _buildQuotedReply(context, isMe),
           Align(
             alignment: Alignment.centerLeft,
-            child: _buildContent(context, isMe, messageType, isBotSent: isBotSent),
+            child: _buildContent(
+              context,
+              isMe,
+              messageType,
+              isBotSent: isBotSent,
+            ),
           ),
           const SizedBox(height: 4),
           Row(
@@ -1018,13 +1326,21 @@ class MessageRenderer extends StatelessWidget {
       ),
     );
 
+    Widget hoverBubble = _HoverableMessageBubble(
+      isMe: isMe,
+      onReply: onReplyTap,
+      child: bubble,
+    );
+
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxWidth),
         child: IntrinsicWidth(
           child: Column(
-            crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            crossAxisAlignment: isMe
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             children: [
               // 🤖 Bot label above chatbot messages
               if (isChatbotMsg)
@@ -1048,7 +1364,7 @@ class MessageRenderer extends StatelessWidget {
                     ],
                   ),
                 ),
-              bubble,
+              hoverBubble,
               const SizedBox(height: 8),
             ],
           ),
@@ -1112,7 +1428,12 @@ class MessageRenderer extends StatelessWidget {
     }
   }
 
-  Widget _buildContent(BuildContext context, bool isMe, String? messageType, {bool isBotSent = false}) {
+  Widget _buildContent(
+    BuildContext context,
+    bool isMe,
+    String? messageType, {
+    bool isBotSent = false,
+  }) {
     final textColor = isMe ? Colors.white : AppTheme.secondaryColor;
     final mutedColor = isMe
         ? Colors.white.withValues(alpha: 0.7)
@@ -1241,7 +1562,9 @@ class MessageRenderer extends StatelessWidget {
         final replyIcon = interactiveType == 'list_reply'
             ? Icons.list_alt_outlined
             : Icons.touch_app_outlined;
-        final replyLabel = interactiveType == 'list_reply' ? 'List Reply' : 'Button Reply';
+        final replyLabel = interactiveType == 'list_reply'
+            ? 'List Reply'
+            : 'Button Reply';
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1303,10 +1626,14 @@ class MessageRenderer extends StatelessWidget {
           width: 220,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: isMe ? Colors.teal.shade800.withOpacity(0.3) : Colors.grey.shade100,
+            color: isMe
+                ? Colors.teal.shade800.withValues(alpha: 0.3)
+                : Colors.grey.shade100,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isMe ? Colors.teal.shade700.withOpacity(0.5) : Colors.grey.shade300,
+              color: isMe
+                  ? Colors.teal.shade700.withValues(alpha: 0.5)
+                  : Colors.grey.shade300,
             ),
           ),
           child: Column(
@@ -1316,7 +1643,9 @@ class MessageRenderer extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.15),
+                    backgroundColor: AppTheme.primaryColor.withValues(
+                      alpha: 0.15,
+                    ),
                     child: Icon(
                       Icons.person,
                       color: AppTheme.primaryColor,
@@ -1342,10 +1671,7 @@ class MessageRenderer extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             phone,
-                            style: TextStyle(
-                              color: mutedColor,
-                              fontSize: 11,
-                            ),
+                            style: TextStyle(color: mutedColor, fontSize: 11),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1364,14 +1690,19 @@ class MessageRenderer extends StatelessWidget {
                       Clipboard.setData(ClipboardData(text: phone));
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Copied contact number "$phone" to clipboard.'),
+                          content: Text(
+                            'Copied contact number "$phone" to clipboard.',
+                          ),
                           backgroundColor: Colors.green,
                         ),
                       );
                     },
                     borderRadius: BorderRadius.circular(4),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -1385,7 +1716,9 @@ class MessageRenderer extends StatelessWidget {
                             'Copy Phone',
                             style: TextStyle(
                               fontSize: 11,
-                              color: isMe ? Colors.white : AppTheme.primaryColor,
+                              color: isMe
+                                  ? Colors.white
+                                  : AppTheme.primaryColor,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -1437,10 +1770,12 @@ class MessageRenderer extends StatelessWidget {
     Color mutedColor,
   ) {
     final questionText = payload['title'] as String? ?? '';
-    final buttons =
-        (payload['buttons'] as List<dynamic>? ?? []).map((b) {
-      return (b as Map<String, dynamic>)['label'] as String? ?? '';
-    }).where((l) => l.isNotEmpty).toList();
+    final buttons = (payload['buttons'] as List<dynamic>? ?? [])
+        .map((b) {
+          return (b as Map<String, dynamic>)['label'] as String? ?? '';
+        })
+        .where((l) => l.isNotEmpty)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1486,10 +1821,16 @@ class MessageRenderer extends StatelessWidget {
   ) {
     final questionText = payload['title'] as String? ?? '';
     final buttonLabel = payload['buttonLabel'] as String? ?? 'View Options';
-    final items = (payload['items'] as List<dynamic>? ?? []).map((item) {
-      final m = item as Map<String, dynamic>;
-      return {'title': m['title'] as String? ?? '', 'description': m['description'] as String? ?? ''};
-    }).where((i) => (i['title'] as String).isNotEmpty).toList();
+    final items = (payload['items'] as List<dynamic>? ?? [])
+        .map((item) {
+          final m = item as Map<String, dynamic>;
+          return {
+            'title': m['title'] as String? ?? '',
+            'description': m['description'] as String? ?? '',
+          };
+        })
+        .where((i) => (i['title'] as String).isNotEmpty)
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1502,14 +1843,15 @@ class MessageRenderer extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.15),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
           ),
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -1703,32 +2045,40 @@ class _AudioBubbleState extends State<_AudioBubble> {
   void _registerAudioElement() {
     final audioUrl =
         '${widget.baseUrl}/media/${widget.mediaId}?token=${widget.authToken}';
-
-    // ignore: undefined_prefixed_name
-    ui_web.platformViewRegistry.registerViewFactory(_viewId, (int viewId) {
-      final audio = html.AudioElement()
-        ..src = audioUrl
-        ..controls = true
-        ..style.width = '100%'
-        ..style.height = '40px'
-        ..style.outline = 'none';
-      return audio;
-    });
+    registerWebAudioElement(_viewId, audioUrl);
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 260,
-      height: 48,
-      child: HtmlElementView(viewType: _viewId),
+    if (kIsWeb) {
+      return SizedBox(
+        width: 260,
+        height: 48,
+        child: HtmlElementView(viewType: _viewId),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.audiotrack, color: AppTheme.primaryColor),
+          SizedBox(width: 8),
+          Text(
+            'Audio Message',
+            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 }
 
 /// Shows a video thumbnail with a play button overlay.
-/// Uses a hidden <video> element to render the first frame as a preview.
-/// Tapping opens the video in a new browser tab.
 class _VideoBubble extends StatefulWidget {
   final String mediaId;
   final bool isMe;
@@ -1760,43 +2110,33 @@ class _VideoBubbleState extends State<_VideoBubble> {
   }
 
   void _registerVideoElement() {
-    // ignore: undefined_prefixed_name
-    ui_web.platformViewRegistry.registerViewFactory(_viewId, (int viewId) {
-      final video = html.VideoElement()
-        ..src = _videoUrl
-        ..style.width = '100%'
-        ..style.height = '100%'
-        ..style.objectFit = 'cover'
-        ..style.borderRadius = '8px'
-        ..preload = 'metadata'
-        ..muted = true;
-      // Seek to first frame so the poster shows
-      video.onLoadedMetadata.listen((_) {
-        video.currentTime = 0.1;
-      });
-      return video;
-    });
+    registerWebVideoElement(_viewId, _videoUrl);
   }
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = widget.isMe
-        ? Colors.white.withValues(alpha: 0.9)
-        : Colors.white.withValues(alpha: 0.9);
+    final iconColor = Colors.white.withValues(alpha: 0.9);
 
     return GestureDetector(
-      onTap: () => html.window.open(_videoUrl, '_blank'),
+      onTap: () => webOpenUrl(_videoUrl),
       child: SizedBox(
         width: 200,
         height: 150,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: HtmlElementView(viewType: _viewId),
-            ),
-            // Dark overlay + play icon
+            if (kIsWeb)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: HtmlElementView(viewType: _viewId),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.black87,
+                ),
+              ),
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
@@ -1911,9 +2251,9 @@ class _WindowTimerWidgetState extends State<_WindowTimerWidget> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.1),
+        color: AppTheme.primaryColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3)),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1932,6 +2272,55 @@ class _WindowTimerWidgetState extends State<_WindowTimerWidget> {
               fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HoverableMessageBubble extends StatefulWidget {
+  final Widget child;
+  final VoidCallback? onReply;
+  final bool isMe;
+
+  const _HoverableMessageBubble({
+    required this.child,
+    this.onReply,
+    required this.isMe,
+  });
+
+  @override
+  State<_HoverableMessageBubble> createState() => _HoverableMessageBubbleState();
+}
+
+class _HoverableMessageBubbleState extends State<_HoverableMessageBubble> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final replyBtn = IconButton(
+      icon: Icon(
+        Icons.reply_rounded,
+        size: 18,
+        color: Colors.grey.shade600,
+      ),
+      tooltip: 'Reply',
+      onPressed: widget.onReply,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+    );
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (_isHovered && !widget.isMe && widget.onReply != null) replyBtn,
+          Flexible(child: widget.child),
+          if (_isHovered && widget.isMe && widget.onReply != null) replyBtn,
         ],
       ),
     );

@@ -121,9 +121,7 @@ class _RegisterPageState extends State<RegisterPage> {
           Navigator.pushAndRemoveUntil(
             context,
             MaterialPageRoute(
-              builder: (_) => PackageSelectionPage(
-                regToken: state.regToken,
-              ),
+              builder: (_) => PackageSelectionPage(regToken: state.regToken),
             ),
             (_) => false,
           );
@@ -134,13 +132,13 @@ class _RegisterPageState extends State<RegisterPage> {
         }
       },
       child: Scaffold(
-        body: Container(  
+        body: Container(
           decoration: BoxDecoration(
-              image: DecorationImage(
-      image: AssetImage('assets/images/home-bg-wp.png'),
-      fit: BoxFit.cover, // optional
-    ),
+            image: DecorationImage(
+              image: AssetImage('assets/images/home-bg-wp.png'),
+              fit: BoxFit.cover, // optional
             ),
+          ),
           child: Center(
             child: Container(
               constraints: const BoxConstraints(maxWidth: 450),
@@ -150,7 +148,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -161,10 +159,10 @@ class _RegisterPageState extends State<RegisterPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                     Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20,),
-                    child: Image.asset('assets/images/logo.png',height: 70),
-                  ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Image.asset('assets/images/logo.png', height: 70),
+                    ),
                     const SizedBox(height: 16),
                     // Text(
                     //   'Register Business',
@@ -211,11 +209,13 @@ class _RegisterPageState extends State<RegisterPage> {
                                 : Icons.visibility,
                           ),
                           onPressed: () => setState(
-                              () => _isPasswordVisible = !_isPasswordVisible),
+                            () => _isPasswordVisible = !_isPasswordVisible,
+                          ),
                         ),
                       ),
-                      validator: (value) =>
-                          (value == null || value.length < 6) ? 'Min 6 characters' : null,
+                      validator: (value) => (value == null || value.length < 6)
+                          ? 'Min 6 characters'
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     Row(
@@ -231,7 +231,10 @@ class _RegisterPageState extends State<RegisterPage> {
                             onTap: _showTermsDialog,
                             child: RichText(
                               text: const TextSpan(
-                                style: TextStyle(color: Colors.grey, fontSize: 13),
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
                                 children: [
                                   TextSpan(text: 'I agree to the '),
                                   TextSpan(
@@ -252,13 +255,19 @@ class _RegisterPageState extends State<RegisterPage> {
                     BlocBuilder<AuthBloc, AuthState>(
                       builder: (context, state) {
                         return ElevatedButton(
-                          onPressed: state is AuthLoading ? null : _handleRegister,
+                          onPressed: state is AuthLoading
+                              ? null
+                              : _handleRegister,
                           child: state is AuthLoading
-                              ? const CircularProgressIndicator(color: Colors.white)
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
                               : const Text(
                                   'REGISTER NOW',
                                   style: TextStyle(
-                                      fontWeight: FontWeight.bold, fontSize: 16),
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
                         );
                       },

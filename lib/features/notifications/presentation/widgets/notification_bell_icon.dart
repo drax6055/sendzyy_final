@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import '../bloc/notification_bloc.dart';
 import '../pages/notifications_page.dart';
 
-class NotificationBellIcon extends StatelessWidget {
+class NotificationBellIcon extends StatefulWidget {
   final String tenantId;
   final VoidCallback? onTap;
 
@@ -12,6 +13,33 @@ class NotificationBellIcon extends StatelessWidget {
     required this.tenantId,
     this.onTap,
   });
+
+  @override
+  State<NotificationBellIcon> createState() => _NotificationBellIconState();
+}
+
+class _NotificationBellIconState extends State<NotificationBellIcon> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.tenantId.isNotEmpty) {
+        context.read<NotificationBloc>().add(
+              RefreshUnreadCountEvent(tenantId: widget.tenantId),
+            );
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant NotificationBellIcon oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tenantId != widget.tenantId && widget.tenantId.isNotEmpty) {
+      context.read<NotificationBloc>().add(
+            RefreshUnreadCountEvent(tenantId: widget.tenantId),
+          );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,24 +58,46 @@ class NotificationBellIcon extends StatelessWidget {
                 size: 26,
               ),
               tooltip: 'Notifications ($count unread)',
-              onPressed: onTap ??
+              onPressed: widget.onTap ??
                   () {
                     context.read<NotificationBloc>().add(
-                          LoadNotificationsEvent(tenantId: tenantId),
+                          LoadNotificationsEvent(tenantId: widget.tenantId),
                         );
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => Dialog(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+
+                    if (ResponsiveHelper.isMobile(context)) {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (ctx) => Container(
+                          height: MediaQuery.of(context).size.height * 0.85,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                          ),
+                          child: NotificationsPage(tenantId: widget.tenantId),
                         ),
-                        child: SizedBox(
-                          width: 500,
-                          height: 650,
-                          child: NotificationsPage(tenantId: tenantId),
+                      );
+                    } else {
+                      showDialog(
+                        context: context,
+                        builder: (ctx) => Dialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: SizedBox(
+                            width: ResponsiveHelper.getModalWidth(
+                              context,
+                              desktopWidth: 500,
+                            ),
+                            height: MediaQuery.of(context).size.height * 0.75,
+                            child: NotificationsPage(tenantId: widget.tenantId),
+                          ),
                         ),
-                      ),
-                    );
+                      );
+                    }
                   },
             ),
             if (count > 0)

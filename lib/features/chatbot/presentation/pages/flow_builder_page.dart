@@ -7,6 +7,8 @@ import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart'
 import 'package:iFloraBuzz/features/chatbot/presentation/widgets/flow_canvas_widget.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/widgets/node_palette_widget.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/widgets/properties_panel_widget.dart';
+import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 
 class FlowBuilderPage extends StatefulWidget {
   final ChatbotModel? chatbot;
@@ -404,9 +406,173 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
     super.dispose();
   }
 
+  void _showNodePaletteBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final items = const [
+          _NodeOptionItem(type: FlowNodeType.message, label: 'Message', icon: Icons.chat_bubble_outline, color: Colors.blue),
+          _NodeOptionItem(type: FlowNodeType.question, label: 'Question', icon: Icons.help_outline, color: Colors.purple),
+          _NodeOptionItem(type: FlowNodeType.quickReply, label: 'Quick Reply', icon: Icons.reply_outlined, color: Colors.teal),
+          _NodeOptionItem(type: FlowNodeType.listMessage, label: 'List Message', icon: Icons.list_alt_outlined, color: Colors.indigo),
+          _NodeOptionItem(type: FlowNodeType.condition, label: 'Condition', icon: Icons.call_split_outlined, color: Colors.orange),
+          _NodeOptionItem(type: FlowNodeType.action, label: 'Action', icon: Icons.bolt_outlined, color: Colors.amber),
+          _NodeOptionItem(type: FlowNodeType.catalogMessage, label: 'Catalog Msg', icon: Icons.storefront_outlined, color: Color(0xFF25D366)),
+          _NodeOptionItem(type: FlowNodeType.singleProduct, label: 'Single Product', icon: Icons.inventory_2_outlined, color: Color(0xFF06B6D4)),
+          _NodeOptionItem(type: FlowNodeType.multiProduct, label: 'Multi Product', icon: Icons.grid_view_outlined, color: Color(0xFF6366F1)),
+          _NodeOptionItem(type: FlowNodeType.productCarousel, label: 'Carousel', icon: Icons.view_carousel_outlined, color: Color(0xFF7C3AED)),
+          _NodeOptionItem(type: FlowNodeType.end, label: 'End', icon: Icons.stop_circle_outlined, color: Colors.red),
+        ];
+
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Add Flow Node',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.secondaryColor,
+                        ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                      childAspectRatio: 2.8,
+                    ),
+                    itemCount: items.length,
+                    itemBuilder: (context, i) {
+                      final item = items[i];
+                      return InkWell(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          final offset = Offset(
+                            100.0 + (_graph.nodes.length * 20),
+                            100.0 + (_graph.nodes.length * 20),
+                          );
+                          _addNode(item.type, offset);
+                        },
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: item.color.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: item.color.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(item.icon, color: item.color, size: 20),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  item.label,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                    color: item.color,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _showPropertiesBottomSheet() {
+    if (_selectedNode == null) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Node Properties',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: PropertiesPanelWidget(
+                    selectedNode: _selectedNode,
+                    onNodeDataChanged: _updateNodeData,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditMode = widget.chatbot != null;
+    final isMobile = ResponsiveHelper.isMobile(context);
     final canConnect = _firstSelectedNodeId != null && _secondSelectedNodeId != null;
 
     return BlocListener<ChatbotBloc, ChatbotState>(
@@ -425,24 +591,24 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
           title: Text(isEditMode ? 'Edit Chatbot' : 'New Chatbot'),
           actions: [
             IconButton(
-              icon: const Icon(Icons.undo,color: Colors.white),
+              icon: const Icon(Icons.undo, color: Colors.white),
               tooltip: 'Undo',
               onPressed: _undoStack.isEmpty ? null : _undo,
             ),
             IconButton(
-              icon: const Icon(Icons.redo,color: Colors.white),
+              icon: const Icon(Icons.redo, color: Colors.white),
               tooltip: 'Redo',
               onPressed: _redoStack.isEmpty ? null : _redo,
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
             if (_isSaving)
               const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.symmetric(horizontal: 12),
                 child: Center(
                   child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   ),
                 ),
               )
@@ -451,11 +617,12 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
                 padding: const EdgeInsets.only(right: 8),
                 child: ElevatedButton.icon(
                   onPressed: _save,
-                  icon: const Icon(Icons.save, size: 18),
-                  label: const Text('Save Chatbot'),
+                  icon: const Icon(Icons.save, size: 16),
+                  label: Text(isMobile ? 'Save' : 'Save Chatbot'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal,
                     foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: isMobile ? 10 : 14),
                     minimumSize: const Size(0, 36),
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -463,13 +630,37 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
               ),
           ],
         ),
+        floatingActionButton: isMobile
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (_selectedNode != null) ...[
+                    FloatingActionButton.extended(
+                      heroTag: 'edit_node_properties',
+                      onPressed: _showPropertiesBottomSheet,
+                      backgroundColor: AppTheme.secondaryColor,
+                      icon: const Icon(Icons.edit, color: Colors.white, size: 18),
+                      label: const Text('Edit Node', style: TextStyle(color: Colors.white, fontSize: 13)),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  FloatingActionButton.extended(
+                    heroTag: 'add_flow_node',
+                    onPressed: _showNodePaletteBottomSheet,
+                    backgroundColor: AppTheme.primaryColor,
+                    icon: const Icon(Icons.add, color: Colors.white, size: 18),
+                    label: const Text('Add Node', style: TextStyle(color: Colors.white, fontSize: 13)),
+                  ),
+                ],
+              )
+            : null,
         body: Column(
           children: [
             _buildToolbar(canConnect),
             Expanded(
               child: Row(
                 children: [
-                  const NodePaletteWidget(),
+                  if (!isMobile) const NodePaletteWidget(),
                   FlowCanvasWidget(
                     graph: _graph,
                     firstSelectedNodeId: _firstSelectedNodeId,
@@ -481,10 +672,11 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
                     onEdgeCreated: _addEdge,
                     onEdgeDelete: _deleteEdge,
                   ),
-                  PropertiesPanelWidget(
-                    selectedNode: _selectedNode,
-                    onNodeDataChanged: _updateNodeData,
-                  ),
+                  if (!isMobile)
+                    PropertiesPanelWidget(
+                      selectedNode: _selectedNode,
+                      onNodeDataChanged: _updateNodeData,
+                    ),
                 ],
               ),
             ),
@@ -495,6 +687,84 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
   }
 
   Widget _buildToolbar(bool canConnect) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+
+    if (isMobile) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border: Border(bottom: BorderSide(color: Colors.grey.shade300)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Row 1: Chatbot Name ---> Keywords
+            Row(
+              children: [
+                SizedBox(
+                  width: 130,
+                  child: TextField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      hintText: 'Chatbot Name',
+                      border: OutlineInputBorder(),
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ..._keywords.map(
+                          (kw) => Padding(
+                            padding: const EdgeInsets.only(right: 4),
+                            child: Chip(
+                              label: Text(kw, style: const TextStyle(fontSize: 11)),
+                              deleteIcon: const Icon(Icons.close, size: 12),
+                              onDeleted: () => _removeKeyword(kw),
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                          width: 120,
+                          child: TextField(
+                            controller: _keywordInputController,
+                            decoration: const InputDecoration(
+                              hintText: '+ Keyword',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            ),
+                            onSubmitted: _addKeyword,
+                            onChanged: (v) {
+                              if (v.endsWith(',')) _addKeyword(v);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Row 2: Select Node 1 ---> Select Node 2 ---> Connect
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: _buildConnectSection(canConnect),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -653,6 +923,24 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
       case FlowNodeType.condition: return 'Condition';
       case FlowNodeType.action: return 'Action';
       case FlowNodeType.end: return 'End';
+      case FlowNodeType.catalogMessage: return 'Catalog Msg';
+      case FlowNodeType.singleProduct: return 'Single Product';
+      case FlowNodeType.multiProduct: return 'Multi Product';
+      case FlowNodeType.productCarousel: return 'Carousel';
     }
   }
+}
+
+class _NodeOptionItem {
+  final FlowNodeType type;
+  final String label;
+  final IconData icon;
+  final Color color;
+
+  const _NodeOptionItem({
+    required this.type,
+    required this.label,
+    required this.icon,
+    required this.color,
+  });
 }

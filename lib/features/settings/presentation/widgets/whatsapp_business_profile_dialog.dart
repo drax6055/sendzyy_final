@@ -3,6 +3,7 @@ import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 
 class WhatsAppBusinessProfileDialog extends StatefulWidget {
   final Map<String, dynamic> config;
@@ -10,6 +11,14 @@ class WhatsAppBusinessProfileDialog extends StatefulWidget {
   const WhatsAppBusinessProfileDialog({super.key, required this.config});
 
   static Future<void> show(BuildContext context, Map<String, dynamic> config) {
+    if (ResponsiveHelper.isMobile(context)) {
+      return showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => WhatsAppBusinessProfileDialog(config: config),
+      );
+    }
     return showDialog(
       context: context,
       barrierColor: Colors.black54,
@@ -325,18 +334,17 @@ class _WhatsAppBusinessProfileDialogState extends State<WhatsAppBusinessProfileD
     final displayName = (verifiedName ?? _profile?['name']?.toString() ?? 'Profile Picture').toUpperCase();
     final avatarUrl = _whatsappProfile?['profile_picture_url']?.toString();
 
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        width: 650,
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.85,
-        ),
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final dialogContent = Container(
+      width: ResponsiveHelper.getModalWidth(context, desktopWidth: 650),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * (isMobile ? 0.9 : 0.85),
+      ),
+      padding: EdgeInsets.all(isMobile ? 16 : 28),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             // Header
             Row(
               children: [
@@ -682,7 +690,19 @@ class _WhatsAppBusinessProfileDialogState extends State<WhatsAppBusinessProfileD
             ),
           ],
         ),
-      ),
+    );
+
+    if (isMobile) {
+      return Material(
+        color: Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        child: dialogContent,
+      );
+    }
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: dialogContent,
     );
   }
 

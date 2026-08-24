@@ -11,15 +11,33 @@ import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/pages/package_selection_page.dart';
 import 'features/dashboard/presentation/pages/dashboard_shell.dart';
-import 'dart:html' as html;
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'features/chat/data/services/socket_service.dart';
 import 'package:iFloraBuzz/features/admin/presentation/pages/update_message_page.dart';
+import 'package:iFloraBuzz/core/utils/snackbar_utils.dart';
 
+import 'package:iFloraBuzz/features/calling/presentation/pages/active_call_page.dart';
+import 'package:iFloraBuzz/features/calling/presentation/pages/call_log_page.dart';
+import 'package:iFloraBuzz/features/calling/presentation/pages/calling_settings_page.dart';
+import 'package:iFloraBuzz/features/calling/presentation/pages/call_permission_page.dart';
 import 'package:iFloraBuzz/features/notifications/presentation/bloc/notification_bloc.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_control_bloc.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_log_bloc.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_settings_bloc.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_permission_bloc.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:iFloraBuzz/features/notifications/data/datasources/fcm_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
+  try {
+    await Firebase.initializeApp();
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    debugPrint('[FCM] Firebase initialization notice: $e');
+  }
   await di.init();
   runApp(const MyApp());
 }
@@ -34,7 +52,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   Timer? _expiryTimer;
   late final AuthBloc _authBloc;
-  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   StreamSubscription<String>? _systemUpdateSubscription;
 
   @override
@@ -123,6 +140,10 @@ class _MyAppState extends State<MyApp> {
               di.getIt<ReportBloc>()..add(FetchReportHistory()),
         ),
         BlocProvider(create: (context) => di.getIt<NotificationBloc>()),
+        BlocProvider.value(value: di.getIt<CallControlBloc>()),
+        BlocProvider.value(value: di.getIt<CallLogBloc>()),
+        BlocProvider(create: (context) => di.getIt<CallSettingsBloc>()),
+        BlocProvider(create: (context) => di.getIt<CallPermissionBloc>()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
@@ -134,6 +155,37 @@ class _MyAppState extends State<MyApp> {
             return MaterialPageRoute(
               settings: settings,
               builder: (_) => const UpdateMessagePage(),
+            );
+          }
+          if (settings.name == '/calling/active' || settings.name == 'calling_active') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const ActiveCallPage(),
+            );
+          }
+          if (settings.name == '/calling/log' || settings.name == 'calling_log') {
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => const CallLogPage(),
+            );
+          }
+          if (settings.name == '/calling/settings' || settings.name == 'calling_settings') {
+            final args = settings.arguments as Map<String, dynamic>?;
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => CallingSettingsPage(
+                phoneNumberId: args?['phoneNumberId'] ?? '',
+              ),
+            );
+          }
+          if (settings.name == '/calling/permissions' || settings.name == 'calling_permissions') {
+            final args = settings.arguments as Map<String, dynamic>?;
+            return MaterialPageRoute(
+              settings: settings,
+              builder: (_) => CallPermissionPage(
+                phoneNumberId: args?['phoneNumberId'] ?? '',
+                userWaId: args?['userWaId'] ?? '',
+              ),
             );
           }
           return null;
@@ -435,43 +487,9 @@ class _MyAppState extends State<MyApp> {
                             height: 50,
                             child: ElevatedButton(
                               onPressed: () {
-                                // 1. Dispatch LogoutRequested to auth bloc to clear session
                                 _authBloc.add(LogoutRequested());
-
-                                // 2. Clear browser caches forcefully
-                                try {
-                                  html.window.localStorage.clear();
-                                  html.window.sessionStorage.clear();
-
-                                  // Unregister service workers
-                                  final serviceWorker = html.window.navigator.serviceWorker;
-                                  if (serviceWorker != null) {
-                                    serviceWorker.getRegistrations().then((registrations) {
-                                      for (var reg in registrations) {
-                                        if (reg is html.ServiceWorkerRegistration) {
-                                          reg.unregister();
-                                        }
-                                      }
-                                    });
-                                  }
-
-                                  // Clear Cache Storage
-                                  html.window.caches?.keys().then((keys) {
-                                    for (var key in keys) {
-                                      html.window.caches?.delete(key);
-                                    }
-                                  });
-                                } catch (e) {
-                                  debugPrint("Error clearing browser storage: $e");
-                                }
-
-                                // Close the dialog
                                 Navigator.of(dialogCtx).pop();
-
-                                // 3. Force hard reload after a short delay
-                                Future.delayed(const Duration(milliseconds: 500), () {
-                                  html.window.location.reload();
-                                });
+                                webClearStorageAndReload();
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF25D366),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 
 class HelpPage extends StatelessWidget {
   const HelpPage({super.key});
@@ -84,8 +85,11 @@ class HelpPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+    final isTablet = ResponsiveHelper.isTablet(context);
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(32),
+      padding: EdgeInsets.all(isMobile ? 12 : (isTablet ? 20 : 32)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -105,21 +109,25 @@ class HelpPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Help & Q/A',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.secondaryColor,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Help & Q/A',
+                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.secondaryColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  Text(
-                    'Frequently asked questions & support',
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-                  ),
-                ],
+                    Text(
+                      'Frequently asked questions & support',
+                      style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -141,7 +149,7 @@ class HelpPage extends StatelessWidget {
           // Contact Section
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(28),
+            padding: EdgeInsets.all(isMobile ? 16 : 28),
             decoration: BoxDecoration(
               color: AppTheme.secondaryColor,
               borderRadius: BorderRadius.circular(16),
@@ -292,6 +300,7 @@ class _ContactRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Icon(icon, color: Colors.white70, size: 18),
         const SizedBox(width: 12),
@@ -299,12 +308,14 @@ class _ContactRow extends StatelessWidget {
           '$label: ',
           style: const TextStyle(color: Colors.white70, fontSize: 14),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],

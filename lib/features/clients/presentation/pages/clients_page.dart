@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:intl/intl.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
@@ -12,6 +15,9 @@ import 'package:iFloraBuzz/features/clients/presentation/widgets/create_group_di
 import 'package:iFloraBuzz/features/clients/presentation/widgets/groups_tab.dart';
 import 'package:iFloraBuzz/features/clients/presentation/widgets/qr_code_dialog.dart';
 import 'package:iFloraBuzz/features/clients/data/repositories/client_repository.dart';
+import 'package:iFloraBuzz/features/clients/presentation/utils/csv_export_helper.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
+import 'package:iFloraBuzz/features/messages/presentation/widgets/phone_contacts_selection_dialog.dart';
 
 class ClientsPage extends StatefulWidget {
   const ClientsPage({super.key});
@@ -95,8 +101,15 @@ class _ClientsPageState extends State<ClientsPage>
                     );
                   },
                   backgroundColor: Colors.green,
-                  icon: const Icon(Icons.group_add),
-                  label: const Text('CREATE GROUP'),
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.group_add, color: Colors.white),
+                  label: const Text(
+                    'CREATE GROUP',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
       ),
@@ -116,6 +129,67 @@ class _ClientsViewState extends State<_ClientsView> {
   Timer? _searchDebounce;
   final Set<String> _selectedClientIds = {};
   bool _isSelectingAll = false;
+  bool _isDownloadingCsv = false;
+
+  Future<void> _downloadClientsCsv(ClientsLoaded state) async {
+    if (_isDownloadingCsv) return;
+    setState(() {
+      _isDownloadingCsv = true;
+    });
+
+    try {
+      List<ClientModel> clientsToExport = [];
+
+      final repo = getIt<ClientRepository>();
+      final paginatedResult = await repo.getClients(
+        page: 1,
+        limit: state.totalClients > 0 ? state.totalClients : 10000,
+        search: state.searchQuery,
+      );
+
+      if (_selectedClientIds.isNotEmpty) {
+        clientsToExport = paginatedResult.clients
+            .where((c) => _selectedClientIds.contains(c.id))
+            .toList();
+      } else {
+        clientsToExport = paginatedResult.clients;
+      }
+
+      if (clientsToExport.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No client data to download.')),
+          );
+        }
+        return;
+      }
+
+      final dateStr = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final fileName = 'clients_$dateStr.csv';
+      CsvExportHelper.downloadClientsCsv(clientsToExport, fileName);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Downloaded ${clientsToExport.length} clients to CSV.'),
+            backgroundColor: AppTheme.primaryColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to download CSV: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloadingCsv = false;
+        });
+      }
+    }
+  }
 
   Future<void> _selectAllTotalClients(ClientsLoaded state) async {
     setState(() {
@@ -144,6 +218,47 @@ class _ClientsViewState extends State<_ClientsView> {
     }
   }
 
+  Future<void> _importFromPhoneContacts() async {
+    final clientsBloc = context.read<ClientsBloc>();
+
+    if (!kIsWeb) {
+      final permission = await FlutterContacts.requestPermission(
+        readonly: true,
+      );
+      if (!permission) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Contact permission is required to access device contacts. Please allow it in Settings.',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    final selected = await PhoneContactsSelectionDialog.show(
+      context,
+      existingNumbers: const [],
+    );
+
+    if (selected != null && selected.isNotEmpty) {
+      clientsBloc.add(BulkImportClients(selected));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Importing ${selected.length} contact(s) as clients...'),
+            backgroundColor: AppTheme.primaryColor,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _searchDebounce?.cancel();
@@ -165,169 +280,312 @@ class _ClientsViewState extends State<_ClientsView> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveHelper.isMobile(context);
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.extended(
-            heroTag: 'create_client',
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) => BlocProvider.value(
-                  value: context.read<ClientsBloc>(),
-                  child: const CreateClientDialog(),
-                ),
-              );
-            },
-            backgroundColor: AppTheme.primaryColor,
-            icon: const Icon(Icons.add),
-            label: const Text('CREATE CLIENT'),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'create_client',
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (_) => BlocProvider.value(
+              value: context.read<ClientsBloc>(),
+              child: const CreateClientDialog(),
+            ),
+          );
+        },
+        backgroundColor: AppTheme.primaryColor,
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text(
+          isMobile ? 'Create' : 'CREATE CLIENT',
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(isMobile ? 12 : 32),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Clients',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
+            if (isMobile) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Clients',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.secondaryColor,
+                            ),
                       ),
-                    ),
-                    if (_isSelectingAll) ...[
-                      const SizedBox(width: 12),
-                      const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
+                      if (_isSelectingAll) ...[
+                        const SizedBox(width: 8),
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (val) {
-                        _searchDebounce?.cancel();
-                        _searchDebounce = Timer(const Duration(milliseconds: 500), () {
-                          context.read<ClientsBloc>().add(SearchClients(val, page: 1, limit: 50));
-                        });
-                        setState(() {
-                          _selectedClientIds.clear();
-                        });
-                      },
-
-                      decoration: InputDecoration(
-                        hintText: 'Search clients...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30),
-                          borderSide: BorderSide.none,
-                        ),
-                        filled: true,
-                        fillColor: Colors.grey.shade100,
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        suffixIcon: _searchController.text.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear, size: 18),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  _searchDebounce?.cancel();
-                                  context.read<ClientsBloc>().add(
-                                    SearchClients(''),
-                                  );
+                  ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_selectedClientIds.isNotEmpty) ...[
+                        IconButton.filled(
+                          onPressed: () {
+                            final bloc = context.read<ClientsBloc>();
+                            showDialog(
+                              context: context,
+                              builder: (_) => _DeleteSelectedClientsDialog(
+                                selectedCount: _selectedClientIds.length,
+                                onConfirm: () {
+                                  bloc.add(DeleteClients(_selectedClientIds.toList()));
                                   setState(() {
                                     _selectedClientIds.clear();
                                   });
                                 },
-                              )
-                            : Icon(
-                                Icons.search,
-                                color: Colors.grey.shade400,
-                                size: 20,
-                               ),
-                      ),
-                    ),
-                  ),
-                ),
-                if (_selectedClientIds.isNotEmpty) ...[
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      final bloc = context.read<ClientsBloc>();
-                      showDialog(
-                        context: context,
-                        builder: (_) => _DeleteSelectedClientsDialog(
-                          selectedCount: _selectedClientIds.length,
-                          onConfirm: () {
-                            bloc.add(DeleteClients(_selectedClientIds.toList()));
-                            setState(() {
-                              _selectedClientIds.clear();
-                            });
+                              ),
+                            );
                           },
+                          icon: const Icon(Icons.delete_outline, color: Colors.white, size: 20),
+                          style: IconButton.styleFrom(backgroundColor: Colors.redAccent),
+                          tooltip: 'Delete Selected (${_selectedClientIds.length})',
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.delete_outline, color: Colors.white),
-                    label: Text('Delete Selected (${_selectedClientIds.length})'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(150, 45),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-               ElevatedButton.icon(
+                        const SizedBox(width: 6),
+                      ],
+                      IconButton.filled(
                         onPressed: () {
-                           showDialog(
-                 context: context,
-                 builder: (_) => BlocProvider.value(
-                   value: context.read<ClientsBloc>(),
-                   child: const BulkImportDialog(),
-                 ),
-               );
+                          showDialog(
+                            context: context,
+                            builder: (_) => BlocProvider.value(
+                              value: context.read<ClientsBloc>(),
+                              child: const BulkImportDialog(),
+                            ),
+                          );
                         },
-                            
-                        icon: const Icon(Icons.add),
-                        label: const Text('bulk_import'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueGrey,
-                          minimumSize: const Size(150, 45),
-                        ),
+                        icon: const Icon(Icons.file_upload_outlined, color: Colors.white, size: 20),
+                        style: IconButton.styleFrom(backgroundColor: Colors.blueGrey),
+                        tooltip: 'Bulk Import',
                       ),
-                      const SizedBox(width: 8),
-                      ElevatedButton.icon(
+                      const SizedBox(width: 6),
+                      IconButton.filled(
                         onPressed: () {
                           showDialog(
                             context: context,
                             builder: (_) => const QrCodeDialog(),
                           );
                         },
-                        icon: const Icon(Icons.qr_code),
-                        label: const Text('Generate QR'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.secondaryColor,
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size(150, 45),
+                        icon: const Icon(Icons.qr_code, color: Colors.white, size: 20),
+                        style: IconButton.styleFrom(backgroundColor: AppTheme.secondaryColor),
+                        tooltip: 'Generate QR',
+                      ),
+                      const SizedBox(width: 6),
+                      IconButton.filled(
+                        onPressed: _importFromPhoneContacts,
+                        icon: const Icon(Icons.contacts_outlined, color: Colors.white, size: 20),
+                        style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+                        tooltip: 'Pick from Contacts',
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _searchController,
+                onChanged: (val) {
+                  _searchDebounce?.cancel();
+                  _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+                    context.read<ClientsBloc>().add(SearchClients(val, page: 1, limit: 50));
+                  });
+                  setState(() {
+                    _selectedClientIds.clear();
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: 'Search clients...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(30),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade100,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 10,
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            _searchDebounce?.cancel();
+                            context.read<ClientsBloc>().add(
+                              SearchClients(''),
+                            );
+                            setState(() {
+                              _selectedClientIds.clear();
+                            });
+                          },
+                        )
+                      : Icon(
+                          Icons.search,
+                          color: Colors.grey.shade400,
+                          size: 20,
+                        ),
+                ),
+              ),
+            ] else ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Clients',
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.secondaryColor,
                         ),
                       ),
-              ],
-            ),
+                      if (_isSelectingAll) ...[
+                        const SizedBox(width: 12),
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ],
+                    ],
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: TextField(
+                        controller: _searchController,
+                        onChanged: (val) {
+                          _searchDebounce?.cancel();
+                          _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+                            context.read<ClientsBloc>().add(SearchClients(val, page: 1, limit: 50));
+                          });
+                          setState(() {
+                            _selectedClientIds.clear();
+                          });
+                        },
+
+                        decoration: InputDecoration(
+                          hintText: 'Search clients...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(30),
+                            borderSide: BorderSide.none,
+                          ),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 24,
+                            vertical: 12,
+                          ),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear, size: 18),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    _searchDebounce?.cancel();
+                                    context.read<ClientsBloc>().add(
+                                      SearchClients(''),
+                                    );
+                                    setState(() {
+                                      _selectedClientIds.clear();
+                                    });
+                                  },
+                                )
+                              : Icon(
+                                  Icons.search,
+                                  color: Colors.grey.shade400,
+                                  size: 20,
+                                 ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (_selectedClientIds.isNotEmpty) ...[
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        final bloc = context.read<ClientsBloc>();
+                        showDialog(
+                          context: context,
+                          builder: (_) => _DeleteSelectedClientsDialog(
+                            selectedCount: _selectedClientIds.length,
+                            onConfirm: () {
+                              bloc.add(DeleteClients(_selectedClientIds.toList()));
+                              setState(() {
+                                _selectedClientIds.clear();
+                              });
+                            },
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.delete_outline, color: Colors.white),
+                      label: Text('Delete Selected (${_selectedClientIds.length})'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(150, 45),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => BlocProvider.value(
+                          value: context.read<ClientsBloc>(),
+                          child: const BulkImportDialog(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add),
+                    label: const Text('bulk_import'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueGrey,
+                      minimumSize: const Size(130, 45),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => const QrCodeDialog(),
+                      );
+                    },
+                    icon: const Icon(Icons.qr_code),
+                    label: const Text('Generate QR'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.secondaryColor,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(130, 45),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    onPressed: _importFromPhoneContacts,
+                    icon: const Icon(Icons.contacts_outlined),
+                    label: const Text('Pick Contacts'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(130, 45),
+                    ),
+                  ),
+                ],
+              ),
+            ],
 
             const SizedBox(height: 32),
 
@@ -418,6 +676,7 @@ class _ClientsViewState extends State<_ClientsView> {
                                               ),
                                             ),
                                           ),
+
                                           const DataColumn(label: Text('Name', style: TextStyle(fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('Mobile Number', style: TextStyle(fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('Company', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -425,7 +684,43 @@ class _ClientsViewState extends State<_ClientsView> {
                                           const DataColumn(label: Text('Venue', style: TextStyle(fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('Remark', style: TextStyle(fontWeight: FontWeight.bold))),
                                           const DataColumn(label: Text('Added On', style: TextStyle(fontWeight: FontWeight.bold))),
-                                          const DataColumn(label: Text('Action', style: TextStyle(fontWeight: FontWeight.bold))),
+                                          DataColumn(
+                                            label: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                const Text('Action', style: TextStyle(fontWeight: FontWeight.bold)),
+                                                const SizedBox(width: 20),
+                                                Tooltip(
+                                                  message: 'Download CSV',
+                                                  child: InkWell(
+                                                    onTap: _isDownloadingCsv ? null : () => _downloadClientsCsv(state),
+                                                    borderRadius: BorderRadius.circular(20),
+                                                    child: Padding(
+                                                      padding: const EdgeInsets.all(4.0),
+                                                      child: _isDownloadingCsv
+                                                          ? const SizedBox(
+                                                              width: 18,
+                                                              height: 18,
+                                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                                            )
+                                                          : Container(
+                                                              padding: const EdgeInsets.all(6),
+                                                              decoration: BoxDecoration(
+                                                                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                                                                shape: BoxShape.circle,
+                                                              ),
+                                                              child: const Icon(
+                                                                Icons.download_rounded,
+                                                                size: 18,
+                                                                color: AppTheme.primaryColor,
+                                                              ),
+                                                            ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ],
                                         rows: clients.map((client) {
                                           final isSelected = _selectedClientIds.contains(client.id);
@@ -492,94 +787,99 @@ class _ClientsViewState extends State<_ClientsView> {
                           ),
                         ),
                         const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 1,
-                                child: Text(
-                                  state.totalClients == 0
-                                      ? 'No clients'
-                                      : 'Showing $startItem-$endItem of ${state.totalClients} clients',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                        if (isMobile)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
-                                      'Rows per page: ',
+                                      state.totalClients == 0
+                                          ? 'No clients'
+                                          : 'Showing $startItem-$endItem of ${state.totalClients}',
                                       style: TextStyle(
                                         color: Colors.grey.shade600,
-                                        fontSize: 14,
+                                        fontSize: 12,
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
-                                    DropdownButton<int>(
-                                      value: state.limit,
-                                      items: [25, 50, 100].map((int val) {
-                                        return DropdownMenuItem<int>(
-                                          value: val,
-                                          child: Text('$val'),
-                                        );
-                                      }).toList(),
-                                      onChanged: (newLimit) {
-                                        if (newLimit != null) {
-                                          _changePage(context, state, 1, newLimit: newLimit);
-                                        }
-                                      },
-                                      underline: const SizedBox(),
-                                      style: const TextStyle(
-                                        color: AppTheme.secondaryColor,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                      icon: const Icon(Icons.arrow_drop_down, color: AppTheme.secondaryColor),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Rows: ',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        DropdownButton<int>(
+                                          value: state.limit,
+                                          items: [25, 50, 100].map((int val) {
+                                            return DropdownMenuItem<int>(
+                                              value: val,
+                                              child: Text('$val', style: const TextStyle(fontSize: 12)),
+                                            );
+                                          }).toList(),
+                                          onChanged: (newLimit) {
+                                            if (newLimit != null) {
+                                              _changePage(context, state, 1, newLimit: newLimit);
+                                            }
+                                          },
+                                          underline: const SizedBox(),
+                                          style: const TextStyle(
+                                            color: AppTheme.secondaryColor,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                          icon: const Icon(Icons.arrow_drop_down, color: AppTheme.secondaryColor),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 24),
+                                  ],
+                                ),
+                                const Divider(height: 8),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
                                     IconButton(
-                                      icon: const Icon(Icons.first_page),
+                                      icon: const Icon(Icons.first_page, size: 20),
                                       onPressed: state.currentPage > 1
                                           ? () => _changePage(context, state, 1)
                                           : null,
                                       tooltip: 'First Page',
                                     ),
                                     IconButton(
-                                      icon: const Icon(Icons.chevron_left),
+                                      icon: const Icon(Icons.chevron_left, size: 20),
                                       onPressed: state.currentPage > 1
                                           ? () => _changePage(context, state, state.currentPage - 1)
                                           : null,
                                       tooltip: 'Previous Page',
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Page ${state.currentPage} of ${state.totalPages}',
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                                      child: Text(
+                                        'Page ${state.currentPage} of ${state.totalPages}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
                                     IconButton(
-                                      icon: const Icon(Icons.chevron_right),
+                                      icon: const Icon(Icons.chevron_right, size: 20),
                                       onPressed: state.currentPage < state.totalPages
                                           ? () => _changePage(context, state, state.currentPage + 1)
                                           : null,
                                       tooltip: 'Next Page',
                                     ),
                                     IconButton(
-                                      icon: const Icon(Icons.last_page),
+                                      icon: const Icon(Icons.last_page, size: 20),
                                       onPressed: state.currentPage < state.totalPages
                                           ? () => _changePage(context, state, state.totalPages)
                                           : null,
@@ -587,14 +887,113 @@ class _ClientsViewState extends State<_ClientsView> {
                                     ),
                                   ],
                                 ),
-                              ),
-                              const Expanded(
-                                flex: 1,
-                                child: SizedBox.shrink(),
-                              ),
-                            ],
+                              ],
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 1,
+                                  child: Text(
+                                    state.totalClients == 0
+                                        ? 'No clients'
+                                        : 'Showing $startItem-$endItem of ${state.totalClients} clients',
+                                    style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        'Rows per page: ',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      DropdownButton<int>(
+                                        value: state.limit,
+                                        items: [25, 50, 100].map((int val) {
+                                          return DropdownMenuItem<int>(
+                                            value: val,
+                                            child: Text('$val'),
+                                          );
+                                        }).toList(),
+                                        onChanged: (newLimit) {
+                                          if (newLimit != null) {
+                                            _changePage(context, state, 1, newLimit: newLimit);
+                                          }
+                                        },
+                                        underline: const SizedBox(),
+                                        style: const TextStyle(
+                                          color: AppTheme.secondaryColor,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        icon: const Icon(Icons.arrow_drop_down, color: AppTheme.secondaryColor),
+                                      ),
+                                      const SizedBox(width: 24),
+                                      IconButton(
+                                        icon: const Icon(Icons.first_page),
+                                        onPressed: state.currentPage > 1
+                                            ? () => _changePage(context, state, 1)
+                                            : null,
+                                        tooltip: 'First Page',
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.chevron_left),
+                                        onPressed: state.currentPage > 1
+                                            ? () => _changePage(context, state, state.currentPage - 1)
+                                            : null,
+                                        tooltip: 'Previous Page',
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Page ${state.currentPage} of ${state.totalPages}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        icon: const Icon(Icons.chevron_right),
+                                        onPressed: state.currentPage < state.totalPages
+                                            ? () => _changePage(context, state, state.currentPage + 1)
+                                            : null,
+                                        tooltip: 'Next Page',
+                                      ),
+                                      IconButton(
+                                        icon: const Icon(Icons.last_page),
+                                        onPressed: state.currentPage < state.totalPages
+                                            ? () => _changePage(context, state, state.totalPages)
+                                            : null,
+                                        tooltip: 'Last Page',
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Expanded(
+                                  flex: 1,
+                                  child: SizedBox.shrink(),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
                       ],
                     );
                   }

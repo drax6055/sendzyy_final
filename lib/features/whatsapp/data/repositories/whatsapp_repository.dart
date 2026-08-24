@@ -8,6 +8,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:iFloraBuzz/features/credits/data/models/panel_plan.dart';
 import 'package:iFloraBuzz/features/templates/data/models/app_entry.dart';
+import 'package:iFloraBuzz/core/utils/snackbar_utils.dart';
 
 class WhatsAppRepository {
   final Dio _dio;
@@ -91,7 +92,9 @@ class WhatsAppRepository {
     String? mediaId,
     String? mediaType,
     String? campaignId,
-    Map<int, String>? variables, // {1: 'John', 2: '+91...', 3: 'ABC Co.'}
+    String? recipientName,          // client name stored in recipient doc for report display
+    Map<int, String>? variables,       // body variables {1: 'John', 2: '+91...', 3: 'ABC Co.'}
+    Map<int, String>? headerVariables, // header TEXT variables {1: 'value'}
   }) async {
     try {
       // Build body component parameters from variables map
@@ -105,7 +108,7 @@ class WhatsAppRepository {
 
       final List<Map<String, dynamic>> components = [];
 
-      // Header component (media)
+      // Header component — media takes priority over text variables
       if (mediaId != null && mediaType != null) {
         components.add({
           'type': 'header',
@@ -116,6 +119,13 @@ class WhatsAppRepository {
             }
           ],
         });
+      } else if (headerVariables != null && headerVariables.isNotEmpty) {
+        // TEXT header with {{n}} variables
+        final sortedHeaderKeys = headerVariables.keys.toList()..sort();
+        final headerParams = sortedHeaderKeys
+            .map((k) => {'type': 'text', 'text': headerVariables[k] ?? ''})
+            .toList();
+        components.add({'type': 'header', 'parameters': headerParams});
       }
 
       // Body component (variables)
@@ -129,6 +139,8 @@ class WhatsAppRepository {
           'to': to,
           'type': 'template',
           'campaignId': campaignId,
+          if (recipientName != null && recipientName.isNotEmpty)
+            'recipientName': recipientName,
           'template': {
             'name': templateName,
             'language': {'code': languageCode},
@@ -142,32 +154,57 @@ class WhatsAppRepository {
       }
       return null;
     } catch (e) {
-      print('SEND MESSAGE ERROR: $e');
-      return null;
+      String errorMessage = 'Failed to send message: $e';
+      if (e is DioException) {
+        final errorData = e.response?.data;
+        if (errorData is Map && errorData.containsKey('error')) {
+          errorMessage = errorData['error'].toString();
+        } else if (errorData is Map && errorData.containsKey('message')) {
+          errorMessage = errorData['message'].toString();
+        } else if (e.message != null && e.message!.isNotEmpty) {
+          errorMessage = e.message!;
+        }
+      }
+      throw Exception(errorMessage);
     }
   }
 
-  Future<bool> sendFreeFormMessage({
+  Future<String?> sendFreeFormMessage({
     required String to,
     required String text,
+    String? replyToMessageId,
+    String? replyToWamid,
   }) async {
     try {
       final response = await _dio.post(
         '/send-message',
-        data: {'to': to, 'type': 'text', 'text': text},
+        data: {
+          'to': to,
+          'type': 'text',
+          'text': text,
+          if (replyToMessageId != null) 'replyToMessageId': replyToMessageId,
+          if (replyToWamid != null) 'replyToWamid': replyToWamid,
+        },
       );
-
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map) {
+          return data['wamid']?.toString() ?? data['id']?.toString();
+        }
+      }
+      return null;
     } catch (e) {
-      return false;
+      return null;
     }
   }
 
-  Future<bool> sendDirectMediaMessage({
+  Future<String?> sendDirectMediaMessage({
     required String to,
     required String mediaId,
     required String type, // 'image' | 'video' | 'audio' | 'document'
     String? filename,     // optional filename for document
+    String? replyToMessageId,
+    String? replyToWamid,
   }) async {
     try {
       final response = await _dio.post(
@@ -177,12 +214,21 @@ class WhatsAppRepository {
           'type': type,
           'mediaId': mediaId,
           if (filename != null) 'text': filename,
+          if (replyToMessageId != null) 'replyToMessageId': replyToMessageId,
+          if (replyToWamid != null) 'replyToWamid': replyToWamid,
         },
       );
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map) {
+          return data['wamid']?.toString() ?? data['id']?.toString();
+        }
+      }
+      return null;
     } catch (e) {
-      print('SEND DIRECT MEDIA MESSAGE ERROR: $e');
-      return false;
+      final errorMessage = parseErrorMessage(e, 'Failed to send direct media message');
+      showGlobalSnackBar(errorMessage);
+      return null;
     }
   }
 
@@ -200,7 +246,8 @@ class WhatsAppRepository {
       );
       return response.statusCode == 200 && response.data['success'] == true;
     } catch (e) {
-      print('SEND OTP ERROR: $e');
+      final errorMessage = parseErrorMessage(e, 'Failed to send OTP');
+      showGlobalSnackBar(errorMessage);
       return false;
     }
   }
@@ -307,7 +354,7 @@ class WhatsAppRepository {
           authPayload['message_send_ttl_seconds'] = messageSendTtlSeconds;
         }
 
-        print('Auth Template Creation Payload: ${jsonEncode(authPayload)}');
+    
 
         final authResponse = await _dio.post('/create-template', data: authPayload);
         return authResponse.statusCode == 200;
@@ -341,7 +388,7 @@ class WhatsAppRepository {
               'type': 'HEADER',
               'format': 'TEXT',
               'text': sanitizedHeader,
-              if (sanitizedHeader.contains('{{1}}'))
+              if (sanitizedHeader.contains('{{'))
                 'example': {
                   'header_text': ['Sample Header'],
                 },
@@ -353,7 +400,7 @@ class WhatsAppRepository {
               'example': {
                 'body_text': [
                   List.generate(
-                    RegExp(r'\{\{\d+\}\}').allMatches(body).length,
+                    _getMaxVariableIndex(body),
                     (index) => 'Sample ${index + 1}',
                   ),
                 ],
@@ -387,14 +434,14 @@ class WhatsAppRepository {
         ],
       };
 
-      print('Template Creation Payload: ${jsonEncode(payload)}');
+  
 
       final response = await _dio.post('/create-template', data: payload);
 
       return response.statusCode == 200;
     } on DioException catch (e) {
       final errorData = e.response?.data;
-      print('Template Creation Error response: $errorData');
+      
       String errorMessage = 'Error creating template';
 
       if (errorData is Map) {
@@ -413,10 +460,11 @@ class WhatsAppRepository {
       } else {
         errorMessage = e.message ?? errorMessage;
       }
-      throw Exception(errorMessage);
+      throw errorMessage;
     } catch (e) {
-      print('Template Creation Unknown error: $e');
-      throw Exception('Error creating template: $e');
+      final errorMessage = parseErrorMessage(e, 'Error creating template');
+      showGlobalSnackBar(errorMessage);
+      throw errorMessage;
     }
   }
 
@@ -606,7 +654,7 @@ class WhatsAppRepository {
       if (e is DioException) {
         final resp = e.response;
         if (resp != null) {
-          print('META UPLOAD ERROR: ${resp.data}');
+       
           final data = resp.data;
           String? message;
 
@@ -1170,6 +1218,17 @@ class WhatsAppRepository {
     } catch (e) {
       rethrow;
     }
+  }
+
+  int _getMaxVariableIndex(String text) {
+    final matches = RegExp(r'\{\{(\d+)\}\}').allMatches(text);
+    if (matches.isEmpty) return 0;
+    int maxIndex = 0;
+    for (final m in matches) {
+      final idx = int.tryParse(m.group(1) ?? '') ?? 0;
+      if (idx > maxIndex) maxIndex = idx;
+    }
+    return maxIndex > 0 ? maxIndex : matches.length;
   }
 }
 

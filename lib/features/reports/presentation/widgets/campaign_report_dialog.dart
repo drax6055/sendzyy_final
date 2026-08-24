@@ -4,6 +4,7 @@ import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/retry_repository.dart';
 import 'package:iFloraBuzz/features/reports/presentation/utils/pdf_utils.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import 'package:intl/intl.dart';
 
 class CampaignReportDialog extends StatefulWidget {
@@ -151,11 +152,17 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveHelper.isMobile(context);
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 40,
+        vertical: isMobile ? 24 : 40,
+      ),
       child: Container(
-        width: 640,
-        constraints: const BoxConstraints(maxHeight: 680),
+        width: isMobile ? double.infinity : 640,
+        constraints: BoxConstraints(maxHeight: isMobile ? 600 : 680),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -399,6 +406,7 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
   }
 
   Widget _buildPhaseReportContent(Map<String, dynamic> report) {
+    final isMobile = ResponsiveHelper.isMobile(context);
     final totalRecipients = (report['totalRecipients'] as num?)?.toInt() ?? 0;
     final cumulativeSuccess =
         (report['cumulativeSuccess'] as num?)?.toInt() ?? 0;
@@ -417,41 +425,78 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
             : campaignStatus;
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: EdgeInsets.all(isMobile ? 12 : 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              _summaryCard(
-                'Total',
-                '$totalRecipients',
-                Icons.people_outline,
-                Colors.blue,
-              ),
-              const SizedBox(width: 12),
-              _summaryCard(
-                'Delivered',
-                '$cumulativeSuccess',
-                Icons.done_all,
-                Colors.green,
-              ),
-              const SizedBox(width: 12),
-              _summaryCard(
-                'Success Rate',
-                '${overallRate.toStringAsFixed(1)}%',
-                Icons.percent,
-                _rateColor(overallRate),
-              ),
-              const SizedBox(width: 12),
-              _summaryCard(
-                'Status',
-                _campaignStatusLabel(displayStatus),
-                _campaignStatusIcon(displayStatus),
-                _campaignStatusColor(displayStatus),
-              ),
-            ],
-          ),
+          if (isMobile) ...[
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+              childAspectRatio: 2.2,
+              children: [
+                _summaryCard(
+                  'Total',
+                  '$totalRecipients',
+                  Icons.people_outline,
+                  Colors.blue,
+                ),
+                _summaryCard(
+                  'Delivered',
+                  '$cumulativeSuccess',
+                  Icons.done_all,
+                  Colors.green,
+                ),
+                _summaryCard(
+                  'Success Rate',
+                  '${overallRate.toStringAsFixed(1)}%',
+                  Icons.percent,
+                  _rateColor(overallRate),
+                ),
+                _summaryCard(
+                  'Status',
+                  _campaignStatusLabel(displayStatus),
+                  _campaignStatusIcon(displayStatus),
+                  _campaignStatusColor(displayStatus),
+                ),
+              ],
+            ),
+          ] else ...[
+            Row(
+              children: [
+                _summaryCard(
+                  'Total',
+                  '$totalRecipients',
+                  Icons.people_outline,
+                  Colors.blue,
+                ),
+                const SizedBox(width: 12),
+                _summaryCard(
+                  'Delivered',
+                  '$cumulativeSuccess',
+                  Icons.done_all,
+                  Colors.green,
+                ),
+                const SizedBox(width: 12),
+                _summaryCard(
+                  'Success Rate',
+                  '${overallRate.toStringAsFixed(1)}%',
+                  Icons.percent,
+                  _rateColor(overallRate),
+                ),
+                const SizedBox(width: 12),
+                _summaryCard(
+                  'Status',
+                  _campaignStatusLabel(displayStatus),
+                  _campaignStatusIcon(displayStatus),
+                  _campaignStatusColor(displayStatus),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 24),
           const Text(
             'Phase Breakdown',
@@ -476,30 +521,41 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
     IconData icon,
     Color color,
   ) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withValues(alpha: 0.15)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 18, color: color),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: color,
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 16, color: color),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: color,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 11, color: Colors.grey),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
@@ -600,25 +656,34 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
               ),
           ] else ...[
             const SizedBox(height: 12),
-            Row(
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                _statPill('Sent', successCount + failureCount, Colors.blue),
-                const SizedBox(width: 8),
-                _statPill('Delivered', successCount, Colors.green),
-                const SizedBox(width: 8),
-                _statPill('Failed', failureCount, Colors.red),
-                const Spacer(),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _statPill('Sent', successCount + failureCount, Colors.blue),
+                    const SizedBox(width: 6),
+                    _statPill('Delivered', successCount, Colors.green),
+                    const SizedBox(width: 6),
+                    _statPill('Failed', failureCount, Colors.red),
+                  ],
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       '${successRate.toStringAsFixed(1)}%',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 13,
                         color: _rateColor(successRate),
                       ),
                     ),
+                    const SizedBox(width: 4),
                     const Text(
                       'success rate',
                       style: TextStyle(fontSize: 10, color: Colors.grey),
@@ -905,6 +970,7 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
         final r = filtered[i];
         final status = r['status'] as String? ?? 'sent';
         final to = r['to'] as String? ?? '-';
+        final name = r['name'] as String?;
         final sentAt = r['sentAt'] as String?;
         final deliveredAt = r['deliveredAt'] as String?;
         final readAt = r['readAt'] as String?;
@@ -927,10 +993,20 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
             ),
           ),
           title: Text(
-            to,
+            name != null && name.isNotEmpty ? name : to,
             style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
           ),
-          subtitle: _buildTimeline(sentAt, deliveredAt, readAt, failedAt),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (name != null && name.isNotEmpty)
+                Text(
+                  to,
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                ),
+              _buildTimeline(sentAt, deliveredAt, readAt, failedAt),
+            ],
+          ),
           trailing: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(

@@ -16,6 +16,9 @@ class SendBulkMessages extends MessageEvent {
   final String language;
   final String? mediaId;
   final String? mediaType;
+  /// Shared header text variable values for every recipient (e.g. {1: 'Hello'}).
+  /// Per-recipient header variables are carried inside each [RecipientData.headerVariables].
+  final Map<int, String>? headerVariables;
 
   SendBulkMessages(
     this.recipients,
@@ -23,6 +26,7 @@ class SendBulkMessages extends MessageEvent {
     this.language, {
     this.mediaId,
     this.mediaType,
+    this.headerVariables,
   });
 
   @override
@@ -76,27 +80,50 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       final String campaignId = DateTime.now().millisecondsSinceEpoch.toString();
 
       try {
-        for (int i = 0; i < total; i++) {
-          emit(MessageSending(i + 1, total));
+        const int batchSize = 10;
+        int processedCount = 0;
 
-          final recipient = event.recipients[i];
-
-          final String? wamid = await _repository.sendMessage(
-            to: recipient.mobileNumber,
-            templateName: event.template,
-            languageCode: event.language,
-            mediaId: event.mediaId,
-            mediaType: event.mediaType,
-            campaignId: campaignId,
-            variables: recipient.variables,
+        for (int i = 0; i < total; i += batchSize) {
+          final chunk = event.recipients.sublist(
+            i,
+            (i + batchSize > total) ? total : i + batchSize,
           );
 
-          if (wamid != null) {
-            if (success == 0) dispatchedAt = DateTime.now();
-            success++;
-          } else {
-            failure++;
+          final results = await Future.wait(chunk.map((recipient) async {
+            final Map<int, String> effectiveHeaderVars = {
+              ...?event.headerVariables,
+              ...recipient.headerVariables,
+            };
+
+            try {
+              return await _repository.sendMessage(
+                to: recipient.mobileNumber,
+                templateName: event.template,
+                languageCode: event.language,
+                mediaId: event.mediaId,
+                mediaType: event.mediaType,
+                campaignId: campaignId,
+                recipientName: recipient.name,
+                variables: recipient.variables,
+                headerVariables: effectiveHeaderVars.isNotEmpty ? effectiveHeaderVars : null,
+              );
+            } catch (err) {
+              debugPrint('[MessageBloc] Error sending message to ${recipient.mobileNumber}: $err');
+              return null;
+            }
+          }));
+
+          for (final wamid in results) {
+            if (wamid != null) {
+              if (success == 0) dispatchedAt = DateTime.now();
+              success++;
+            } else {
+              failure++;
+            }
           }
+
+          processedCount += chunk.length;
+          emit(MessageSending(processedCount, total));
         }
 
         // Trigger phase 1 completion before emitting the final state so the

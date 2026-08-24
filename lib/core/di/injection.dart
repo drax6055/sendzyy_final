@@ -1,6 +1,5 @@
 import 'package:get_it/get_it.dart';
 import 'package:dio/dio.dart';
-import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:iFloraBuzz/core/services/encryption_service.dart';
@@ -17,11 +16,20 @@ import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart'
 import 'package:iFloraBuzz/features/clients/data/repositories/group_repository.dart';
 import 'package:iFloraBuzz/features/clients/presentation/bloc/group_bloc.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/retry_repository.dart';
+import 'package:iFloraBuzz/features/catalog/data/repositories/catalog_repository.dart';
+import 'package:iFloraBuzz/features/catalog/presentation/bloc/catalog_bloc.dart';
 import '../constants/app_constants.dart';
 
 import 'package:iFloraBuzz/features/notifications/data/datasources/notification_remote_datasource.dart';
 import 'package:iFloraBuzz/features/notifications/data/repositories/notification_repository.dart';
 import 'package:iFloraBuzz/features/notifications/presentation/bloc/notification_bloc.dart';
+import 'package:iFloraBuzz/core/services/calling_webrtc_service.dart';
+import 'package:iFloraBuzz/features/calling/data/repositories/calling_repository.dart';
+import 'package:iFloraBuzz/features/calling/data/repositories/calling_repository_impl.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_control_bloc.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_permission_bloc.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_settings_bloc.dart';
+import 'package:iFloraBuzz/features/calling/presentation/bloc/call_log_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -54,37 +62,21 @@ Future<void> init() async {
         },
       ),
     );
-
-    dio.interceptors.add(
-      PrettyDioLogger(
-        requestHeader: true,
-        requestBody: true,
-        responseBody: true,
-        responseHeader: false,
-        error: true,
-        compact: true,
-        maxWidth: 90,
-      ),
-    );
     return dio;
   });
 
   // Repository
-  getIt.registerLazySingleton(
-    () => WhatsAppRepository(getIt(), getIt()),
-  );
-  getIt.registerLazySingleton(
-    () => ClientRepository(getIt()),
-  );
-  getIt.registerLazySingleton(
-    () => ChatbotRepository(getIt()),
-  );
+  getIt.registerLazySingleton(() => WhatsAppRepository(getIt(), getIt()));
+  getIt.registerLazySingleton(() => ClientRepository(getIt()));
+  getIt.registerLazySingleton(() => ChatbotRepository(getIt()));
   getIt.registerLazySingleton(() => GroupRepository(getIt()));
   getIt.registerLazySingleton(() => RetryRepository(getIt()));
 
   // Notifications Data Layer
   getIt.registerLazySingleton(() => NotificationRemoteDataSource(dio: getIt()));
-  getIt.registerLazySingleton(() => NotificationRepository(remoteDataSource: getIt()));
+  getIt.registerLazySingleton(
+    () => NotificationRepository(remoteDataSource: getIt()),
+  );
 
   // Services
   getIt.registerLazySingleton(() => EncryptionService());
@@ -116,4 +108,27 @@ Future<void> init() async {
 
   // Features - Notifications
   getIt.registerFactory(() => NotificationBloc(repository: getIt()));
+
+  // Features - Calling
+  getIt.registerLazySingleton<CallingRepository>(
+    () => CallingRepositoryImpl(getIt(), getIt()),
+  );
+  getIt.registerFactory<CallingWebRTCService>(
+    () => CallingWebRTCService.create(),
+  );
+  getIt.registerLazySingleton(
+    () => CallControlBloc(repository: getIt(), webrtcService: getIt()),
+  );
+  getIt.registerFactory(
+    () => CallPermissionBloc(getIt()),
+  );
+  getIt.registerFactory(
+    () => CallSettingsBloc(getIt()),
+  );
+  getIt.registerLazySingleton(
+    () => CallLogBloc(),
+  );
+  // Features - Catalog
+  getIt.registerLazySingleton(() => CatalogRepository(getIt()));
+  getIt.registerFactory(() => CatalogBloc(getIt()));
 }

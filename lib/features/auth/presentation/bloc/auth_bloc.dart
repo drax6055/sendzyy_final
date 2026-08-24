@@ -70,6 +70,13 @@ class AuthSubscriptionExpired extends AuthState {
   List<Object> get props => [message];
 }
 
+class AuthAccountInactive extends AuthState {
+  final String message;
+  AuthAccountInactive(this.message);
+  @override
+  List<Object> get props => [message];
+}
+
 class AuthRegistered extends AuthState {
   final String regToken;
   AuthRegistered(this.regToken);
@@ -204,6 +211,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             emit(AuthSubscriptionExpired(
               e.response?.data?['message'] ??
                   'Your subscription has expired. Please renew your plan.',
+            ));
+            return;
+          }
+          if (errCode == 'account_inactive') {
+            emit(AuthAccountInactive(
+              e.response?.data?['message'] ??
+                  'Your account is inactive. Please contact support.',
             ));
             return;
           }

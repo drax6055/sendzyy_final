@@ -81,7 +81,8 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
 
   void _onScroll() {
     if (_searchDebounce?.isActive == true) return;
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       if (!_isLoading && _currentPage < _totalPages) {
         _loadClients(page: _currentPage + 1);
       }
@@ -127,9 +128,7 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: 500,
         height: 600,
@@ -142,10 +141,7 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
               children: [
                 const Text(
                   'Select Clients',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
@@ -184,22 +180,16 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                           _loadClients(page: 1);
                         },
                       )
-                    : Icon(
-                        Icons.search,
-                        color: Colors.grey.shade400,
-                        size: 20,
-                      ),
+                    : Icon(Icons.search, color: Colors.grey.shade400, size: 20),
               ),
             ),
-            
+
             const SizedBox(height: 16),
             Expanded(
               child: Builder(
                 builder: (context) {
                   if (_isLoading && _clients.isEmpty) {
-                    return const Center(
-                      child: CircularProgressIndicator(),
-                    );
+                    return const Center(child: CircularProgressIndicator());
                   }
 
                   if (_errorMessage != null && _clients.isEmpty) {
@@ -217,7 +207,11 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Icon(Icons.people_outline, size: 48, color: Colors.grey.shade400),
+                          Icon(
+                            Icons.people_outline,
+                            size: 48,
+                            color: Colors.grey.shade400,
+                          ),
                           const SizedBox(height: 12),
                           Text(
                             _searchController.text.isNotEmpty
@@ -262,9 +256,15 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                             TextButton.icon(
                               onPressed: () {
                                 setState(() {
-                                  final allSelected = _clients.every((c) =>
-                                      _selectedClients.containsKey(c.mobileNumber) ||
-                                      widget.existingNumbers.contains(c.mobileNumber));
+                                  final allSelected = _clients.every(
+                                    (c) =>
+                                        _selectedClients.containsKey(
+                                          c.mobileNumber,
+                                        ) ||
+                                        widget.existingNumbers.contains(
+                                          c.mobileNumber,
+                                        ),
+                                  );
                                   if (allSelected) {
                                     _selectedClients.clear();
                                     _allTotalSelected = false;
@@ -273,7 +273,9 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                       _selectAllTotalClients();
                                     } else {
                                       for (final c in _clients) {
-                                        if (!widget.existingNumbers.contains(c.mobileNumber)) {
+                                        if (!widget.existingNumbers.contains(
+                                          c.mobileNumber,
+                                        )) {
                                           _selectedClients[c.mobileNumber] = c;
                                         }
                                       }
@@ -282,17 +284,29 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                 });
                               },
                               icon: Icon(
-                                _clients.every((c) =>
-                                        _selectedClients.containsKey(c.mobileNumber) ||
-                                        widget.existingNumbers.contains(c.mobileNumber))
+                                _clients.every(
+                                      (c) =>
+                                          _selectedClients.containsKey(
+                                            c.mobileNumber,
+                                          ) ||
+                                          widget.existingNumbers.contains(
+                                            c.mobileNumber,
+                                          ),
+                                    )
                                     ? Icons.clear_all
                                     : Icons.done_all,
                                 size: 18,
                               ),
                               label: Text(
-                                _clients.every((c) =>
-                                        _selectedClients.containsKey(c.mobileNumber) ||
-                                        widget.existingNumbers.contains(c.mobileNumber))
+                                _clients.every(
+                                      (c) =>
+                                          _selectedClients.containsKey(
+                                            c.mobileNumber,
+                                          ) ||
+                                          widget.existingNumbers.contains(
+                                            c.mobileNumber,
+                                          ),
+                                    )
                                     ? 'Clear All'
                                     : 'Select All',
                               ),
@@ -313,7 +327,10 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                   ),
                                 );
                               },
-                              icon: const Icon(Icons.person_add_alt_1, size: 18),
+                              icon: const Icon(
+                                Icons.person_add_alt_1,
+                                size: 18,
+                              ),
                               label: const Text('Add Client'),
                               style: TextButton.styleFrom(
                                 foregroundColor: AppTheme.secondaryColor,
@@ -326,13 +343,18 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                 height: 12,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 1.5,
-                                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppTheme.primaryColor,
+                                  ),
                                 ),
                               ),
                             ] else ...[
                               Text(
                                 '$_totalClients results',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
                               ),
                             ],
                           ],
@@ -352,7 +374,9 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                   child: SizedBox(
                                     width: 24,
                                     height: 24,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   ),
                                 ),
                               );
@@ -362,7 +386,9 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                             final isAlreadyAdded = widget.existingNumbers
                                 .contains(client.mobileNumber);
                             final isSelected =
-                                _selectedClients.containsKey(client.mobileNumber) ||
+                                _selectedClients.containsKey(
+                                  client.mobileNumber,
+                                ) ||
                                 isAlreadyAdded;
 
                             return CheckboxListTile(
@@ -372,9 +398,13 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                   : (bool? value) {
                                       setState(() {
                                         if (value == true) {
-                                          _selectedClients[client.mobileNumber] = client;
+                                          _selectedClients[client
+                                                  .mobileNumber] =
+                                              client;
                                         } else {
-                                          _selectedClients.remove(client.mobileNumber);
+                                          _selectedClients.remove(
+                                            client.mobileNumber,
+                                          );
                                           _allTotalSelected = false;
                                         }
                                       });
@@ -383,14 +413,11 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                 children: [
                                   CircleAvatar(
                                     radius: 16,
-                                    backgroundColor: AppTheme
-                                        .secondaryColor
-                                        .withOpacity(0.1),
+                                    backgroundColor: AppTheme.secondaryColor
+                                        .withValues(alpha: 0.1),
                                     child: Text(
                                       client.name.trim().isNotEmpty
-                                          ? client.name
-                                                .trim()[0]
-                                                .toUpperCase()
+                                          ? client.name.trim()[0].toUpperCase()
                                           : '?',
                                       style: const TextStyle(
                                         color: AppTheme.secondaryColor,
@@ -422,15 +449,13 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                   ),
                                   if (isAlreadyAdded)
                                     Container(
-                                      padding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 2,
-                                          ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: Colors.grey.shade200,
-                                        borderRadius:
-                                            BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: const Text(
                                         'Added',
@@ -443,8 +468,7 @@ class _ClientSelectionDialogState extends State<ClientSelectionDialog> {
                                 ],
                               ),
                               activeColor: AppTheme.primaryColor,
-                              controlAffinity:
-                                  ListTileControlAffinity.leading,
+                              controlAffinity: ListTileControlAffinity.leading,
                               contentPadding: EdgeInsets.zero,
                             );
                           },

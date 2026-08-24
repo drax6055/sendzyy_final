@@ -42,7 +42,9 @@ class _FakeWhatsAppRepository extends WhatsAppRepository {
     String? mediaId,
     String? mediaType,
     String? campaignId,
+    String? recipientName, // added — ignored by fake
     Map<int, String>? variables,
+    Map<int, String>? headerVariables, // added — ignored by fake
   }) async {
     callLog.add(_CallType.sendMessage);
     return sendMessageSucceeds ? 'fake-wamid-${callLog.length}' : null;
@@ -87,19 +89,6 @@ Future<MessageSent> _waitForMessageSent(MessageBloc bloc) async {
   }
 }
 
-/// Waits until the bloc emits a [MessageError] state (or times out after 3 s).
-Future<MessageError> _waitForMessageError(MessageBloc bloc) async {
-  final deadline = DateTime.now().add(const Duration(seconds: 3));
-  while (true) {
-    if (bloc.state is MessageError) return bloc.state as MessageError;
-    if (DateTime.now().isAfter(deadline)) {
-      throw StateError(
-        'Timed out waiting for MessageError. Current state: ${bloc.state}',
-      );
-    }
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Test setup

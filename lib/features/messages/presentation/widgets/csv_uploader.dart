@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:html' as html;
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
@@ -13,17 +13,12 @@ class CsvUploader extends StatelessWidget {
 
   const CsvUploader({super.key, required this.onParsed});
 
-  void _downloadSample() {
+  void _downloadSample() async {
     const csv = 
         '919876543210,John,Hello,Acme Corp\n'
         '919123456789,Jane,Hi,Example Ltd\n'
         '917890123456,Bob,Hey,Bob Enterprises\n';
-    final blob = html.Blob([csv], 'text/csv');
-    final url = html.Url.createObjectUrlFromBlob(blob);
-    html.AnchorElement(href: url)
-      ..setAttribute('download', 'sample_campaign.csv')
-      ..click();
-    html.Url.revokeObjectUrl(url);
+    await webDownloadBytes(utf8.encode(csv), 'sample_campaign.csv', mimeType: 'text/csv');
   }
 
   Future<void> _pickFile(BuildContext context) async {
@@ -71,6 +66,7 @@ class CsvUploader extends StatelessWidget {
           seen.add(normalized);
           valid.add(RecipientData(
             mobileNumber: normalized,
+            name: r.name,
             variables: r.variables,
             fromCsv: true,
           ));

@@ -9,6 +9,7 @@ import 'package:iFloraBuzz/features/templates/presentation/pages/test_template_p
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
 import 'package:dio/dio.dart';
+import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 
 class TemplateListPage extends StatefulWidget {
   const TemplateListPage({super.key});
@@ -26,12 +27,14 @@ class _TemplateListPageState extends State<TemplateListPage> {
   @override
   void initState() {
     super.initState();
+    context.read<TemplateBloc>().add(FetchTemplates());
+
     _templateSubscription = getIt<SocketService>().templateUpdateStream.listen((data) {
       if (mounted) {
         final name = data['name'];
         final status = data['status'];
         final reason = data['reason'];
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -43,7 +46,7 @@ class _TemplateListPageState extends State<TemplateListPage> {
             duration: const Duration(seconds: 5),
           ),
         );
-        
+
         context.read<TemplateBloc>().add(FetchTemplates());
       }
     });
@@ -56,17 +59,40 @@ class _TemplateListPageState extends State<TemplateListPage> {
     super.dispose();
   }
 
+  String _categoryLabel(String cat) {
+    switch (cat) {
+      case 'MARKETING':
+        return 'Marketing';
+      case 'UTILITY':
+        return 'Utility';
+      case 'AUTHENTICATION':
+        return 'Authentication';
+      default:
+        return cat;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = ResponsiveHelper.isMobile(context);
     return Scaffold(
+      backgroundColor: Colors.white,
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const CreateTemplatePage()),
-        ),
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreateTemplatePage()),
+          );
+          if (result == true && mounted) {
+            context.read<TemplateBloc>().add(FetchTemplates());
+          }
+        },
         backgroundColor: AppTheme.primaryColor,
-        icon: const Icon(Icons.add),
-        label: const Text('CREATE TEMPLATE'),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'Create Template',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: BlocBuilder<TemplateBloc, TemplateState>(
         builder: (context, state) {
@@ -74,77 +100,143 @@ class _TemplateListPageState extends State<TemplateListPage> {
             return const Center(child: CircularProgressIndicator());
           } else if (state is TemplateLoaded) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(32),
+              padding: EdgeInsets.all(isMobile ? 16 : 32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Message Templates',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.secondaryColor,
-                            ),
+                  if (isMobile) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Message Templates',
+                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.secondaryColor,
+                                ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          onPressed: () =>
+                              context.read<TemplateBloc>().add(FetchTemplates()),
+                          icon: const Icon(Icons.refresh),
+                          style: IconButton.styleFrom(
+                            backgroundColor: Colors.blueGrey,
+                          ),
+                          tooltip: 'Sync with Meta',
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _searchController,
+                      onChanged: (val) {
+                        context.read<TemplateBloc>().add(
+                          SearchTemplates(val),
+                        );
+                        setState(() {});
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search templates...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(30),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  context.read<TemplateBloc>().add(
+                                    SearchTemplates(''),
+                                  );
+                                  setState(() {});
+                                },
+                              )
+                            : Icon(
+                                Icons.search,
+                                color: Colors.grey.shade400,
+                                size: 20,
+                              ),
                       ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: TextField(
-                            controller: _searchController,
-                            onChanged: (val) {
-                              context.read<TemplateBloc>().add(
-                                SearchTemplates(val),
-                              );
-                              setState(() {});
-                            },
-
-                            decoration: InputDecoration(
-                              hintText: 'Search templates...',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(30),
-                                borderSide: BorderSide.none,
+                    ),
+                  ] else ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Message Templates',
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.secondaryColor,
                               ),
-                              filled: true,
-                              fillColor: Colors.grey.shade100,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 24,
-                                vertical: 12,
+                        ),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: TextField(
+                              controller: _searchController,
+                              onChanged: (val) {
+                                context.read<TemplateBloc>().add(
+                                  SearchTemplates(val),
+                                );
+                                setState(() {});
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'Search templates...',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(30),
+                                  borderSide: BorderSide.none,
+                                ),
+                                filled: true,
+                                fillColor: Colors.grey.shade100,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 24,
+                                  vertical: 12,
+                                ),
+                                suffixIcon: _searchController.text.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(Icons.clear, size: 18),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          context.read<TemplateBloc>().add(
+                                            SearchTemplates(''),
+                                          );
+                                          setState(() {});
+                                        },
+                                      )
+                                    : Icon(
+                                        Icons.search,
+                                        color: Colors.grey.shade400,
+                                        size: 20,
+                                      ),
                               ),
-                              suffixIcon: _searchController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear, size: 18),
-                                      onPressed: () {
-                                        _searchController.clear();
-                                        context.read<TemplateBloc>().add(
-                                          SearchTemplates(''),
-                                        );
-                                        setState(() {});
-                                      },
-                                    )
-                                  : Icon(
-                                      Icons.search,
-                                      color: Colors.grey.shade400,
-                                      size: 20,
-                                    ),
                             ),
                           ),
                         ),
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: () =>
-                            context.read<TemplateBloc>().add(FetchTemplates()),
-                        icon: const Icon(Icons.refresh),
-                        label: const Text('Sync with Meta'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueGrey,
-                          minimumSize: const Size(150, 45),
+                        ElevatedButton.icon(
+                          onPressed: () =>
+                              context.read<TemplateBloc>().add(FetchTemplates()),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Sync with Meta'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blueGrey,
+                            minimumSize: const Size(150, 45),
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
 
                   const SizedBox(height: 16),
 
@@ -246,15 +338,6 @@ class _TemplateListPageState extends State<TemplateListPage> {
         },
       ),
     );
-  }
-
-  String _categoryLabel(String cat) {
-    switch (cat) {
-      case 'MARKETING': return 'Marketing';
-      case 'UTILITY': return 'Utility';
-      case 'AUTHENTICATION': return 'Authentication';
-      default: return cat;
-    }
   }
 
   Widget _buildTemplateCard(
