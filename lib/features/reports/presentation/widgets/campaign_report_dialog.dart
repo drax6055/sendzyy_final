@@ -869,7 +869,6 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
         final int deliveredCount;
         final int readCount;
         final int failedCount;
-        final int clickedCount;
 
         if (all.isEmpty) {
           // No recipient documents yet — fall back to campaign-level fields
@@ -877,7 +876,6 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
           deliveredCount = ((widget.campaign['deliveredCount'] as num? ?? 0).toInt()).clamp(0, 9999999);
           readCount     = (widget.campaign['readCount'] as num? ?? 0).toInt();
           failedCount   = (widget.campaign['failureCount'] as num? ?? 0).toInt();
-          clickedCount  = 0;
         } else {
           // Count directly from the loaded recipient documents
           sentCount     = all.length;
@@ -887,16 +885,6 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
           }).length;
           readCount     = all.where((r) => (r['status'] as String? ?? '') == 'read').length;
           failedCount   = all.where((r) => (r['status'] as String? ?? '') == 'failed').length;
-          clickedCount  = all.where((r) {
-            final clicked = (r['clickedButtons'] as List?) ?? [];
-            final clicks = (r['buttonClicks'] as List?) ?? [];
-            return clicked.isNotEmpty || clicks.isNotEmpty;
-          }).length;
-        }
-
-        final filterOptions = ['all', 'sent', 'delivered', 'read', 'failed'];
-        if (clickedCount > 0 && !filterOptions.contains('clicked')) {
-          filterOptions.add('clicked');
         }
 
         return Column(
@@ -904,23 +892,16 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _statChip('Sent', sentCount, Colors.blue),
-                    const SizedBox(width: 8),
-                    _statChip('Delivered', deliveredCount, Colors.green),
-                    const SizedBox(width: 8),
-                    _statChip('Read', readCount, Colors.orange),
-                    const SizedBox(width: 8),
-                    _statChip('Failed', failedCount, Colors.red),
-                    if (clickedCount > 0) ...[
-                      const SizedBox(width: 8),
-                      _statChip('Clicked', clickedCount, Colors.teal),
-                    ],
-                  ],
-                ),
+              child: Row(
+                children: [
+                  _statChip('Sent', sentCount, Colors.blue),
+                  const SizedBox(width: 8),
+                  _statChip('Delivered', deliveredCount, Colors.green),
+                  const SizedBox(width: 8),
+                  _statChip('Read', readCount, Colors.orange),
+                  const SizedBox(width: 8),
+                  _statChip('Failed', failedCount, Colors.red),
+                ],
               ),
             ),
             Padding(
@@ -929,7 +910,7 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children:
-                      filterOptions
+                      ['all', 'sent', 'delivered', 'read', 'failed']
                           .map(
                             (f) => Padding(
                               padding: const EdgeInsets.only(right: 8),
@@ -975,15 +956,12 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
       );
     }
 
-    final filtered = _recipientFilter == 'all'
-        ? all
-        : _recipientFilter == 'clicked'
-            ? all.where((r) {
-                final clicked = (r['clickedButtons'] as List?) ?? [];
-                final clicks = (r['buttonClicks'] as List?) ?? [];
-                return clicked.isNotEmpty || clicks.isNotEmpty;
-              }).toList()
-            : all.where((r) => (r['status'] ?? 'sent') == _recipientFilter).toList();
+    final filtered =
+        _recipientFilter == 'all'
+            ? all
+            : all
+                .where((r) => (r['status'] ?? 'sent') == _recipientFilter)
+                .toList();
 
     if (filtered.isEmpty) {
       return Center(
