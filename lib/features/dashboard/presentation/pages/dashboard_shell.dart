@@ -559,38 +559,40 @@ class _DashboardShellState extends State<DashboardShell> {
                   ],
                 )
               : null,
-          body: Row(
-            children: [
-              // Desktop Sidebar
-              if (!isMobile && !isTablet) ...[
-                Container(
-                  width: 260,
-                  color: Colors.white,
-                  child: _buildSidebarContent(isDrawer: false),
-                ),
-                const VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: Color(0xFFE0E0E0),
-                ),
-              ],
-              // Main Content
-              Expanded(
-                child: Container(
-                  color: AppTheme.backgroundColor,
-                  child: Column(
-                    children: [
-                      // Header
-                      _buildHeader(),
-                      if (!_checkingOnboarding && _onboardingIncomplete)
-                        _buildOnboardingWarningBanner(),
-                      // Page Content
-                      Expanded(child: _pages[_selectedIndex]),
-                    ],
+          body: SafeArea(
+            child: Row(
+              children: [
+                // Desktop Sidebar
+                if (!isMobile && !isTablet) ...[
+                  Container(
+                    width: 260,
+                    color: Colors.white,
+                    child: _buildSidebarContent(isDrawer: false),
+                  ),
+                  const VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: Color(0xFFE0E0E0),
+                  ),
+                ],
+                // Main Content
+                Expanded(
+                  child: Container(
+                    color: AppTheme.backgroundColor,
+                    child: Column(
+                      children: [
+                        // Header
+                        _buildHeader(),
+                        if (!_checkingOnboarding && _onboardingIncomplete)
+                          _buildOnboardingWarningBanner(),
+                        // Page Content
+                        Expanded(child: _pages[_selectedIndex]),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

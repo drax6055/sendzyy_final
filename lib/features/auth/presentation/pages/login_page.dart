@@ -78,10 +78,11 @@ class _LoginPageState extends State<LoginPage> {
                 fit: BoxFit.cover, // optional
               ),
             ),
-            child: Center(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: 400),
-                padding: const EdgeInsets.all(32),
+            child: SafeArea(
+              child: Center(
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(24),
@@ -183,6 +184,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
+          ),
           ),
         );
       },
