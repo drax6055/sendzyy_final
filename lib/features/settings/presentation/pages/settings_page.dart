@@ -481,103 +481,139 @@ class _SettingsPageState extends State<SettingsPage> {
             ? DateFormat('dd MMM yyyy').format(expiresAt.toLocal())
             : '';
 
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(
-                  Icons.workspace_premium_rounded,
-                  color: AppTheme.secondaryColor,
-                  size: 20,
-                ),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < 600;
+
+            final iconWidget = Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Panel Plan',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
-                    ),
-                    if (expiresAt != null) ...[
-                      const SizedBox(height: 3),
-                      Text(
-                        'Expires $expiryDateFormatted',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+              child: const Icon(
+                Icons.workspace_premium_rounded,
+                color: AppTheme.secondaryColor,
+                size: 20,
               ),
-              // Days-left badge
-              if (daysLeft != null)
-                Container(
-                  margin: const EdgeInsets.only(right: 12),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: badgeColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: badgeColor.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Text(
-                    expiryLabel,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: badgeColor,
-                    ),
+            );
+
+            final textInfoWidget = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Panel Plan',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
                   ),
                 ),
-              SizedBox(
-                width: 130,
-                child: ElevatedButton.icon(
-                  onPressed: widget.onRenewPlan,
-                  icon: const Icon(Icons.refresh_rounded, size: 16),
-                  label: const Text('Renew Plan'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: isExpired || isWarning
-                        ? badgeColor
-                        : AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
+                if (expiresAt != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    'Expires $expiryDateFormatted',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            );
+
+            final badgeWidget = daysLeft != null
+                ? Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+                      horizontal: 10,
+                      vertical: 4,
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    decoration: BoxDecoration(
+                      color: badgeColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: badgeColor.withValues(alpha: 0.3),
+                      ),
                     ),
-                    textStyle: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
+                    child: Text(
+                      expiryLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: badgeColor,
+                      ),
                     ),
-                  ),
+                  )
+                : null;
+
+            final renewButton = ElevatedButton.icon(
+              onPressed: widget.onRenewPlan,
+              icon: const Icon(Icons.refresh_rounded, size: 16),
+              label: const Text('Renew Plan'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: isExpired || isWarning
+                    ? badgeColor
+                    : AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 11,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ],
-          ),
+            );
+
+            return Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: isMobile
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            iconWidget,
+                            const SizedBox(width: 14),
+                            Expanded(child: textInfoWidget),
+                            if (badgeWidget != null) badgeWidget,
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+                        SizedBox(
+                          width: double.infinity,
+                          child: renewButton,
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        iconWidget,
+                        const SizedBox(width: 16),
+                        Expanded(child: textInfoWidget),
+                        if (badgeWidget != null) ...[
+                          Container(
+                            margin: const EdgeInsets.only(right: 12),
+                            child: badgeWidget,
+                          ),
+                        ],
+                        SizedBox(
+                          width: 130,
+                          child: renewButton,
+                        ),
+                      ],
+                    ),
+            );
+          },
         );
       },
     );

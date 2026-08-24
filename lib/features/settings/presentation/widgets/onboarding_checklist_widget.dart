@@ -160,12 +160,14 @@ class _OnboardingChecklistWidgetState extends State<OnboardingChecklistWidget> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'WhatsApp Onboarding Checklist',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.secondaryColor,
+                    const Expanded(
+                      child: Text(
+                        'WhatsApp Onboarding Checklist',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.secondaryColor,
+                        ),
                       ),
                     ),
                     IconButton(
