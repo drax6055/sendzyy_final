@@ -15,50 +15,57 @@ class RetrySystemPage extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isMobile = constraints.maxWidth < 600;
+          final isWide = constraints.maxWidth > 800;
+
           return SingleChildScrollView(
-        padding: EdgeInsets.all(isMobile ? 16 : 32),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ── Page header ──────────────────────────────────────────────
-            Row(
+            padding: EdgeInsets.all(isMobile ? 16 : 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.replay_circle_filled_outlined,
-                      color: AppTheme.secondaryColor, size: 22),
-                ),
-                const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // ── Page header ──────────────────────────────────────────────
+                Row(
                   children: [
-                    Text(
-                      'Retry System',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.secondaryColor,
-                          ),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.replay_circle_filled_outlined,
+                        color: AppTheme.secondaryColor,
+                        size: 22,
+                      ),
                     ),
-                    const Text(
-                      'Configure retry phases and monitor system health',
-                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Retry System',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.secondaryColor,
+                                ),
+                          ),
+                          const Text(
+                            'Configure retry phases and monitor system health',
+                            style: TextStyle(fontSize: 13, color: Colors.grey),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 32),
+                const SizedBox(height: 32),
 
-            // ── Two-column layout ────────────────────────────────────────
-            LayoutBuilder(
-              builder: (context, constraints) {
-                // Side-by-side on wide screens, stacked on narrow
-                if (constraints.maxWidth > 800) {
-                  return Row(
+                // ── Two-column or stacked layout ─────────────────────────────
+                if (isWide)
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Left: Phase Configuration
@@ -67,8 +74,11 @@ class RetrySystemPage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _sectionLabel('Phase Configuration',
-                                Icons.tune_rounded, AppTheme.primaryColor),
+                            _sectionLabel(
+                              'Phase Configuration',
+                              Icons.tune_rounded,
+                              AppTheme.primaryColor,
+                            ),
                             const SizedBox(height: 12),
                             const RetryConfigSection(),
                           ],
@@ -81,36 +91,42 @@ class RetrySystemPage extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _sectionLabel('System Health & Logs',
-                                Icons.monitor_heart_outlined, Colors.deepPurple),
+                            _sectionLabel(
+                              'System Health & Logs',
+                              Icons.monitor_heart_outlined,
+                              Colors.deepPurple,
+                            ),
                             const SizedBox(height: 12),
                             const RetryHealthSection(),
                           ],
                         ),
                       ),
                     ],
-                  );
-                }
-                // Stacked layout for narrow screens
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _sectionLabel('Phase Configuration',
-                        Icons.tune_rounded, AppTheme.primaryColor),
-                    const SizedBox(height: 12),
-                    const RetryConfigSection(),
-                    const SizedBox(height: 24),
-                    _sectionLabel('System Health & Logs',
-                        Icons.monitor_heart_outlined, Colors.deepPurple),
-                    const SizedBox(height: 12),
-                    const RetryHealthSection(),
-                  ],
-                );
-              },
+                  )
+                else
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionLabel(
+                        'Phase Configuration',
+                        Icons.tune_rounded,
+                        AppTheme.primaryColor,
+                      ),
+                      const SizedBox(height: 12),
+                      const RetryConfigSection(),
+                      const SizedBox(height: 24),
+                      _sectionLabel(
+                        'System Health & Logs',
+                        Icons.monitor_heart_outlined,
+                        Colors.deepPurple,
+                      ),
+                      const SizedBox(height: 12),
+                      const RetryHealthSection(),
+                    ],
+                  ),
+              ],
             ),
-          ],
-        ),
-      );
+          );
         },
       ),
     );
