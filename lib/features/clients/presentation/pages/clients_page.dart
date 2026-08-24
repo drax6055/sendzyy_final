@@ -101,8 +101,15 @@ class _ClientsPageState extends State<ClientsPage>
                     );
                   },
                   backgroundColor: Colors.green,
-                  icon: const Icon(Icons.group_add),
-                  label: const Text('CREATE GROUP'),
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.group_add, color: Colors.white),
+                  label: const Text(
+                    'CREATE GROUP',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
       ),
