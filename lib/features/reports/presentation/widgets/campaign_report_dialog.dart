@@ -467,32 +467,40 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
           ] else ...[
             Row(
               children: [
-                _summaryCard(
-                  'Total',
-                  '$totalRecipients',
-                  Icons.people_outline,
-                  Colors.blue,
+                Expanded(
+                  child: _summaryCard(
+                    'Total',
+                    '$totalRecipients',
+                    Icons.people_outline,
+                    Colors.blue,
+                  ),
                 ),
                 const SizedBox(width: 12),
-                _summaryCard(
-                  'Delivered',
-                  '$cumulativeSuccess',
-                  Icons.done_all,
-                  Colors.green,
+                Expanded(
+                  child: _summaryCard(
+                    'Delivered',
+                    '$cumulativeSuccess',
+                    Icons.done_all,
+                    Colors.green,
+                  ),
                 ),
                 const SizedBox(width: 12),
-                _summaryCard(
-                  'Success Rate',
-                  '${overallRate.toStringAsFixed(1)}%',
-                  Icons.percent,
-                  _rateColor(overallRate),
+                Expanded(
+                  child: _summaryCard(
+                    'Success Rate',
+                    '${overallRate.toStringAsFixed(1)}%',
+                    Icons.percent,
+                    _rateColor(overallRate),
+                  ),
                 ),
                 const SizedBox(width: 12),
-                _summaryCard(
-                  'Status',
-                  _campaignStatusLabel(displayStatus),
-                  _campaignStatusIcon(displayStatus),
-                  _campaignStatusColor(displayStatus),
+                Expanded(
+                  child: _summaryCard(
+                    'Status',
+                    _campaignStatusLabel(displayStatus),
+                    _campaignStatusIcon(displayStatus),
+                    _campaignStatusColor(displayStatus),
+                  ),
                 ),
               ],
             ),
@@ -536,7 +544,7 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
             children: [
               Icon(icon, size: 16, color: color),
               const SizedBox(width: 6),
-              Expanded(
+              Flexible(
                 child: Text(
                   value,
                   style: TextStyle(
@@ -1005,6 +1013,46 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                   style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
                 ),
               _buildTimeline(sentAt, deliveredAt, readAt, failedAt),
+              () {
+                final templateBtns = (r['_templateButtons'] as List?)
+                    ?.map((b) => (b is Map ? b['text'] : b)?.toString().trim().toLowerCase())
+                    .whereType<String>()
+                    .toSet() ?? {};
+                final clickedList = (r['clickedButtons'] as List?)
+                    ?.map((b) => b.toString().trim())
+                    .where((b) => templateBtns.isEmpty || templateBtns.contains(b.toLowerCase()))
+                    .toSet()
+                    .toList() ?? [];
+
+                if (clickedList.isEmpty) return const SizedBox.shrink();
+
+                return Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: clickedList.map((btn) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.touch_app, size: 11, color: Colors.green),
+                          const SizedBox(width: 3),
+                          Text(
+                            btn,
+                            style: const TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    )).toList(),
+                  ),
+                );
+              }(),
             ],
           ),
           trailing: Container(
