@@ -501,6 +501,7 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                     _campaignStatusIcon(displayStatus),
                     _campaignStatusColor(displayStatus),
                   ),
+
                 ),
               ],
             ),
@@ -545,6 +546,7 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
               Icon(icon, size: 16, color: color),
               const SizedBox(width: 6),
               Flexible(
+
                 child: Text(
                   value,
                   style: TextStyle(
@@ -1053,6 +1055,7 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                   ),
                 );
               }(),
+
             ],
           ),
           trailing: Container(

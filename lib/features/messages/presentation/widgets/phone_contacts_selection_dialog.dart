@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
+import 'package:iFloraBuzz/core/js/contact_picker_helper.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import 'package:iFloraBuzz/features/clients/data/models/client_model.dart';
@@ -19,7 +20,42 @@ class PhoneContactsSelectionDialog extends StatefulWidget {
   static Future<List<ClientModel>?> show(
     BuildContext context, {
     required List<String> existingNumbers,
-  }) {
+  }) async {
+    // 1. If running on Web with Contact Picker API support (Mobile browsers like Chrome Android / iOS Safari)
+    if (kIsWeb && isWebContactPickerSupported()) {
+      try {
+        final webRaw = await pickWebContacts(multiple: true);
+        if (webRaw == null || webRaw.isEmpty) return null;
+        final List<ClientModel> parsedList = [];
+        final now = DateTime.now();
+        for (int i = 0; i < webRaw.length; i++) {
+          final c = webRaw[i];
+          final names = (c['names'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          final tels = (c['tels'] as List?)?.map((e) => e.toString()).toList() ?? [];
+          final name = names.isNotEmpty && names.first.trim().isNotEmpty
+              ? names.first.trim()
+              : 'Phone Contact';
+          for (final phone in tels) {
+            final clean = phone.replaceAll(RegExp(r'[^\d+]'), '');
+            if (clean.isNotEmpty) {
+              parsedList.add(ClientModel(
+                id: 'web_contact_${now.millisecondsSinceEpoch}_${parsedList.length}',
+                tenantId: 'device_contact',
+                name: name,
+                mobileNumber: clean,
+                companyName: 'Device Contact',
+                createdAt: now,
+              ));
+            }
+          }
+        }
+        return parsedList;
+      } catch (e) {
+        debugPrint('[PhoneContactsSelectionDialog] Error picking web contacts: $e');
+      }
+    }
+
+    // 2. Mobile Native App or Desktop Web fallback modal
     if (ResponsiveHelper.isMobile(context)) {
       return showModalBottomSheet<List<ClientModel>>(
         context: context,
@@ -86,6 +122,7 @@ class _PhoneContactsSelectionDialogState
 
     try {
       if (kIsWeb) {
+        // Desktop Web fallback (since Web Contact Picker API is not available on desktop browsers)
         final repo = getIt<ClientRepository>();
         final result = await repo.getClients(page: 1, limit: 1000);
         setState(() {

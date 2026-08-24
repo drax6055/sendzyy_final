@@ -823,6 +823,7 @@ class WhatsAppRepository {
           }
           return list;
         }
+
       }
     } catch (_) {}
     return [];

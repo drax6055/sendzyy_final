@@ -9,6 +9,7 @@ import 'package:csv/csv.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
 
+
 class PdfUtils {
   static Future<void> generateCampaignReport({
     required List<Map<String, dynamic>> campaigns,
@@ -398,6 +399,7 @@ class PdfUtils {
       }
     }
 
+
     final List<List<dynamic>> rows = [];
     
     // Header information
@@ -449,6 +451,7 @@ class PdfUtils {
     ];
     rows.add(['Recipient Details']);
     rows.add(headers);
+
     
     String fmt(String? iso) {
       if (iso == null) return '-';
@@ -482,6 +485,7 @@ class PdfUtils {
       final List<dynamic> row = [
         r['name'] ?? '-',
         phoneFormatted,
+
         status[0].toUpperCase() + status.substring(1),
         fmt(r['sentAt'] as String?),
         fmt(r['deliveredAt'] as String?),
@@ -496,6 +500,7 @@ class PdfUtils {
       }
 
       rows.add(row);
+
     }
 
     final csvString = const ListToCsvConverter().convert(rows);
