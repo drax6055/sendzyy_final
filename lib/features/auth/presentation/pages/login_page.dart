@@ -109,9 +109,23 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 32),
                       TextFormField(
                         controller: _emailController,
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: 'Email Address',
-                          prefixIcon: Icon(Icons.email_outlined),
+                          prefixIcon: const Icon(Icons.email_outlined),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Colors.white),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Colors.white),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Colors.green, width: 2),
+                          ),
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) return 'Required';
@@ -125,6 +139,20 @@ class _LoginPageState extends State<LoginPage> {
                         decoration: InputDecoration(
                           hintText: 'Password',
                           prefixIcon: const Icon(Icons.lock_outline),
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Colors.white),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Colors.white),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: Colors.green, width: 2),
+                          ),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _isPasswordVisible

@@ -78,9 +78,10 @@ class _MyAppState extends State<MyApp> {
       final code = uri.queryParameters['code'];
       final state = uri.queryParameters['state'];
       final error = uri.queryParameters['error'];
+      final instagramConnected = uri.queryParameters['instagram_connected'];
 
       if (code != null && state != null) {
-        // We are on the redirect URI containing code and state from Instagram
+        // Instagram redirected here with code — bounce to backend callback
         final backendUrl = dotenv.env['BASE_URL'] ?? '';
         final frontendUrl = html.window.location.origin;
 
@@ -89,14 +90,36 @@ class _MyAppState extends State<MyApp> {
             '&state=$state'
             '&frontend_url=${Uri.encodeComponent(frontendUrl)}';
 
-        // Redirect the user's browser tab to the backend callback endpoint
         html.window.location.href = callbackUrl;
-      } else if (error != null) {
-        // Clear query parameters from address bar to avoid showing error again on reload
-        final newUrl = currentUrl.split('?').first;
+
+      } else if (instagramConnected == 'true') {
+        // Backend completed OAuth successfully — clean URL and show success
+        final newUrl = '${html.window.location.origin}/';
         html.window.history.replaceState(null, 'Sendzyy', newUrl);
 
-        // Show the error popup
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final context = navigatorKey.currentContext;
+          if (context != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: const Text(
+                  'Instagram connected successfully!',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                backgroundColor: Colors.green.shade700,
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.all(16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+            );
+          }
+        });
+
+      } else if (error != null) {
+        // Clear query parameters from address bar
+        final newUrl = '${html.window.location.origin}/';
+        html.window.history.replaceState(null, 'Sendzyy', newUrl);
+
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final context = navigatorKey.currentContext;
           if (context != null) {
