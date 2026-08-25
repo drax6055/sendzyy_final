@@ -14,7 +14,7 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 // import 'package:iFloraBuzz/features/calling/presentation/bloc/call_control_bloc.dart';
 // import 'package:iFloraBuzz/features/calling/presentation/pages/active_call_page.dart';
 
-import 'package:iFloraBuzz/features/catalog/presentation/widgets/catalog_product_picker_sheet.dart';
+// import 'package:iFloraBuzz/features/catalog/presentation/widgets/catalog_product_picker_sheet.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -945,22 +945,23 @@ class _ChatPageState extends State<ChatPage> {
                         );
                       },
                     ),
-                    _attachmentOption(
-                      icon: Icons.storefront_rounded,
-                      color: const Color(0xFF10B981),
-                      label: 'Catalog\nMessage',
-                      onTap: () {
-                        Navigator.pop(context);
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (ctx) => CatalogProductPickerSheet(
-                            contactId: contactId,
-                          ),
-                        );
-                      },
-                    ),
+                    // TODO: Work on this module later
+                    // _attachmentOption(
+                    //   icon: Icons.storefront_rounded,
+                    //   color: const Color(0xFF10B981),
+                    //   label: 'Catalog\nMessage',
+                    //   onTap: () {
+                    //     Navigator.pop(context);
+                    //     showModalBottomSheet(
+                    //       context: context,
+                    //       isScrollControlled: true,
+                    //       backgroundColor: Colors.transparent,
+                    //       builder: (ctx) => CatalogProductPickerSheet(
+                    //         contactId: contactId,
+                    //       ),
+                    //     );
+                    //   },
+                    // ),
                   ],
                 ),
               ],
