@@ -574,99 +574,68 @@ class WhatsAppRepository {
       final uploadDio = Dio();
       final authToken = _prefs.getString('auth_token');
 
-      // --- WEB PROXY LOGIC ---
-      if (kIsWeb) {
-        final proxyUrl = '${AppConstants.baseUrl}/upload-media';
-
-        final dynamic fileData;
-        if (file.bytes != null) {
-          fileData = file.bytes;
-        } else {
-          throw Exception(
-            'File data is unavailable. Please ensure withData: true is set in the file picker.',
-          );
-        }
-
-        final response = await uploadDio.post(
-          proxyUrl,
-          data: fileData,
-          queryParameters: {
-            'name': file.name,
-            'size': file.size,
-            'type': _getMimeType(file),
-            'accessToken': _accessToken,
-            'appId': _appId,
-          },
-          options: Options(
-            headers: {
-              'Content-Type': 'application/octet-stream',
-              if (authToken != null) 'Authorization': 'Bearer $authToken',
-            },
-          ),
-        );
-
-        if (response.statusCode == 200) {
-          return response.data['h'] as String;
-        } else {
-          throw Exception(
-            'Proxy upload failed: ${response.data['error'] ?? 'Unknown error'}',
-          );
-        }
-      }
-      // --- END WEB PROXY LOGIC ---
-
-      // Non-web platforms: Initialize and upload directly
-      final baseUrl = AppConstants.baseUrl;
-      final initResponse = await uploadDio.post(
-        '$baseUrl/$_appId/uploads',
-        queryParameters: {
-          'file_name': file.name,
-          'file_length': file.size,
-          'file_type': _getMimeType(file),
-          'access_token': _accessToken,
-        },
-        options: Options(
-          headers: {'Content-Type': 'text/plain', 'Accept': '*/*'},
-        ),
-      );
-
-      final sessionId = initResponse.data['id'] as String;
-      final List<int> fileData;
+      final dynamic fileData;
       if (file.bytes != null) {
-        fileData = file.bytes!;
+        fileData = file.bytes;
       } else if (!kIsWeb && file.path != null) {
         fileData = await File(file.path!).readAsBytes();
       } else {
-        throw Exception('File data unavailable');
+        throw Exception(
+          'File data is unavailable. Please ensure withData: true is set in the file picker.',
+        );
       }
 
-      final uploadResponse = await uploadDio.post(
-        '$baseUrl/$sessionId',
+      final proxyUrl = '${AppConstants.baseUrl}/upload-media';
+
+      final response = await uploadDio.post(
+        proxyUrl,
         data: fileData,
-        queryParameters: {'access_token': _accessToken, 'file_offset': '0'},
+        queryParameters: {
+          'name': file.name,
+          'size': file.size,
+          'type': _getMimeType(file),
+          'accessToken': _accessToken,
+          'appId': _appId,
+        },
         options: Options(
-          headers: {'Content-Type': 'text/plain', 'Accept': '*/*'},
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            if (authToken != null) 'Authorization': 'Bearer $authToken',
+          },
         ),
       );
 
-      return uploadResponse.data['h'] as String;
+      if (response.statusCode == 200 && response.data != null && response.data['h'] != null) {
+        return response.data['h'] as String;
+      } else {
+        throw Exception(
+          'Proxy upload failed: ${response.data?['error'] ?? 'Unknown error'}',
+        );
+      }
     } catch (e) {
       if (e is DioException) {
         final resp = e.response;
         if (resp != null) {
-       
           final data = resp.data;
           String? message;
 
           if (data is Map) {
             final errorData = data['error'];
             if (errorData is Map) {
-              message = errorData['message'];
+              final details = errorData['details'];
+              if (details != null) {
+                if (details is Map && details['error'] != null && details['error']['message'] != null) {
+                  message = details['error']['message'].toString();
+                } else {
+                  message = details.toString();
+                }
+              } else {
+                message = errorData['message']?.toString();
+              }
             } else if (errorData is String) {
               message = errorData;
             }
           } else if (data is String) {
-            // Handle plain text errors like "Unauthorized"
             message = data;
           }
 
