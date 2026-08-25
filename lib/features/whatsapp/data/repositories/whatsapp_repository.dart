@@ -1046,13 +1046,23 @@ class WhatsAppRepository {
       final response = await dio.get(
         '${AppConstants.metaGraphUrl}/$wabaId/phone_numbers',
         queryParameters: {
-          'fields': 'id,display_phone_number,verified_name,code_verification_status,quality_rating,platform_type,throughput,webhook_configuration',
+          'fields':
+              'id,display_phone_number,verified_name,code_verification_status,quality_rating,platform_type,throughput,webhook_configuration',
           'access_token': accessToken,
         },
       );
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'];
-        return data.cast<Map<String, dynamic>>();
+        dynamic parsed = response.data;
+        if (parsed is String) {
+          try {
+            parsed = jsonDecode(parsed);
+          } catch (_) {}
+        }
+        if (parsed is Map && parsed['data'] is List) {
+          return (parsed['data'] as List).cast<Map<String, dynamic>>();
+        } else if (parsed is List) {
+          return parsed.cast<Map<String, dynamic>>();
+        }
       }
       return null;
     } catch (_) {
@@ -1069,19 +1079,60 @@ class WhatsAppRepository {
       final response = await dio.get(
         '${AppConstants.metaGraphUrl}/$phoneNumberId/whatsapp_business_profile',
         queryParameters: {
-          'fields': 'about,address,description,email,profile_picture_url,websites,vertical',
+          'fields':
+              'about,address,description,email,profile_picture_url,websites,vertical',
           'access_token': accessToken,
         },
+        options: Options(
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+          },
+        ),
       );
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'] ?? [];
-        if (data.isNotEmpty) {
-          return Map<String, dynamic>.from(data.first);
+        dynamic parsed = response.data;
+        if (parsed is String) {
+          try {
+            parsed = jsonDecode(parsed);
+          } catch (_) {}
         }
+
+        if (parsed is Map) {
+          final data = parsed['data'];
+          if (data is List && data.isNotEmpty && data.first is Map) {
+            return Map<String, dynamic>.from(data.first);
+          } else if (data is Map) {
+            return Map<String, dynamic>.from(data);
+          } else if (parsed.containsKey('about') ||
+              parsed.containsKey('description') ||
+              parsed.containsKey('profile_picture_url')) {
+            return Map<String, dynamic>.from(parsed);
+          }
+          // Empty profile on Meta
+          return <String, dynamic>{};
+        } else if (parsed is List & & parsed.isNotEmpty && parsed.first is Map) {
+          return Map<String, dynamic>.from(parsed.first);
+        }
+        return <String, dynamic>{};
       }
       return null;
-    } catch (_) {
-      return null;
+    } on DioException catch (e) {
+      dynamic errorData = e.response?.data;
+      if (errorData is String) {
+        try {
+          errorData = jsonDecode(errorData);
+        } catch (_) {}
+      }
+      if (errorData is Map &&
+          errorData['error'] != null &&
+          errorData['error']['message'] != null) {
+        throw Exception(errorData['error']['message'].toString());
+      }
+      throw Exception(e.message ?? 'Failed to connect to Meta Graph API');
+    } catch (e) {
+      rethrow;
     }
   }
 

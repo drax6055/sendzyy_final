@@ -1286,11 +1286,8 @@ class _DashboardShellState extends State<DashboardShell> {
                         onSelected: (val) {
                           if (val == 'whatsapp_profile') {
                             if (state is AuthAuthenticated) {
-                              final config =
-                                  state.tenant['whatsappConfig']
-                                      as Map<String, dynamic>? ??
-                                  {};
-                              WhatsAppBusinessProfileDialog.show(context, config);
+                              final rawConfig = state.tenant['whatsappConfig'];
+                              WhatsAppBusinessProfileDialog.show(context, rawConfig);
                             }
                           } else if (val == 'logout') {
                             _showLogoutDialog(context, name);

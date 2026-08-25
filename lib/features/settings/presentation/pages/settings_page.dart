@@ -224,14 +224,9 @@ class _SettingsPageState extends State<SettingsPage> {
             .fetchWhatsAppProfile(phoneNumberId: phoneId, accessToken: token);
         if (mounted) {
           setState(() {
-            _whatsappProfile = waProfile;
+            _whatsappProfile = waProfile ?? <String, dynamic>{};
             _whatsappProfileLoading = false;
-            if (waProfile == null) {
-              _whatsappProfileError =
-                  'Failed to load WhatsApp Business Profile';
-            } else {
-              _initProfileFormFields();
-            }
+            _initProfileFormFields();
           });
         }
       } else {
@@ -243,10 +238,11 @@ class _SettingsPageState extends State<SettingsPage> {
       }
     } catch (e) {
       if (mounted) {
+        final cleanMsg = e.toString().replaceFirst('Exception: ', '');
         setState(() {
           _profileLoading = false;
           _whatsappProfileLoading = false;
-          _whatsappProfileError = 'Error: $e';
+          _whatsappProfileError = cleanMsg;
         });
       }
     }

@@ -1,3 +1,12 @@
+import java.util.Properties
+import java.io.FileInputStream
+
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+}
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
@@ -8,7 +17,7 @@ plugins {
 
 android {
     namespace = "com.iflorainfopvtltd.sendzyy"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -24,16 +33,35 @@ android {
     defaultConfig {
         applicationId = "com.iflorainfopvtltd.sendzyy"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        create("release") {
+            if (keystorePropertiesFile.exists()) {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = keystoreProperties.getProperty("storeFile")?.let { file(it) }
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
@@ -44,4 +72,5 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    implementation("androidx.activity:activity-ktx:1.9.3")
 }

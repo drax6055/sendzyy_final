@@ -37,7 +37,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
   flutter_contacts: 5383945387e7ca37cf963d4be57c21f2fc15ca9f
-  flutter_local_notifications: ad39620c743ea4c15127860f4b5641649a988100
+  flutter_local_notifications: 395056b3175ba4f08480a7c5de30cd36d69827e4
   flutter_webrtc: 57f32415b8744e806f9c2a96ccdb60c6a627ba33
   printing: 54ff03f28fe9ba3aa93358afb80a8595a071dd07
   WebRTC-SDK: 79942c006ea64f6fb48d7da8a4786dfc820bc1db

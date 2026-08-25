@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
@@ -6,11 +7,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 
 class WhatsAppBusinessProfileDialog extends StatefulWidget {
-  final Map<String, dynamic> config;
+  final dynamic config;
 
   const WhatsAppBusinessProfileDialog({super.key, required this.config});
 
-  static Future<void> show(BuildContext context, Map<String, dynamic> config) {
+  static Future<void> show(BuildContext context, dynamic config) {
     if (ResponsiveHelper.isMobile(context)) {
       return showModalBottomSheet(
         context: context,
@@ -48,6 +49,19 @@ class _WhatsAppBusinessProfileDialogState extends State<WhatsAppBusinessProfileD
   List<TextEditingController> _websiteControllers = [];
   String? _selectedVertical;
 
+  static Map<String, dynamic> _asSafeMap(dynamic val) {
+    if (val == null) return {};
+    if (val is Map<String, dynamic>) return val;
+    if (val is Map) return Map<String, dynamic>.from(val);
+    if (val is String && val.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(val);
+        if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      } catch (_) {}
+    }
+    return {};
+  }
+
   final Map<String, String> _verticals = {
     'AUTOMOTIVE': 'Automotive',
     'BEAUTY': 'Beauty, Spa & Salon',
@@ -83,45 +97,57 @@ class _WhatsAppBusinessProfileDialogState extends State<WhatsAppBusinessProfileD
 
     try {
       final repository = getIt<WhatsAppRepository>();
-      final profile = await repository.getProfile();
+      final rawProfile = await repository.getProfile();
+      final profile = _asSafeMap(rawProfile);
       if (mounted) {
         setState(() {
           _profile = profile;
         });
       }
 
-      final phoneId = widget.config['phoneNumberId']?.toString() ?? profile['whatsappConfig']?['phoneNumberId']?.toString();
-      final token = widget.config['accessToken']?.toString() ?? profile['whatsappConfig']?['accessToken']?.toString();
+      final safeWidgetConfig = _asSafeMap(widget.config);
+      final profileConfig = _asSafeMap(profile['whatsappConfig']);
+
+      final phoneId = (safeWidgetConfig['phoneNumberId']?.toString().isNotEmpty == true
+              ? safeWidgetConfig['phoneNumberId'].toString()
+              : null) ??
+          (profileConfig['phoneNumberId']?.toString().isNotEmpty == true
+              ? profileConfig['phoneNumberId'].toString()
+              : null);
+
+      final token = (safeWidgetConfig['accessToken']?.toString().isNotEmpty == true
+              ? safeWidgetConfig['accessToken'].toString()
+              : null) ??
+          (profileConfig['accessToken']?.toString().isNotEmpty == true
+              ? profileConfig['accessToken'].toString()
+              : null);
 
       if (phoneId != null && token != null && phoneId.isNotEmpty && token.isNotEmpty) {
-        final waProfile = await repository.fetchWhatsAppProfile(
+        final rawWaProfile = await repository.fetchWhatsAppProfile(
           phoneNumberId: phoneId,
           accessToken: token,
         );
         if (mounted) {
           setState(() {
-            _whatsappProfile = waProfile;
+            _whatsappProfile = _asSafeMap(rawWaProfile);
             _isLoading = false;
-            if (waProfile == null) {
-              _errorMessage = 'Failed to load WhatsApp Business Profile';
-            } else {
-              _initProfileFormFields();
-            }
+            _initProfileFormFields();
           });
         }
       } else {
         if (mounted) {
           setState(() {
             _isLoading = false;
-            _errorMessage = 'WhatsApp configuration incomplete.';
+            _errorMessage = 'WhatsApp configuration incomplete. Please configure your Phone Number ID and Access Token in Settings.';
           });
         }
       }
     } catch (e) {
       if (mounted) {
+        final cleanMsg = e.toString().replaceFirst('Exception: ', '');
         setState(() {
           _isLoading = false;
-          _errorMessage = 'Error loading profile: $e';
+          _errorMessage = cleanMsg;
         });
       }
     }
@@ -134,11 +160,30 @@ class _WhatsAppBusinessProfileDialogState extends State<WhatsAppBusinessProfileD
     _descriptionController.text = _whatsappProfile!['description']?.toString() ?? '';
     _emailController.text = _whatsappProfile!['email']?.toString() ?? '';
 
-    final List<dynamic> websites = _whatsappProfile!['websites'] ?? [];
+    dynamic rawWebsites = _whatsappProfile!['websites'];
+    List<dynamic> websites = [];
+    if (rawWebsites is List) {
+      websites = rawWebsites;
+    } else if (rawWebsites is String && rawWebsites.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(rawWebsites);
+        if (decoded is List) {
+          websites = decoded;
+        } else {
+          websites = [rawWebsites];
+        }
+      } catch (_) {
+        websites = [rawWebsites];
+      }
+    }
+
     for (var c in _websiteControllers) {
       c.dispose();
     }
-    _websiteControllers = websites.map((w) => TextEditingController(text: w.toString())).toList();
+    _websiteControllers = websites
+        .where((w) => w != null && w.toString().trim().isNotEmpty)
+        .map((w) => TextEditingController(text: w.toString().trim()))
+        .toList();
     if (_websiteControllers.isEmpty) {
       _websiteControllers.add(TextEditingController());
     }
@@ -158,11 +203,29 @@ class _WhatsAppBusinessProfileDialogState extends State<WhatsAppBusinessProfileD
     super.dispose();
   }
 
+  Map<String, dynamic> get _safeWidgetConfig => _asSafeMap(widget.config);
+
+  String? get _resolvedPhoneId =>
+      (_safeWidgetConfig['phoneNumberId']?.toString().isNotEmpty == true
+          ? _safeWidgetConfig['phoneNumberId'].toString()
+          : null) ??
+      (_asSafeMap(_profile?['whatsappConfig'])['phoneNumberId']?.toString().isNotEmpty == true
+          ? _asSafeMap(_profile?['whatsappConfig'])['phoneNumberId'].toString()
+          : null);
+
+  String? get _resolvedToken =>
+      (_safeWidgetConfig['accessToken']?.toString().isNotEmpty == true
+          ? _safeWidgetConfig['accessToken'].toString()
+          : null) ??
+      (_asSafeMap(_profile?['whatsappConfig'])['accessToken']?.toString().isNotEmpty == true
+          ? _asSafeMap(_profile?['whatsappConfig'])['accessToken'].toString()
+          : null);
+
   Future<void> _pickAndUploadProfileImage() async {
     if (!_isEditing) return;
 
-    final phoneId = widget.config['phoneNumberId']?.toString();
-    final token = widget.config['accessToken']?.toString();
+    final phoneId = _resolvedPhoneId;
+    final token = _resolvedToken;
     if (phoneId == null || token == null) return;
 
     try {
@@ -226,8 +289,8 @@ class _WhatsAppBusinessProfileDialogState extends State<WhatsAppBusinessProfileD
   }
 
   Future<void> _saveWhatsAppProfile() async {
-    final phoneId = widget.config['phoneNumberId']?.toString();
-    final token = widget.config['accessToken']?.toString();
+    final phoneId = _resolvedPhoneId;
+    final token = _resolvedToken;
     if (phoneId == null || token == null) return;
 
     setState(() {
@@ -330,7 +393,7 @@ class _WhatsAppBusinessProfileDialogState extends State<WhatsAppBusinessProfileD
 
   @override
   Widget build(BuildContext context) {
-    final verifiedName = widget.config['verifiedName']?.toString();
+    final verifiedName = _safeWidgetConfig['verifiedName']?.toString();
     final displayName = (verifiedName ?? _profile?['name']?.toString() ?? 'Profile Picture').toUpperCase();
     final avatarUrl = _whatsappProfile?['profile_picture_url']?.toString();
 

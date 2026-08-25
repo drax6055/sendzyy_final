@@ -17,7 +17,7 @@ class ClientTriggerRepository {
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) return null;
       throw Exception(e.response?.data?['error'] ?? e.message ?? 'Failed to fetch trigger');
-    } catch (e) {
+    } catch (e)  {
       throw Exception(e.toString());
     }
   }
