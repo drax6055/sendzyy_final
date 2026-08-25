@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "316353739480",
+    "project_id": "sendzyy",
+    "storage_bucket": "sendzyy.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:316353739480:android:0d3e637193fdba1902b5ad",
+        "android_client_info": {
+          "package_name": "com.iflorainfopvtltd.sendzyy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAfZyTQmjRLWjCDv4TaLratNlZFA_c7J9g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
