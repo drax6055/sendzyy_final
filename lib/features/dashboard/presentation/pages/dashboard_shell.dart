@@ -398,8 +398,7 @@ class _DashboardShellState extends State<DashboardShell> {
                 _buildNavItem(4, Icons.contacts_rounded, 'Leads', isDrawer: isDrawer),
                 _buildExpandableReportsMenu(isDrawer: isDrawer),
                 _buildNavItem(8, Icons.smart_toy_rounded, 'Chatbot', isDrawer: isDrawer),
-                // TODO: Work on this module later
-                // _buildNavItem(15, Icons.storefront_rounded, 'Catalog', isDrawer: isDrawer),
+                _buildNavItem(15, Icons.storefront_rounded, 'Catalog', isDrawer: isDrawer),
                 // _buildNavItem(13, Icons.call_rounded, 'Call Logs', isDrawer: isDrawer),
 
                 _buildNavItem(9, Icons.help_outline_rounded, 'Q & A', isDrawer: isDrawer),
@@ -411,7 +410,7 @@ class _DashboardShellState extends State<DashboardShell> {
                 ),
                 _buildExpandableSettingsMenu(isDrawer: isDrawer),
                 const SizedBox(height: 24),
-              ],
+              ],    
             ),
           ),
         ),
@@ -425,7 +424,7 @@ class _DashboardShellState extends State<DashboardShell> {
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
+        title: Row( 
           children: [
             Container(
               padding: const EdgeInsets.all(8),

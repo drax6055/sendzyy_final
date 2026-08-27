@@ -394,9 +394,14 @@ class WhatsAppPreview extends StatelessWidget {
       icon = Icons.call_outlined;
     } else if (type == 'URL') {
       icon = Icons.open_in_new_outlined;
+    } else if (type == 'CATALOG') {
+      icon = Icons.storefront_outlined;
+    } else if (type == 'MPM') {
+      icon = Icons.list_alt_rounded;
     } else {
       icon = Icons.reply_outlined;
     }
+    
 
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),

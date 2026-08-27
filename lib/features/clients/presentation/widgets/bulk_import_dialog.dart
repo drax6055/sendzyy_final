@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:iFloraBuzz/core/utils/web_helper.dart';
 
 import 'package:csv/csv.dart';
@@ -34,12 +36,15 @@ class _BulkImportDialogState extends State<BulkImportDialog> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['csv'],
-      withData: true,
+      withData: kIsWeb,
     );
-    if (result == null || result.files.single.bytes == null) return;
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.single;
+    final rawBytes = file.bytes ?? (!kIsWeb && file.path != null ? await File(file.path!).readAsBytes() : null);
+    if (rawBytes == null) return;
 
     try {
-      final content = String.fromCharCodes(result.files.single.bytes!);
+      final content = utf8.decode(rawBytes);
       final rows = const CsvToListConverter(eol: '\n').convert(content);
       if (rows.isEmpty) throw Exception('CSV is empty');
 

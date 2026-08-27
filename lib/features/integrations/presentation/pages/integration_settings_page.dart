@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
@@ -400,7 +401,7 @@ class _IntegrationSettingsPageState extends State<IntegrationSettingsPage> {
       final result = await FilePicker.platform.pickFiles(
         type: type,
         allowedExtensions: extensions,
-        withData: true,
+        withData: kIsWeb,
         allowMultiple: false,
       );
       if (result == null) return;
@@ -1731,7 +1732,7 @@ class _TriggerFormDialogState extends State<_TriggerFormDialog> {
     final result = await FilePicker.platform.pickFiles(
       type: type,
       allowedExtensions: extensions,
-      withData: true,
+      withData: kIsWeb,
       allowMultiple: false,
     );
     if (result == null) return;

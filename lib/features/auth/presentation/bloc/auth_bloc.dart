@@ -5,6 +5,7 @@ import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
+import 'package:iFloraBuzz/features/notifications/data/datasources/fcm_service.dart';
 
 // Events
 abstract class AuthEvent extends Equatable {
@@ -292,6 +293,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _clearSession() async {
+    FCMService.reset();
     _socketService.disconnect();
     await _prefs.remove(_keyToken);
     await _prefs.remove('tenant_id');

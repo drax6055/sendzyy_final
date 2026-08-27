@@ -41,31 +41,30 @@ class NodePaletteWidget extends StatelessWidget {
       icon: Icons.bolt_outlined,
       color: Colors.amber,
     ),
-    // TODO: Work on this module later
-    // _PaletteItem(
-    //   type: FlowNodeType.catalogMessage,
-    //   label: 'Catalog Msg',
-    //   icon: Icons.storefront_outlined,
-    //   color: Color(0xFF25D366),
-    // ),
-    // _PaletteItem(
-    //   type: FlowNodeType.singleProduct,
-    //   label: 'Single Product',
-    //   icon: Icons.inventory_2_outlined,
-    //   color: Color(0xFF06B6D4),
-    // ),
-    // _PaletteItem(
-    //   type: FlowNodeType.multiProduct,
-    //   label: 'Multi Product',
-    //   icon: Icons.grid_view_outlined,
-    //   color: Color(0xFF6366F1),
-    // ),
-    // _PaletteItem(
-    //   type: FlowNodeType.productCarousel,
-    //   label: 'Carousel',
-    //   icon: Icons.view_carousel_outlined,
-    //   color: Color(0xFF7C3AED),
-    // ),
+    _PaletteItem(
+      type: FlowNodeType.catalogMessage,
+      label: 'Catalog Msg',
+      icon: Icons.storefront_outlined,
+      color: const Color(0xFF25D366),
+    ),
+    _PaletteItem(
+      type: FlowNodeType.singleProduct,
+      label: 'Single Product',
+      icon: Icons.inventory_2_outlined,
+      color: const Color(0xFF06B6D4),
+    ),
+    _PaletteItem(
+      type: FlowNodeType.multiProduct,
+      label: 'Multi Product',
+      icon: Icons.grid_view_outlined,
+      color: const Color(0xFF6366F1),
+    ),
+    _PaletteItem(
+      type: FlowNodeType.productCarousel,
+      label: 'Carousel',
+      icon: Icons.view_carousel_outlined,
+      color: const Color(0xFF7C3AED),
+    ),
     _PaletteItem(
       type: FlowNodeType.end,
       label: 'End',

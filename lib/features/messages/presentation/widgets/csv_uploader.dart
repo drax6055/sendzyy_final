@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -26,11 +28,14 @@ class CsvUploader extends StatelessWidget {
       FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['csv'],
-        withData: true,
+        withData: kIsWeb,
       );
 
-      if (result != null && result.files.first.bytes != null) {
-        final content = utf8.decode(result.files.first.bytes!);
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        final rawBytes = file.bytes ?? (!kIsWeb && file.path != null ? await File(file.path!).readAsBytes() : null);
+        if (rawBytes == null) return;
+        final content = utf8.decode(rawBytes);
         List<List<dynamic>> rows = const CsvToListConverter().convert(content);
 
         // Skip header row if first cell looks like a label

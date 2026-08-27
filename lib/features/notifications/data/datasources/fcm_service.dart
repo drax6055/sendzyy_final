@@ -4,20 +4,21 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:iFloraBuzz/firebase_options.dart';
 import 'notification_remote_datasource.dart';
 
+/// Background handler — must be a top-level function annotated @pragma('vm:entry-point').
+/// Android calls this in a separate Isolate when the app is killed/terminated.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    // If notification block is present, OS displays it automatically on Android/iOS.
-    // If only data is present, show local notification fallback.
-    if (message.notification == null) {
-      await FCMService.showLocalNotification(message);
-    }
+
+    // Always show via local notifications plugin — ensures delivery even on restrictive OEMs
+    await FCMService.showLocalNotification(message);
   } catch (e) {
     debugPrint('[FCM] Background handler error: $e');
   }
@@ -32,6 +33,11 @@ class FCMService {
   static const String notificationChannelId = 'sendzyy_notifications';
   static const String notificationChannelName = 'Sendzyy Notifications';
 
+  /// Call this when the user logs out so FCM re-initializes on the next login.
+  static void reset() {
+    _initialized = false;
+  }
+
   static Future<void> initialize({
     required String tenantId,
     required NotificationRemoteDataSource remoteDataSource,
@@ -40,7 +46,16 @@ class FCMService {
     if (_initialized) return;
 
     try {
-      // 1. Request Push Notification permissions
+      // 1. Explicitly request Android 13+ POST_NOTIFICATIONS via permission_handler
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        final permStatus = await Permission.notification.status;
+        if (!permStatus.isGranted) {
+          final reqResult = await Permission.notification.request();
+          debugPrint('[FCM] Android 13+ POST_NOTIFICATIONS permission: $reqResult');
+        }
+      }
+
+      // 2. Request Push Notification permissions via FirebaseMessaging
       final settings = await _messaging.requestPermission(
         alert: true,
         announcement: false,
@@ -53,13 +68,25 @@ class FCMService {
 
       debugPrint('[FCM] Permission status: ${settings.authorizationStatus}');
 
+      if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        debugPrint('[FCM] Notification permission denied — notifications will not work.');
+        return;
+      }
+
       // 2. Initialize local notifications for foreground popups
       await _initLocalNotifications(onNotificationTap: onNotificationTap);
 
-      // 3. Register background message handler
+      // 3. iOS — show notifications in foreground (critical for iOS killed-state behaviour)
+      await _messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      // 4. Register background message handler
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
-      // 4. Retrieve FCM Token and register with backend
+      // 5. Retrieve FCM Token and register with backend
       final token = await _getToken();
       if (token != null) {
         debugPrint('[FCM] Token obtained: $token');
@@ -70,7 +97,7 @@ class FCMService {
         );
       }
 
-      // 5. Subscribe to tenant topic client-side (for multi-device broadcast)
+      // 6. Subscribe to tenant topic (for multi-device broadcast)
       if (!kIsWeb && tenantId.isNotEmpty) {
         try {
           await _messaging.subscribeToTopic('tenant_$tenantId');
@@ -80,8 +107,9 @@ class FCMService {
         }
       }
 
-      // 6. Listen to token refresh
+      // 7. Listen to token refresh
       _messaging.onTokenRefresh.listen((newToken) async {
+        debugPrint('[FCM] Token refreshed: $newToken');
         await remoteDataSource.registerFcmToken(
           tenantId: tenantId,
           token: newToken,
@@ -94,34 +122,37 @@ class FCMService {
         }
       });
 
-      // 7. Foreground message listener
+      // 8. Foreground message listener
+      // When app is open, FCM does NOT show a system notification automatically —
+      // we must show it via flutter_local_notifications.
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         debugPrint(
-          '[FCM] Foreground message received: ${message.notification?.title ?? message.data['title']}',
+          '[FCM] Foreground message: ${message.notification?.title ?? message.data['title']}',
         );
         showLocalNotification(message);
       });
 
-      // 8. Handle notification opened when app is in background
+      // 9. Handle notification tap when app is in BACKGROUND (but not killed)
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        debugPrint('[FCM] Notification opened from background: ${message.data}');
+        debugPrint('[FCM] Notification tapped from background: ${message.data}');
         if (onNotificationTap != null) {
           onNotificationTap(message.data);
         }
       });
 
-      // 9. Handle notification opened when app was terminated
+      // 10. Handle notification tap when app was TERMINATED
       final initialMessage = await _messaging.getInitialMessage();
       if (initialMessage != null) {
-        debugPrint('[FCM] Initial notification launch: ${initialMessage.data}');
+        debugPrint('[FCM] App launched from terminated via notification: ${initialMessage.data}');
         if (onNotificationTap != null) {
           onNotificationTap(initialMessage.data);
         }
       }
 
       _initialized = true;
+      debugPrint('[FCM] FCMService fully initialized for tenant: $tenantId');
     } catch (e) {
-      debugPrint('[FCM] Initialize warning (FCM config may be pending): $e');
+      debugPrint('[FCM] Initialize error: $e');
     }
   }
 
@@ -158,6 +189,9 @@ class FCMService {
       iOS: iosSettings,
     );
 
+    // Create the Android notification channel via the plugin as well.
+    // The native MainApplication.kt creates it before Flutter starts;
+    // creating it here is idempotent (Android ignores duplicate creates).
     const androidChannel = AndroidNotificationChannel(
       notificationChannelId,
       notificationChannelName,
@@ -191,7 +225,13 @@ class FCMService {
   }
 
   static Future<void> showLocalNotification(RemoteMessage message) async {
-    const androidDetails = AndroidNotificationDetails(
+    // Deduplicate: use a stable int from the message ID or timestamp.
+    final notifId = (message.messageId ?? message.sentTime?.millisecondsSinceEpoch.toString() ?? '0')
+        .hashCode
+        .abs() %
+        100000;
+
+    final androidDetails = AndroidNotificationDetails(
       notificationChannelId,
       notificationChannelName,
       channelDescription: 'All Sendzyy platform notifications',
@@ -199,6 +239,8 @@ class FCMService {
       priority: Priority.high,
       playSound: true,
       enableVibration: true,
+      // Show on lock screen
+      visibility: NotificationVisibility.public,
     );
 
     const iosDetails = DarwinNotificationDetails(
@@ -207,7 +249,7 @@ class FCMService {
       presentSound: true,
     );
 
-    const details = NotificationDetails(
+    final details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -218,13 +260,17 @@ class FCMService {
         'Sendzyy Notification';
     final body = message.notification?.body ?? message.data['body'] ?? '';
 
-    await _localNotifications.show(
-      message.hashCode,
-      title,
-      body,
-      details,
-      payload: jsonEncode(message.data),
-    );
+    try {
+      await _localNotifications.show(
+        notifId,
+        title,
+        body,
+        details,
+        payload: jsonEncode(message.data),
+      );
+    } catch (e) {
+      debugPrint('[FCM] showLocalNotification error: $e');
+    }
   }
 
   static String _getPlatformName() {

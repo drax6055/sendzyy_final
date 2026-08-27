@@ -535,10 +535,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
               ),
             ),
           );
-          setState(() {
-            _isScheduled = false;
-            _scheduledAt = null;
-          });
+          _clearForm();
         }
       } catch (e) {
         if (mounted)
@@ -563,6 +560,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
 
   @override
   void dispose() {
+    _manualNumbersController.dispose();
     for (final m in _perRecipientControllers.values) {
       for (final c in m.values) c.dispose();
     }
@@ -570,6 +568,31 @@ class _BulkSendPageState extends State<BulkSendPage> {
       for (final c in m.values) c.dispose();
     }
     super.dispose();
+  }
+
+  void _clearForm() {
+    if (!mounted) return;
+    // Dispose variable controllers before clearing
+    for (final m in _perRecipientControllers.values) {
+      for (final c in m.values) c.dispose();
+    }
+    for (final m in _perRecipientHeaderControllers.values) {
+      for (final c in m.values) c.dispose();
+    }
+    setState(() {
+      _manualNumbersController.clear();
+      _recipients = [];
+      _selectedTemplate = null;
+      _selectedTemplateData = null;
+      _campaignMedia = null;
+      _isUploadingMedia = false;
+      _isScheduled = false;
+      _scheduledAt = null;
+      _totalDuplicates = 0;
+      _totalInvalid = 0;
+      _perRecipientControllers.clear();
+      _perRecipientHeaderControllers.clear();
+    });
   }
 
   @override
@@ -584,11 +607,13 @@ class _BulkSendPageState extends State<BulkSendPage> {
             if (state is MessageSent) {
               showDialog(
                 context: context,
+                barrierDismissible: false,
                 builder: (context) => CampaignResultDialog(
                   successCount: state.successCount,
                   failureCount: state.failureCount,
                   campaignId: state.campaignId,
                   dispatchedAt: state.dispatchedAt,
+                  onDone: _clearForm,
                 ),
               );
               if (state.failureCount > 0) {
@@ -1644,7 +1669,7 @@ class _BulkSendPageState extends State<BulkSendPage> {
 
     final result = await FilePicker.platform.pickFiles(
       type: type,
-      withData: true,
+      withData: kIsWeb,
       allowMultiple: false,
     );
 
