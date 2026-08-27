@@ -7,6 +7,7 @@ import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:intl/intl.dart';
 
 class InstagramProfileSetupPage extends StatefulWidget {
   const InstagramProfileSetupPage({super.key});
@@ -312,27 +313,30 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
                 ),
               ),
               if (!isConnected && !_isLoading)
-                ElevatedButton(
-                  onPressed: _showConnectionDialog,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(120, 44),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'Connect Now',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                Tooltip(
+                  message: 'Connect Instagram',
+                  child: ElevatedButton(
+                    onPressed: _showConnectionDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(120, 44),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded),
-                    ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Connect Now',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(width: 8),
+                        Icon(Icons.arrow_forward_rounded),
+                      ],
+                    ),
                   ),
                 ),
               if (isConnected && !_isLoading)
@@ -410,6 +414,21 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
     final String username = _instagramProfile!['username']?.toString() ?? 'Unknown User';
     final String name = _instagramProfile!['name']?.toString() ?? username;
     final String id = _instagramProfile!['instagramAccountId']?.toString() ?? 'N/A';
+    final String? tokenExpiryStr = _instagramProfile!['tokenExpiry']?.toString();
+    String expiryFormatted = 'N/A';
+    if (tokenExpiryStr != null && tokenExpiryStr.isNotEmpty) {
+      try {
+        final DateTime dt = DateTime.parse(tokenExpiryStr).toLocal();
+        expiryFormatted = DateFormat('dd-MMM-yyyy').format(dt).toLowerCase();
+      } catch (e) {
+        expiryFormatted = 'N/A';
+      }
+    }
+
+    String maskedId = id;
+    if (id != 'N/A' && id.length > 6) {
+      maskedId = '${id.substring(0, 6)}${'*' * (id.length - 6)}';
+    }
 
     return Container(
       width: double.infinity,
@@ -426,122 +445,222 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
         ],
         border: Border.all(color: Colors.grey.shade100),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar mockup with Instagram Gradient Border
-              Container(
-                padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      Color(0xFFFFB700),
-                      Color(0xFFFF007F),
-                      Color(0xFF8000FF),
-                    ],
-                    center: Alignment(0.6, -0.6),
-                    radius: 1.0,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Avatar mockup with Instagram Gradient Border
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          Color(0xFFFFB700),
+                          Color(0xFFFF007F),
+                          Color(0xFF8000FF),
+                        ],
+                        center: Alignment(0.6, -0.6),
+                        radius: 1.0,
+                      ),
+                    ),
+                    child: CircleAvatar(
+                      radius: 36,
+                      backgroundColor: Colors.grey.shade100,
+                      child: const Icon(
+                        Icons.account_circle_outlined,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                    ),
                   ),
-                ),
-                child: CircleAvatar(
-                  radius: 36,
-                  backgroundColor: Colors.grey.shade100,
-                  child: const Icon(
-                    Icons.account_circle_outlined,
-                    size: 48,
-                    color: Colors.grey,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Row(
+                          children: [
+                            Text(
+                              name,
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                border: Border.all(color: Colors.green.shade100),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: const BoxDecoration(
+                                      color: Colors.green,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Connected',
+                                    style: TextStyle(
+                                      color: Colors.green.shade800,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
                         Text(
-                          name,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                          '@$username',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            border: Border.all(color: Colors.green.shade100),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Connected',
-                                style: TextStyle(
-                                  color: Colors.green.shade800,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
+                        const SizedBox(height: 6),
+                        Text(
+                          'Instagram ID: $maskedId',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '@$username',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey.shade600,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Instagram ID: $id',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey.shade500,
-                      ),
-                    ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              const Divider(height: 1),
+              const SizedBox(height: 32),
+              Text(
+                'Integration Scope & Features Enabled',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.secondaryColor,
                 ),
+              ),
+              const SizedBox(height: 16),
+              _buildFeatureRow(Icons.message_outlined, 'Direct Message Automation', 'Automatically trigger keyword replies and handle conversations in live chat.'),
+              _buildFeatureRow(Icons.comment_outlined, 'Comment Management', 'Moderate and automatically reply to comments on posts.'),
+              _buildFeatureRow(Icons.analytics_outlined, 'Account Insights', 'Track engagement metrics, impressions, and subscriber demographics.'),
+            ],
+          ),
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (expiryFormatted != 'N/A') ...[
+                  Text(
+                    'Token Expiry: $expiryFormatted',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.grey.shade900,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                IconButton(
+                  icon: Icon(Icons.info_outline_rounded, color: Colors.red.shade400, size: 20),
+                  onPressed: () => _showTokenInfoDialog(context),
+                  tooltip: 'Token Info',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTokenInfoDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Text(
+                'Connection Token Info',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
           ),
-          const SizedBox(height: 32),
-          const Divider(height: 1),
-          const SizedBox(height: 32),
-          Text(
-            'Integration Scope & Features Enabled',
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.secondaryColor,
+          content: Container(
+            constraints: const BoxConstraints(maxWidth: 450),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Your Instagram connection token automatically refreshes 7 to 15 days before it expires. To ensure this happens, you must keep your app.sendzyy.com dashboard active.',
+                  style: TextStyle(fontSize: 14, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'When will you need to reconnect manually?',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildBulletPoint('If you haven\'t opened the app for a long time and the token has already expired.'),
+                _buildBulletPoint('If you recently changed your Instagram account password.'),
+                _buildBulletPoint('If you removed the app connection from your Facebook or Instagram settings.'),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          _buildFeatureRow(Icons.message_outlined, 'Direct Message Automation', 'Automatically trigger keyword replies and handle conversations in live chat.'),
-          _buildFeatureRow(Icons.comment_outlined, 'Comment Management', 'Moderate and automatically reply to comments on posts.'),
-          _buildFeatureRow(Icons.publish_outlined, 'Content Publishing', 'Schedule and publish media contents directly from the marketing module.'),
-          _buildFeatureRow(Icons.analytics_outlined, 'Account Insights', 'Track engagement metrics, impressions, and subscriber demographics.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBulletPoint(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('• ', style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13, height: 1.4),
+            ),
+          ),
         ],
       ),
     );
@@ -601,20 +720,23 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
             style: TextStyle(fontSize: 14, color: Colors.grey, height: 1.5),
           ),
           const SizedBox(height: 40),
-          ElevatedButton.icon(
-            onPressed: _showConnectionDialog,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.primaryColor,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(200, 50),
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+          Tooltip(
+            message: 'Connect Instagram',
+            child: ElevatedButton.icon(
+              onPressed: _showConnectionDialog,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(200, 50),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
               ),
-            ),
-            label: const Text(
-              'Connect Account Now',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              label: const Text(
+                'Connect Account Now',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
             ),
           ),
         ],
