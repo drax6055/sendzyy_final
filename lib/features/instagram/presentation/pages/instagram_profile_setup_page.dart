@@ -20,7 +20,9 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
   final Dio _dio = getIt<Dio>();
   bool _isLoading = true;
   Map<String, dynamic>? _instagramProfile;
+  Map<String, dynamic>? _detailedProfile;
   String? _errorMessage;
+  bool _isRefreshingDetail = false;
 
   @override
   void initState() {
@@ -42,6 +44,10 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
           _instagramProfile = response.data;
           _isLoading = false;
         });
+        // If connected, fetch detailed profile automatically
+        if (response.data['connected'] == true) {
+          _fetchDetailedProfile();
+        }
       }
     } on DioException catch (e) {
       if (mounted) {
@@ -56,6 +62,25 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
           _errorMessage = 'An unexpected error occurred: $e';
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  Future<void> _fetchDetailedProfile() async {
+    if (!mounted) return;
+    setState(() => _isRefreshingDetail = true);
+
+    try {
+      final response = await _dio.get('/api/instagram/detailed-profile');
+      if (mounted) {
+        setState(() {
+          _detailedProfile = response.data;
+          _isRefreshingDetail = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isRefreshingDetail = false);
       }
     }
   }
@@ -411,10 +436,22 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
   }
 
   Widget _buildConnectedUI() {
-    final String username = _instagramProfile!['username']?.toString() ?? 'Unknown User';
-    final String name = _instagramProfile!['name']?.toString() ?? username;
+    final String username = _detailedProfile?['username']?.toString()
+        ?? _instagramProfile!['username']?.toString()
+        ?? 'Unknown User';
+    final String name = _detailedProfile?['name']?.toString()
+        ?? _instagramProfile!['name']?.toString()
+        ?? username;
     final String id = _instagramProfile!['instagramAccountId']?.toString() ?? 'N/A';
     final String? tokenExpiryStr = _instagramProfile!['tokenExpiry']?.toString();
+
+    // Detailed profile data (from Graph API)
+    final String? profilePic = _detailedProfile?['profile_picture_url']?.toString();
+    final dynamic followerRaw = _detailedProfile?['followers_count'];
+    final int? followerCount = followerRaw is int ? followerRaw : (followerRaw != null ? int.tryParse(followerRaw.toString()) : null);
+    final bool? isUserFollowBusiness = _detailedProfile?['is_user_follow_business'] as bool?;
+    final bool? isBusinessFollowUser = _detailedProfile?['is_business_follow_user'] as bool?;
+
     String expiryFormatted = 'N/A';
     if (tokenExpiryStr != null && tokenExpiryStr.isNotEmpty) {
       try {
@@ -428,6 +465,12 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
     String maskedId = id;
     if (id != 'N/A' && id.length > 6) {
       maskedId = '${id.substring(0, 6)}${'*' * (id.length - 6)}';
+    }
+
+    String formatCount(int count) {
+      if (count >= 1000000) return '${(count / 1000000).toStringAsFixed(1)}M';
+      if (count >= 1000) return '${(count / 1000).toStringAsFixed(1)}K';
+      return count.toString();
     }
 
     return Container(
@@ -453,7 +496,7 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Avatar mockup with Instagram Gradient Border
+                  // Profile picture with Instagram gradient border
                   Container(
                     padding: const EdgeInsets.all(3),
                     decoration: const BoxDecoration(
@@ -471,11 +514,25 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
                     child: CircleAvatar(
                       radius: 36,
                       backgroundColor: Colors.grey.shade100,
-                      child: const Icon(
-                        Icons.account_circle_outlined,
-                        size: 48,
-                        color: Colors.grey,
-                      ),
+                      child: profilePic != null
+                          ? ClipOval(
+                              child: Image.network(
+                                profilePic,
+                                width: 72,
+                                height: 72,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.account_circle_outlined,
+                                  size: 48,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            )
+                          : const Icon(
+                              Icons.account_circle_outlined,
+                              size: 48,
+                              color: Colors.grey,
+                            ),
                     ),
                   ),
                   const SizedBox(width: 24),
@@ -483,6 +540,7 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        // Name + Connected badge
                         Row(
                           children: [
                             Text(
@@ -530,7 +588,7 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
                           '@$username',
                           style: TextStyle(
                             fontSize: 14,
-                            color: Colors.grey.shade600,
+                            color: Colors.black,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -539,31 +597,40 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
                           'Instagram ID: $maskedId',
                           style: TextStyle(
                             fontSize: 12,
-                            color: Colors.grey.shade500,
+                            color: Colors.black,
                           ),
                         ),
+                        // Detailed profile chips
+                        if (_isRefreshingDetail) ...[
+                          const SizedBox(height: 12),
+                          const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ] else if (_detailedProfile != null) ...[
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 10,
+                            runSpacing: 8,
+                            children: [
+                              if (followerCount != null)
+                                _buildInfoChip(
+                                  icon: Icons.people_alt_outlined,
+                                  label: '${formatCount(followerCount)} Followers',
+                                  color: Colors.blue,
+                                ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
-              const Divider(height: 1),
-              const SizedBox(height: 32),
-              Text(
-                'Integration Scope & Features Enabled',
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.secondaryColor,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildFeatureRow(Icons.message_outlined, 'Direct Message Automation', 'Automatically trigger keyword replies and handle conversations in live chat.'),
-              _buildFeatureRow(Icons.comment_outlined, 'Comment Management', 'Moderate and automatically reply to comments on posts.'),
-              _buildFeatureRow(Icons.analytics_outlined, 'Account Insights', 'Track engagement metrics, impressions, and subscriber demographics.'),
             ],
           ),
+          // Top-right: token expiry + refresh button + info button
           Positioned(
             top: 0,
             right: 0,
@@ -580,8 +647,25 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
                       color: Colors.grey.shade900,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                 ],
+                // Refresh detailed profile button
+                Tooltip(
+                  message: 'Refresh Profile Details',
+                  child: IconButton(
+                    icon: _isRefreshingDetail
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(Icons.refresh_rounded, color: Colors.blue.shade400, size: 20),
+                    onPressed: _isRefreshingDetail ? null : _fetchDetailedProfile,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 IconButton(
                   icon: Icon(Icons.info_outline_rounded, color: Colors.red.shade400, size: 20),
                   onPressed: () => _showTokenInfoDialog(context),
@@ -590,6 +674,36 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
                   constraints: const BoxConstraints(),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.08),
+        border: Border.all(color: color.withOpacity(0.2)),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],
