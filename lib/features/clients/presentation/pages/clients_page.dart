@@ -259,6 +259,7 @@ class _ClientsViewState extends State<_ClientsView> {
     }
   }
 
+
   @override
   void dispose() {
     _searchDebounce?.cancel();
@@ -389,6 +390,7 @@ class _ClientsViewState extends State<_ClientsView> {
                         style: IconButton.styleFrom(backgroundColor: AppTheme.primaryColor),
                         tooltip: 'Pick from Contacts',
                       ),
+
                     ],
                   ),
                 ],
@@ -554,6 +556,7 @@ class _ClientsViewState extends State<_ClientsView> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blueGrey,
                       minimumSize: const Size(130, 45),
+
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -581,6 +584,7 @@ class _ClientsViewState extends State<_ClientsView> {
                       backgroundColor: AppTheme.primaryColor,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(130, 45),
+
                     ),
                   ),
                 ],

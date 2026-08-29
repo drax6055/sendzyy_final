@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -29,12 +28,15 @@ import 'package:iFloraBuzz/features/calling/presentation/bloc/call_permission_bl
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:iFloraBuzz/features/notifications/data/datasources/fcm_service.dart';
+import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: '.env');
   try {
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   } catch (e) {
     debugPrint('[FCM] Firebase initialization notice: $e');
@@ -58,6 +60,7 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
+    setupWebBeforeUnload();
     _authBloc = di.getIt<AuthBloc>()..add(AuthCheckRequested());
     _handleInstagramCallback();
 
@@ -73,8 +76,7 @@ class _MyAppState extends State<MyApp> {
 
   void _handleInstagramCallback() {
     try {
-      final currentUrl = html.window.location.href;
-      final uri = Uri.parse(currentUrl);
+      final uri = Uri.base;
       final code = uri.queryParameters['code'];
       final state = uri.queryParameters['state'];
       final error = uri.queryParameters['error'];
@@ -83,19 +85,18 @@ class _MyAppState extends State<MyApp> {
       if (code != null && state != null) {
         // Instagram redirected here with code — bounce to backend callback
         final backendUrl = dotenv.env['BASE_URL'] ?? '';
-        final frontendUrl = html.window.location.origin;
+        final frontendUrl = '${uri.scheme}://${uri.host}${uri.hasPort ? ":${uri.port}" : ""}';
 
         final callbackUrl = '$backendUrl/api/instagram/callback'
             '?code=$code'
             '&state=$state'
             '&frontend_url=${Uri.encodeComponent(frontendUrl)}';
 
-        html.window.location.href = callbackUrl;
+        webRedirect(callbackUrl);
 
       } else if (instagramConnected == 'true') {
         // Backend completed OAuth successfully — clean URL and show success
-        final newUrl = '${html.window.location.origin}/';
-        html.window.history.replaceState(null, 'Sendzyy', newUrl);
+        webClearUrlQueryParams('Sendzyy');
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final context = navigatorKey.currentContext;
@@ -117,8 +118,7 @@ class _MyAppState extends State<MyApp> {
 
       } else if (error != null) {
         // Clear query parameters from address bar
-        final newUrl = '${html.window.location.origin}/';
-        html.window.history.replaceState(null, 'Sendzyy', newUrl);
+        webClearUrlQueryParams('Sendzyy');
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final context = navigatorKey.currentContext;

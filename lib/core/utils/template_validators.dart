@@ -117,7 +117,11 @@ class TemplateValidators {
     final quickReplies =
         buttons.where((b) => b['type'] == 'QUICK_REPLY').length;
     final ctas = buttons
-        .where((b) => b['type'] == 'PHONE_NUMBER' || b['type'] == 'URL')
+        .where((b) =>
+            b['type'] == 'PHONE_NUMBER' ||
+            b['type'] == 'URL' ||
+            b['type'] == 'CATALOG' ||
+            b['type'] == 'MPM')
         .length;
     if (quickReplies > 0 && ctas > 0 && quickReplies > 3) {
       return 'You cannot mix more than 3 quick reply buttons with call-to-action buttons';

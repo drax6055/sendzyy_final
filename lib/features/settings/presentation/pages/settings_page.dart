@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -224,14 +226,9 @@ class _SettingsPageState extends State<SettingsPage> {
             .fetchWhatsAppProfile(phoneNumberId: phoneId, accessToken: token);
         if (mounted) {
           setState(() {
-            _whatsappProfile = waProfile;
+            _whatsappProfile = waProfile ?? <String, dynamic>{};
             _whatsappProfileLoading = false;
-            if (waProfile == null) {
-              _whatsappProfileError =
-                  'Failed to load WhatsApp Business Profile';
-            } else {
-              _initProfileFormFields();
-            }
+            _initProfileFormFields();
           });
         }
       } else {
@@ -243,10 +240,11 @@ class _SettingsPageState extends State<SettingsPage> {
       }
     } catch (e) {
       if (mounted) {
+        final cleanMsg = e.toString().replaceFirst('Exception: ', '');
         setState(() {
           _profileLoading = false;
           _whatsappProfileLoading = false;
-          _whatsappProfileError = 'Error: $e';
+          _whatsappProfileError = cleanMsg;
         });
       }
     }
@@ -1389,12 +1387,12 @@ class _SettingsPageState extends State<SettingsPage> {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.image,
         allowMultiple: false,
-        withData: true,
+        withData: kIsWeb,
       );
 
       if (result != null && result.files.isNotEmpty) {
         final file = result.files.first;
-        final bytes = file.bytes;
+        final bytes = file.bytes ?? (!kIsWeb && file.path != null ? await File(file.path!).readAsBytes() : null);
         if (bytes == null) return;
 
         setState(() {

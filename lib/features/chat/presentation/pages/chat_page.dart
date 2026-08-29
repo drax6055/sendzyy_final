@@ -1,5 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,11 +18,13 @@ import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 // import 'package:iFloraBuzz/features/calling/presentation/bloc/call_control_bloc.dart';
 // import 'package:iFloraBuzz/features/calling/presentation/pages/active_call_page.dart';
+
 import 'package:iFloraBuzz/features/catalog/presentation/widgets/catalog_product_picker_sheet.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
   
+
 
   @override
   State<ChatPage> createState() => _ChatPageState();
@@ -28,6 +35,8 @@ class _ChatPageState extends State<ChatPage> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _messagesScrollController = ScrollController();
   String _searchQuery = '';
+  String? _lastScrolledContactId;
+  int _lastMessageCount = 0;
 
   /// 'all' or 'unread'
   String _selectedFilter = 'all';
@@ -78,16 +87,24 @@ class _ChatPageState extends State<ChatPage> {
     }
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+  /// Jump instantly to bottom (used when switching contacts or initial load).
+  void _jumpToBottom() {
+    Future.microtask(() {
       if (_messagesScrollController.hasClients) {
-        _messagesScrollController.animateTo(
-          _messagesScrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
+        _messagesScrollController.jumpTo(0.0);
       }
     });
+  }
+
+  /// Smooth scroll to bottom (used when new messages arrive in same conversation).
+  void _scrollToBottom() {
+    if (_messagesScrollController.hasClients) {
+      _messagesScrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.fastOutSlowIn,
+      );
+    }
   }
 
   /// Mark a conversation as read (called when tapped or loaded active).
@@ -114,9 +131,24 @@ class _ChatPageState extends State<ChatPage> {
     return BlocConsumer<ChatBloc, ChatState>(
       listener: (context, state) {
         if (state is ChatLoaded) {
-          _scrollToBottom();
-          if (state.selectedContactId != null) {
-            _markAsRead(state.selectedContactId!);
+          final contactId = state.selectedContactId;
+          final msgCount = state.messages.length;
+
+          if (contactId != _lastScrolledContactId) {
+            _lastScrolledContactId = contactId;
+            _lastMessageCount = msgCount;
+            _jumpToBottom();
+          } else if (msgCount > _lastMessageCount) {
+            _lastMessageCount = msgCount;
+            if (_messagesScrollController.hasClients) {
+              final currentOffset = _messagesScrollController.offset;
+              if (currentOffset < 200.0) {
+                _scrollToBottom();
+              }
+            }
+          }
+          if (contactId != null) {
+            _markAsRead(contactId);
           }
         }
       },
@@ -639,6 +671,7 @@ class _ChatPageState extends State<ChatPage> {
                 //     );
                 //   },
                 // ),
+
               ],
             ),
           ),
@@ -651,12 +684,19 @@ class _ChatPageState extends State<ChatPage> {
               padding: EdgeInsets.all(
                 ResponsiveHelper.isMobile(context) ? 12 : 24,
               ),
-              child: ListView.builder(
-                controller: _messagesScrollController,
-                itemCount: state.messages.length,
-                itemBuilder: (context, index) {
-                  final msg = state.messages[index];
-                  return _buildMessageBubble(msg, state.messages);
+              child: Builder(
+                builder: (context) {
+                  final reversedMessages = state.messages.reversed.toList();
+                  return ListView.builder(
+                    controller: _messagesScrollController,
+                    reverse: true,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    itemCount: reversedMessages.length,
+                    itemBuilder: (context, index) {
+                      final msg = reversedMessages[index];
+                      return _buildMessageBubble(msg, state.messages);
+                    },
+                  );
                 },
               ),
             ),
@@ -672,7 +712,9 @@ class _ChatPageState extends State<ChatPage> {
   Widget _buildMessageBubble(Map<String, dynamic> msg, List<Map<String, dynamic>> allMessages) {
     final bloc = context.read<ChatBloc>();
     final isMobile = ResponsiveHelper.isMobile(context);
+    final msgKey = msg['id'] ?? msg['wamid'] ?? msg['_id'] ?? msg['timestamp'] ?? msg.hashCode;
     return MessageRenderer(
+      key: ValueKey(msgKey),
       msg: msg,
       allMessages: allMessages,
       maxWidth: MediaQuery.of(context).size.width * (isMobile ? 0.75 : 0.4),
@@ -866,7 +908,7 @@ class _ChatPageState extends State<ChatPage> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) {
+      builder: (sheetCtx) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
@@ -879,45 +921,119 @@ class _ChatPageState extends State<ChatPage> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
+                // Row 1: Camera options (mobile only) + Gallery/File options
+                if (!kIsWeb) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _attachmentOption(
+                        icon: Icons.camera_alt,
+                        color: Colors.teal,
+                        label: 'Camera\nPhoto',
+                        onTap: () async {
+                          Navigator.pop(sheetCtx);
+                          await _captureFromCamera(
+                            contactId: contactId,
+                            replyingToMessage: replyingToMessage,
+                            isVideo: false,
+                          );
+                        },
+                      ),
+                      _attachmentOption(
+                        icon: Icons.videocam_rounded,
+                        color: Colors.deepOrange,
+                        label: 'Camera\nVideo',
+                        onTap: () async {
+                          Navigator.pop(sheetCtx);
+                          await _captureFromCamera(
+                            contactId: contactId,
+                            replyingToMessage: replyingToMessage,
+                            isVideo: true,
+                          );
+                        },
+                      ),
+                      _attachmentOption(
+                        icon: Icons.image,
+                        color: Colors.purple,
+                        label: 'Gallery\n(Max 5MB)',
+                        onTap: () {
+                          Navigator.pop(sheetCtx);
+                          _pickAndSendAttachment(
+                            contactId: contactId,
+                            type: 'image',
+                            extensions: ['jpg', 'jpeg', 'png'],
+                            maxSize: 5 * 1024 * 1024,
+                            replyingToMessage: replyingToMessage,
+                          );
+                        },
+                      ),
+                      _attachmentOption(
+                        icon: Icons.videocam,
+                        color: Colors.pink,
+                        label: 'Video\n(Max 16MB)',
+                        onTap: () {
+                          Navigator.pop(sheetCtx);
+                          _pickAndSendAttachment(
+                            contactId: contactId,
+                            type: 'video',
+                            extensions: ['mp4', '3gp'],
+                            maxSize: 16 * 1024 * 1024,
+                            replyingToMessage: replyingToMessage,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ] else ...[
+                  // Web: show original row without camera
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _attachmentOption(
+                        icon: Icons.image,
+                        color: Colors.purple,
+                        label: 'Image\n(Max 5MB)',
+                        onTap: () {
+                          Navigator.pop(sheetCtx);
+                          _pickAndSendAttachment(
+                            contactId: contactId,
+                            type: 'image',
+                            extensions: ['jpg', 'jpeg', 'png'],
+                            maxSize: 5 * 1024 * 1024,
+                            replyingToMessage: replyingToMessage,
+                          );
+                        },
+                      ),
+                      _attachmentOption(
+                        icon: Icons.videocam,
+                        color: Colors.pink,
+                        label: 'Video\n(Max 16MB)',
+                        onTap: () {
+                          Navigator.pop(sheetCtx);
+                          _pickAndSendAttachment(
+                            contactId: contactId,
+                            type: 'video',
+                            extensions: ['mp4', '3gp'],
+                            maxSize: 16 * 1024 * 1024,
+                            replyingToMessage: replyingToMessage,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                ],
+                // Row 2: Audio, Document, Catalog (always shown)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _attachmentOption(
-                      icon: Icons.image,
-                      color: Colors.purple,
-                      label: 'Image\n(Max 5MB)',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _pickAndSendAttachment(
-                          contactId: contactId,
-                          type: 'image',
-                          extensions: ['jpg', 'jpeg', 'png'],
-                          maxSize: 5 * 1024 * 1024,
-                          replyingToMessage: replyingToMessage,
-                        );
-                      },
-                    ),
-                    _attachmentOption(
-                      icon: Icons.videocam,
-                      color: Colors.pink,
-                      label: 'Video\n(Max 16MB)',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _pickAndSendAttachment(
-                          contactId: contactId,
-                          type: 'video',
-                          extensions: ['mp4', '3gp'],
-                          maxSize: 16 * 1024 * 1024,
-                          replyingToMessage: replyingToMessage,
-                        );
-                      },
-                    ),
                     _attachmentOption(
                       icon: Icons.audiotrack,
                       color: Colors.orange,
                       label: 'Audio\n(Max 16MB)',
                       onTap: () {
-                        Navigator.pop(context);
+                        Navigator.pop(sheetCtx);
                         _pickAndSendAttachment(
                           contactId: contactId,
                           type: 'audio',
@@ -932,7 +1048,7 @@ class _ChatPageState extends State<ChatPage> {
                       color: Colors.blue,
                       label: 'Document\n(Max 100MB)',
                       onTap: () {
-                        Navigator.pop(context);
+                        Navigator.pop(sheetCtx);
                         _pickAndSendAttachment(
                           contactId: contactId,
                           type: 'document',
@@ -947,7 +1063,7 @@ class _ChatPageState extends State<ChatPage> {
                       color: const Color(0xFF10B981),
                       label: 'Catalog\nMessage',
                       onTap: () {
-                        Navigator.pop(context);
+                        Navigator.pop(sheetCtx);
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
@@ -967,6 +1083,70 @@ class _ChatPageState extends State<ChatPage> {
       },
     );
   }
+
+  /// Captures a photo or video from the device camera.
+  /// Shows a preview dialog before sending.
+  Future<void> _captureFromCamera({
+    required String contactId,
+    Map<String, dynamic>? replyingToMessage,
+    required bool isVideo,
+  }) async {
+    final picker = ImagePicker();
+    XFile? picked;
+    try {
+      if (isVideo) {
+        picked = await picker.pickVideo(
+          source: ImageSource.camera,
+          maxDuration: const Duration(minutes: 5),
+        );
+      } else {
+        picked = await picker.pickImage(
+          source: ImageSource.camera,
+          imageQuality: 85,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Camera error: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+      return;
+    }
+
+    if (picked == null || !mounted) return;
+
+    // Show preview dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _CameraPreviewDialog(
+        file: picked!,
+        isVideo: isVideo,
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    // Convert to PlatformFile and send
+    final bytes = await picked.readAsBytes();
+    final platformFile = PlatformFile(
+      name: picked.name,
+      size: bytes.length,
+      bytes: bytes,
+      path: picked.path,
+    );
+    _sendFileAttachment(
+      contactId: contactId,
+      file: platformFile,
+      type: isVideo ? 'video' : 'image',
+      replyingToMessage: replyingToMessage,
+    );
+  }
+
 
   Widget _attachmentOption({
     required IconData icon,
@@ -1010,7 +1190,7 @@ class _ChatPageState extends State<ChatPage> {
       final result = await FilePicker.platform.pickFiles(
         type: extensions.isEmpty ? FileType.any : FileType.custom,
         allowedExtensions: extensions.isEmpty ? null : extensions,
-        withData: true,
+        withData: kIsWeb,
       );
 
       if (result == null || result.files.isEmpty) return;
@@ -1081,6 +1261,64 @@ class _ChatPageState extends State<ChatPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to send attachment: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Sends an already-resolved PlatformFile as a media message.
+  /// Used by camera capture after preview confirmation.
+  Future<void> _sendFileAttachment({
+    required String contactId,
+    required PlatformFile file,
+    required String type,
+    Map<String, dynamic>? replyingToMessage,
+  }) async {
+    final chatBloc = context.read<ChatBloc>();
+    bool isDialogShowing = false;
+    if (mounted) {
+      isDialogShowing = true;
+      _showSendingOverlay(context, file.name);
+    }
+    try {
+      final mediaId = await chatBloc.uploadMedia(file);
+      if (isDialogShowing && mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        isDialogShowing = false;
+      }
+      if (mediaId.isNotEmpty) {
+        final replyId = replyingToMessage?['id']?.toString();
+        final replyWamid = replyingToMessage?['wamid']?.toString();
+        chatBloc.add(SendMediaMessage(
+          contactId: contactId,
+          mediaId: mediaId,
+          type: type,
+          filename: type == 'document' ? file.name : null,
+          replyToMessageId: replyId,
+          replyToWamid: replyWamid,
+        ));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${type[0].toUpperCase()}${type.substring(1)} sent!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw Exception('Failed to upload media to server.');
+      }
+    } catch (e) {
+      if (isDialogShowing && mounted &&
+          Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to send: ${e.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
@@ -1521,10 +1759,23 @@ class MessageRenderer extends StatelessWidget {
         );
 
       case 'document':
+        final docMediaUrl = msg['mediaUrl'] as String?;
         final docText = msg['text'] as String?;
+        final docFilename = docText != null && docText.isNotEmpty
+            ? docText
+            : 'document';
+        if (docMediaUrl != null && baseUrl != null && authToken != null) {
+          return _DocumentBubble(
+            mediaId: docMediaUrl,
+            filename: docFilename,
+            isMe: isMe,
+            baseUrl: baseUrl!,
+            authToken: authToken!,
+          );
+        }
         return _iconLabel(
           Icons.insert_drive_file_outlined,
-          docText != null && docText.isNotEmpty ? '📄 $docText' : '📄 Document',
+          '📄 $docFilename',
           textColor,
           mutedColor,
         );
@@ -1972,7 +2223,7 @@ class _ImageBubble extends StatelessWidget {
     showDialog(
       context: context,
       barrierColor: Colors.black87,
-      builder: (_) => Dialog(
+      builder: (dialogCtx) => Dialog(
         backgroundColor: Colors.transparent,
         insetPadding: const EdgeInsets.all(16),
         child: Stack(
@@ -1991,14 +2242,93 @@ class _ImageBubble extends StatelessWidget {
                 ),
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.white, size: 28),
-              onPressed: () => Navigator.of(context).pop(),
+            // Top bar: close + download
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const SizedBox(width: 48),
+                  IconButton(
+                    icon: const Icon(Icons.download, color: Colors.white, size: 28),
+                    tooltip: 'Download',
+                    onPressed: () => _downloadMediaFile(
+                      context: dialogCtx,
+                      url: url,
+                      filename: 'image_${mediaId.replaceAll('/', '_')}.jpg',
+                      mimeType: 'image/jpeg',
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                    onPressed: () => Navigator.of(dialogCtx).pop(),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// Downloads a media file.
+  /// On Web: triggers browser download via webDownloadBytes.
+  /// On Mobile: saves to temp dir and opens with native app.
+  Future<void> _downloadMediaFile({
+    required BuildContext context,
+    required String url,
+    required String filename,
+    required String mimeType,
+  }) async {
+    try {
+      final dio = Dio();
+      final response = await dio.get<List<int>>(
+        url,
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'Authorization': 'Bearer $authToken'},
+        ),
+      );
+      final bytes = response.data;
+      if (bytes == null) throw Exception('No data received');
+
+      if (kIsWeb) {
+        await webDownloadBytes(bytes, filename, mimeType: mimeType);
+      } else {
+        Directory dir;
+        if (Platform.isAndroid) {
+          dir = (await getExternalStorageDirectory()) ??
+              await getTemporaryDirectory();
+        } else {
+          dir = await getApplicationDocumentsDirectory();
+        }
+        final file = File('${dir.path}/$filename');
+        await file.writeAsBytes(bytes);
+        await OpenFile.open(file.path);
+      }
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(kIsWeb
+                ? 'Download started'
+                : 'Saved: $filename'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download failed: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
   }
 
   Widget _fallback(Color textColor, Color iconColor) {
@@ -2034,6 +2364,7 @@ class _AudioBubble extends StatefulWidget {
 
 class _AudioBubbleState extends State<_AudioBubble> {
   late final String _viewId;
+  bool _isDownloading = false;
 
   @override
   void initState() {
@@ -2048,30 +2379,123 @@ class _AudioBubbleState extends State<_AudioBubble> {
     registerWebAudioElement(_viewId, audioUrl);
   }
 
+  Future<void> _downloadAudio() async {
+    if (_isDownloading) return;
+    setState(() => _isDownloading = true);
+    try {
+      final url = '${widget.baseUrl}/media/${widget.mediaId}';
+      final dio = Dio();
+      final response = await dio.get<List<int>>(
+        url,
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'Authorization': 'Bearer ${widget.authToken}'},
+        ),
+      );
+      final bytes = response.data;
+      if (bytes == null) throw Exception('No data');
+      const filename = 'audio_message.ogg';
+      if (kIsWeb) {
+        await webDownloadBytes(bytes, filename, mimeType: 'audio/ogg');
+      } else {
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/$filename');
+        await file.writeAsBytes(bytes);
+        await OpenFile.open(file.path);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Audio ready'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Download failed: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bubbleColor = widget.isMe
+        ? Colors.white.withValues(alpha: 0.15)
+        : Colors.grey.shade100;
+    final textColor = widget.isMe ? Colors.white : AppTheme.secondaryColor;
+
     if (kIsWeb) {
-      return SizedBox(
-        width: 260,
-        height: 48,
-        child: HtmlElementView(viewType: _viewId),
-      );
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: const Row(
+      return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.audiotrack, color: AppTheme.primaryColor),
-          SizedBox(width: 8),
-          Text(
-            'Audio Message',
-            style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+          SizedBox(
+            width: 260,
+            height: 48,
+            child: HtmlElementView(viewType: _viewId),
           ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _isDownloading
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : IconButton(
+                    icon: Icon(Icons.download, size: 18, color: textColor),
+                    tooltip: 'Download audio',
+                    onPressed: _downloadAudio,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+          ),
+        ],
+      );
+    }
+
+    // Mobile: show card with download/open
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: bubbleColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: widget.isMe
+              ? Colors.white.withValues(alpha: 0.3)
+              : Colors.grey.shade300,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.audiotrack, color: AppTheme.primaryColor, size: 28),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '🎵 Audio Message',
+              style: TextStyle(
+                color: textColor,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          _isDownloading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : IconButton(
+                  icon: Icon(Icons.open_in_new, size: 20, color: textColor),
+                  tooltip: 'Open audio',
+                  onPressed: _downloadAudio,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
         ],
       ),
     );
@@ -2079,6 +2503,7 @@ class _AudioBubbleState extends State<_AudioBubble> {
 }
 
 /// Shows a video thumbnail with a play button overlay.
+/// On Web: opens in browser tab. On Mobile: downloads and opens with native player.
 class _VideoBubble extends StatefulWidget {
   final String mediaId;
   final bool isMe;
@@ -2099,6 +2524,7 @@ class _VideoBubble extends StatefulWidget {
 class _VideoBubbleState extends State<_VideoBubble> {
   late final String _videoUrl;
   late final String _viewId;
+  bool _isDownloading = false;
 
   @override
   void initState() {
@@ -2113,12 +2539,49 @@ class _VideoBubbleState extends State<_VideoBubble> {
     registerWebVideoElement(_viewId, _videoUrl);
   }
 
+  Future<void> _openOrDownloadVideo() async {
+    if (kIsWeb) {
+      webOpenUrl(_videoUrl);
+      return;
+    }
+    if (_isDownloading) return;
+    setState(() => _isDownloading = true);
+    try {
+      final url = '${widget.baseUrl}/media/${widget.mediaId}';
+      final dio = Dio();
+      final response = await dio.get<List<int>>(
+        url,
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'Authorization': 'Bearer ${widget.authToken}'},
+        ),
+      );
+      final bytes = response.data;
+      if (bytes == null) throw Exception('No data');
+      final dir = await getTemporaryDirectory();
+      final file = File('${dir.path}/video_${widget.mediaId}.mp4');
+      await file.writeAsBytes(bytes);
+      await OpenFile.open(file.path);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open video: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final iconColor = Colors.white.withValues(alpha: 0.9);
 
     return GestureDetector(
-      onTap: () => webOpenUrl(_videoUrl),
+      onTap: _openOrDownloadVideo,
       child: SizedBox(
         width: 200,
         height: 150,
@@ -2144,19 +2607,21 @@ class _VideoBubbleState extends State<_VideoBubble> {
               ),
             ),
             Center(
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.55),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.play_arrow_rounded,
-                  color: iconColor,
-                  size: 32,
-                ),
-              ),
+              child: _isDownloading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.55),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.play_arrow_rounded,
+                        color: iconColor,
+                        size: 32,
+                      ),
+                    ),
             ),
           ],
         ),
@@ -2164,6 +2629,176 @@ class _VideoBubbleState extends State<_VideoBubble> {
     );
   }
 }
+
+/// Shows a document card with filename and a Download/Open button.
+/// On Web: triggers browser download. On Mobile: saves to temp dir and opens with native app.
+class _DocumentBubble extends StatefulWidget {
+  final String mediaId;
+  final String filename;
+  final bool isMe;
+  final String baseUrl;
+  final String authToken;
+
+  const _DocumentBubble({
+    required this.mediaId,
+    required this.filename,
+    required this.isMe,
+    required this.baseUrl,
+    required this.authToken,
+  });
+
+  @override
+  State<_DocumentBubble> createState() => _DocumentBubbleState();
+}
+
+class _DocumentBubbleState extends State<_DocumentBubble> {
+  bool _isDownloading = false;
+
+  IconData _iconForFile(String name) {
+    final ext = name.split('.').last.toLowerCase();
+    switch (ext) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'xls':
+      case 'xlsx':
+        return Icons.table_chart_outlined;
+      case 'doc':
+      case 'docx':
+        return Icons.description_outlined;
+      case 'ppt':
+      case 'pptx':
+        return Icons.slideshow_outlined;
+      default:
+        return Icons.insert_drive_file_outlined;
+    }
+  }
+
+  Future<void> _openDocument() async {
+    if (_isDownloading) return;
+    setState(() => _isDownloading = true);
+    try {
+      final url = '${widget.baseUrl}/media/${widget.mediaId}';
+      final dio = Dio();
+      final response = await dio.get<List<int>>(
+        url,
+        options: Options(
+          responseType: ResponseType.bytes,
+          headers: {'Authorization': 'Bearer ${widget.authToken}'},
+        ),
+      );
+      final bytes = response.data;
+      if (bytes == null) throw Exception('No data');
+
+      if (kIsWeb) {
+        await webDownloadBytes(bytes, widget.filename,
+            mimeType: 'application/octet-stream');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Download started'), backgroundColor: Colors.green),
+          );
+        }
+      } else {
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/${widget.filename}');
+        await file.writeAsBytes(bytes);
+        final result = await OpenFile.open(file.path);
+        if (mounted && result.type != ResultType.done) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Saved to: ${file.path}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open document: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textColor = widget.isMe ? Colors.white : AppTheme.secondaryColor;
+    final subColor = widget.isMe
+        ? Colors.white.withValues(alpha: 0.7)
+        : Colors.grey.shade600;
+    final cardColor = widget.isMe
+        ? Colors.white.withValues(alpha: 0.15)
+        : Colors.grey.shade50;
+
+    return Container(
+      width: 220,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: widget.isMe
+              ? Colors.white.withValues(alpha: 0.3)
+              : Colors.grey.shade300,
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(_iconForFile(widget.filename),
+              color: AppTheme.primaryColor, size: 32),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.filename,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Document',
+                  style: TextStyle(color: subColor, fontSize: 10),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          _isDownloading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : IconButton(
+                  icon: Icon(
+                    kIsWeb ? Icons.download : Icons.open_in_new,
+                    size: 20,
+                    color: textColor,
+                  ),
+                  tooltip: kIsWeb ? 'Download' : 'Open',
+                  onPressed: _openDocument,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+        ],
+      ),
+    );
+  }
+}
+
 
 class _WindowTimerWidget extends StatefulWidget {
   final DateTime lastActive;
@@ -2321,6 +2956,140 @@ class _HoverableMessageBubbleState extends State<_HoverableMessageBubble> {
           if (_isHovered && !widget.isMe && widget.onReply != null) replyBtn,
           Flexible(child: widget.child),
           if (_isHovered && widget.isMe && widget.onReply != null) replyBtn,
+        ],
+      ),
+    );
+  }
+}
+
+/// Preview dialog shown after camera capture, before the file is sent.
+/// Returns true if the user taps Send, false/null if they cancel.
+class _CameraPreviewDialog extends StatelessWidget {
+  final XFile file;
+  final bool isVideo;
+
+  const _CameraPreviewDialog({
+    required this.file,
+    required this.isVideo,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.black,
+      insetPadding: const EdgeInsets.all(16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 8, 0),
+            child: Row(
+              children: [
+                Icon(
+                  isVideo ? Icons.videocam : Icons.camera_alt,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isVideo ? 'Video Preview' : 'Photo Preview',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(false),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Preview
+          ClipRRect(
+            borderRadius: const BorderRadius.vertical(bottom: Radius.zero),
+            child: isVideo
+                ? Container(
+                    width: double.infinity,
+                    height: 300,
+                    color: Colors.black54,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.play_circle_outline,
+                            color: Colors.white, size: 64),
+                        const SizedBox(height: 12),
+                        Text(
+                          file.name,
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  )
+                : Image.file(
+                    File(file.path),
+                    width: double.infinity,
+                    height: 300,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 300,
+                      color: Colors.black54,
+                      child: const Icon(Icons.broken_image,
+                          color: Colors.white54, size: 64),
+                    ),
+                  ),
+          ),
+          // File name
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              file.name,
+              style: const TextStyle(color: Colors.white60, fontSize: 11),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          // Actions
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white38),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Cancel'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.send, size: 16),
+                    label: const Text('Send'),
+                    onPressed: () => Navigator.of(context).pop(true),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

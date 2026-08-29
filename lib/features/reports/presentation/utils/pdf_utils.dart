@@ -6,6 +6,9 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'package:csv/csv.dart';
+import 'package:iFloraBuzz/core/di/injection.dart';
+import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+
 
 class PdfUtils {
   static Future<void> generateCampaignReport({
@@ -336,6 +339,67 @@ class PdfUtils {
       else sent++;
     } 
 
+    // ── Dynamic Template Button Discovery ──────────────────────────────────
+    final List<String> buttonNames = [];
+
+    // 1. Fetch full template definition from WhatsApp templates to guarantee ALL designed buttons (clicked or unclicked) are present
+    if (template != 'N/A') {
+      try {
+        final tpls = await getIt<WhatsAppRepository>().fetchTemplates();
+        for (final tpl in tpls) {
+          if (tpl is Map && (tpl['name'] ?? '').toString().trim().toLowerCase() == template.trim().toLowerCase()) {
+            final components = tpl['components'] as List? ?? [];
+            for (final comp in components) {
+              if (comp is Map && comp['type'] == 'BUTTONS' && comp['buttons'] is List) {
+                for (final b in comp['buttons']) {
+                  final text = (b is Map ? b['text'] : '')?.toString().trim() ?? '';
+                  if (text.isNotEmpty && !buttonNames.contains(text)) {
+                    buttonNames.add(text);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint('[PdfUtils] Error fetching template buttons: $e');
+      }
+    }
+
+    // 2. Also check templateButtons snapshot from campaign or attached to recipient metadata
+    final List? templateButtons = campaign['templateButtons'] as List? ??
+        (recipients.isNotEmpty ? recipients.first['_templateButtons'] as List? : null);
+    if (templateButtons != null) {
+      for (final btn in templateButtons) {
+        final text = (btn is Map ? btn['text'] : btn)?.toString().trim();
+        if (text != null && text.isNotEmpty && !buttonNames.contains(text)) {
+          buttonNames.add(text);
+        }
+      }
+    }
+
+    // 3. Discover any additional clicked buttons recorded across recipient records
+    for (final r in recipients) {
+      final clickedList = (r['clickedButtons'] as List?)?.map((e) => e.toString().trim()).toList() ?? [];
+      for (final c in clickedList) {
+        if (c.isNotEmpty && !buttonNames.contains(c)) {
+          buttonNames.add(c);
+        }
+      }
+      final clicks = r['buttonClicks'] as List?;
+      if (clicks != null) {
+        for (final click in clicks) {
+          if (click is Map && click['buttonText'] != null) {
+            final t = click['buttonText'].toString().trim();
+            if (t.isNotEmpty && !buttonNames.contains(t)) {
+              buttonNames.add(t);
+            }
+          }
+        }
+      }
+    }
+
+
     final List<List<dynamic>> rows = [];
     
     // Header information
@@ -353,9 +417,41 @@ class PdfUtils {
     rows.add(['Failed', failed]);
     rows.add([]); // Blank line
 
-    // Details header
+    // Dynamic Button Interaction Summary
+    if (buttonNames.isNotEmpty) {
+      rows.add(['Button Interaction Summary']);
+      rows.add(['Button Name', 'Total Clicks', 'Click Rate']);
+      for (final btnName in buttonNames) {
+        int clickCount = 0;
+        for (final r in recipients) {
+          final clickedArr = (r['clickedButtons'] as List?)?.map((e) => e.toString().trim().toLowerCase()).toList() ?? [];
+          final clicksArr = (r['buttonClicks'] as List?)?.map((e) => (e is Map ? e['buttonText'] : '')?.toString().trim().toLowerCase()).toList() ?? [];
+          if (clickedArr.contains(btnName.toLowerCase()) || clicksArr.contains(btnName.toLowerCase())) {
+            clickCount++;
+          }
+        }
+        final rate = (delivered + read) > 0 
+            ? ((clickCount / (delivered + read)) * 100).toStringAsFixed(1) 
+            : '0.0';
+        rows.add([btnName, clickCount, '$rate%']);
+      }
+      rows.add([]); // Blank line
+    }
+
+    // Details header with dedicated dynamic button columns
+    final List<dynamic> headers = [
+      'Name',
+      'Phone Number',
+      'Status',
+      'Sent At',
+      'Delivered At',
+      'Read At',
+      'Failed At',
+      ...buttonNames,
+    ];
     rows.add(['Recipient Details']);
-    rows.add(['Name', 'Phone Number', 'Status', 'Sent At', 'Delivered At', 'Read At', 'Failed At']);
+    rows.add(headers);
+
     
     String fmt(String? iso) {
       if (iso == null) return '-';
@@ -370,15 +466,41 @@ class PdfUtils {
     // Add recipient details rows
     for (final r in recipients) {
       final status = r['status'] as String? ?? 'sent';
-      rows.add([
+      final phone = r['to']?.toString() ?? '-';
+      // Format phone numbers to prevent Excel exponential scientific notation (e.g. 5.56E+09)
+      final phoneFormatted = (phone != '-' && !phone.startsWith('=')) ? '="$phone"' : phone;
+
+      final clickedSet = <String>{};
+      final clickedArr = (r['clickedButtons'] as List?)?.map((e) => e.toString().trim().toLowerCase()).toList() ?? [];
+      clickedSet.addAll(clickedArr);
+      final clicksArr = r['buttonClicks'] as List?;
+      if (clicksArr != null) {
+        for (final c in clicksArr) {
+          if (c is Map && c['buttonText'] != null) {
+            clickedSet.add(c['buttonText'].toString().trim().toLowerCase());
+          }
+        }
+      }
+
+      final List<dynamic> row = [
         r['name'] ?? '-',
-        r['to'] ?? '-',
+        phoneFormatted,
+
         status[0].toUpperCase() + status.substring(1),
         fmt(r['sentAt'] as String?),
         fmt(r['deliveredAt'] as String?),
         fmt(r['readAt'] as String?),
         fmt(r['failedAt'] as String?),
-      ]);
+      ];
+
+      // Add Yes/No for each button column
+      for (final btnName in buttonNames) {
+        final isClicked = clickedSet.contains(btnName.toLowerCase());
+        row.add(isClicked ? 'Yes' : 'No');
+      }
+
+      rows.add(row);
+
     }
 
     final csvString = const ListToCsvConverter().convert(rows);

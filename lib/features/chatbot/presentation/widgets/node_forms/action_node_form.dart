@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
@@ -172,7 +173,7 @@ class _ActionNodeFormState extends State<ActionNodeForm> {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: type,
-        withData: true,
+        withData: kIsWeb,
         allowMultiple: false,
       );
 

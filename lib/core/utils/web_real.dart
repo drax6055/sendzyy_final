@@ -80,3 +80,26 @@ void registerWebVideoElement(String viewId, String videoUrl) {
     });
   } catch (_) {}
 }
+
+void setupWebBeforeUnload() {
+  try {
+    html.window.onBeforeUnload.listen((html.Event event) {
+      if (event is html.BeforeUnloadEvent) {
+        event.returnValue = 'Are you sure you want to exit? If a campaign or broadcast is in progress, leaving may interrupt it.';
+      }
+    });
+  } catch (_) {}
+}
+
+void webRedirect(String url) {
+  try {
+    html.window.location.href = url;
+  } catch (_) {}
+}
+
+void webClearUrlQueryParams(String title) {
+  try {
+    final newUrl = '${html.window.location.origin}/';
+    html.window.history.replaceState(null, title, newUrl);
+  } catch (_) {}
+}

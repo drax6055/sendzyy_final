@@ -124,6 +124,29 @@ class CatalogMessageRequest {
         'thumbnailProductRetailerId': thumbnailProductRetailerId,
     };
   }
+
+  Map<String, dynamic> toMetaInteractivePayload() {
+    return {
+      'messaging_product': 'whatsapp',
+      'recipient_type': 'individual',
+      'to': to,
+      'type': 'interactive',
+      'interactive': {
+        'type': 'catalog_message',
+        'body': {'text': bodyText},
+        if (footerText != null && footerText!.isNotEmpty)
+          'footer': {'text': footerText!},
+        'action': {
+          'name': 'catalog_message',
+          if (thumbnailProductRetailerId != null &&
+              thumbnailProductRetailerId!.isNotEmpty)
+            'parameters': {
+              'thumbnail_product_retailer_id': thumbnailProductRetailerId!,
+            },
+        },
+      },
+    };
+  }
 }
 
 /// Single Product Message — highlights one specific product
@@ -149,6 +172,26 @@ class SingleProductRequest {
       'productRetailerId': productRetailerId,
       if (bodyText != null && bodyText!.isNotEmpty) 'bodyText': bodyText,
       if (footerText != null && footerText!.isNotEmpty) 'footerText': footerText,
+    };
+  }
+
+  Map<String, dynamic> toMetaInteractivePayload() {
+    return {
+      'messaging_product': 'whatsapp',
+      'recipient_type': 'individual',
+      'to': to,
+      'type': 'interactive',
+      'interactive': {
+        'type': 'product',
+        if (bodyText != null && bodyText!.isNotEmpty)
+          'body': {'text': bodyText!},
+        if (footerText != null && footerText!.isNotEmpty)
+          'footer': {'text': footerText!},
+        'action': {
+          'catalog_id': catalogId,
+          'product_retailer_id': productRetailerId,
+        },
+      },
     };
   }
 }
@@ -199,6 +242,33 @@ class MultiProductRequest {
       'sections': sections.map((s) => s.toJson()).toList(),
     };
   }
+
+  Map<String, dynamic> toMetaInteractivePayload() {
+    return {
+      'messaging_product': 'whatsapp',
+      'recipient_type': 'individual',
+      'to': to,
+      'type': 'interactive',
+      'interactive': {
+        'type': 'product_list',
+        'header': {'type': 'text', 'text': headerText},
+        'body': {'text': bodyText},
+        if (footerText != null && footerText!.isNotEmpty)
+          'footer': {'text': footerText!},
+        'action': {
+          'catalog_id': catalogId,
+          'sections': sections
+              .map((s) => {
+                    'title': s.title,
+                    'product_items': s.productRetailerIds
+                        .map((id) => {'product_retailer_id': id})
+                        .toList(),
+                  })
+              .toList(),
+        },
+      },
+    };
+  }
 }
 
 /// A single card in a product carousel
@@ -239,6 +309,41 @@ class ProductCarouselRequest {
       'to': to,
       'bodyText': bodyText,
       'cards': cards.map((c) => c.toJson()).toList(),
+    };
+  }
+
+  Map<String, dynamic> toMetaInteractivePayload() {
+    return {
+      'messaging_product': 'whatsapp',
+      'recipient_type': 'individual',
+      'to': to,
+      'type': 'interactive',
+      'interactive': {
+        'type': 'carousel',
+        'body': {'text': bodyText},
+        'action': {
+          'cards': cards
+              .map((c) => {
+                    'card_index': c.cardIndex,
+                    'components': [
+                      {
+                        'type': 'button',
+                        'sub_type': 'product',
+                        'parameters': [
+                          {
+                            'type': 'product',
+                            'product': {
+                              'catalog_id': c.catalogId,
+                              'product_retailer_id': c.productRetailerId,
+                            },
+                          },
+                        ],
+                      },
+                    ],
+                  })
+              .toList(),
+        },
+      },
     };
   }
 }

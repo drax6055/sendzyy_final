@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import 'dart:typed_data';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'dart:io';
 import 'dart:convert';
 import 'package:iFloraBuzz/features/credits/data/models/panel_plan.dart';
@@ -19,7 +19,13 @@ class WhatsAppRepository {
   String? get _accessToken => _prefs.getString(AppConstants.keyAccessToken);
   String? get _phoneNumberId => _prefs.getString(AppConstants.keyPhoneNumberId);
   String? get _wabaId => _prefs.getString(AppConstants.keyWabaId);
-  String? get _appId => _prefs.getString(AppConstants.keyAppId);
+  String? get _appId {
+    final stored = _prefs.getString(AppConstants.keyAppId);
+    if (stored != null && stored.isNotEmpty && stored != '1241458147867376') {
+      return stored;
+    }
+    return AppConstants.metaAppId;
+  }
 
   // --- API Methods (Proxied through Node.js) ---
 
@@ -427,6 +433,16 @@ class WhatsAppRepository {
                     'text': btn['text'],
                     'url': btn['url'],
                   };
+                } else if (type == 'CATALOG') {
+                  return {
+                    'type': 'CATALOG',
+                    'text': btn['text'] ?? 'View catalog',
+                  };
+                } else if (type == 'MPM') {
+                  return {
+                    'type': 'MPM',
+                    'text': btn['text'] ?? 'View items',
+                  };
                 }
                 return btn;
               }).toList(),
@@ -489,30 +505,31 @@ class WhatsAppRepository {
       throw Exception('API Credentials not configured');
     }
 
+    final Uint8List binaryData;
+    if (file.bytes != null) {
+      binaryData = file.bytes!;
+    } else if (!kIsWeb && file.path != null) {
+      binaryData = await File(file.path!).readAsBytes();
+    } else {
+      throw Exception('File data is unavailable.');
+    }
+
+    final mimeType = _getMimeType(file);
+
+    // 1. Try Backend Proxy
     try {
       final uploadDio = Dio();
       final authToken = _prefs.getString('auth_token');
       final proxyUrl = '${AppConstants.baseUrl}/media-upload';
 
-      final dynamic fileData;
-      if (file.bytes != null) {
-        fileData = file.bytes;
-      } else if (!kIsWeb && file.path != null) {
-        fileData = await File(file.path!).readAsBytes();
-      } else {
-        throw Exception(
-          'File data is unavailable. Please ensure withData: true is set in the file picker.',
-        );
-      }
-
       final response = await uploadDio.post(
         proxyUrl,
-        data: fileData,
+        data: binaryData,
         queryParameters: {
           'phoneNumberId': _phoneNumberId,
           'accessToken': _accessToken,
           'fileName': file.name,
-          'fileType': _getMimeType(file),
+          'fileType': mimeType,
         },
         options: Options(
           headers: {
@@ -524,158 +541,164 @@ class WhatsAppRepository {
 
       if (response.statusCode == 200 && response.data['id'] != null) {
         return response.data['id'] as String;
-      } else {
-        throw Exception(
-          'Media upload failed: ${response.data['error'] ?? 'Unknown error'}',
-        );
       }
     } catch (e) {
-      if (e is DioException) {
-        final resp = e.response;
-        if (resp != null) {
-          final data = resp.data;
-          String? message;
-          if (data is Map) {
-            final errorData = data['error'];
-            if (errorData is Map) {
-              final details = errorData['details'];
-              if (details != null) {
-                if (details is Map && details['error'] != null && details['error']['message'] != null) {
-                  message = details['error']['message'].toString();
-                } else {
-                  message = details.toString();
-                }
-              } else {
-                message = errorData['message']?.toString();
-              }
-            } else if (errorData is String) {
-              message = errorData;
-            }
-          } else if (data is String) {
-            message = data;
-          }
-          message ??= e.message;
-          throw Exception('Media Upload API Error: $message');
-        }
-      }
-      throw Exception('Error uploading media: $e');
+      debugPrint('Backend proxy upload failed ($e), falling back to direct Meta Cloud API.');
     }
+
+    // 2. Direct Meta Graph API Upload Fallback
+    try {
+      final directDio = Dio();
+      final formData = FormData.fromMap({
+        'file': MultipartFile.fromBytes(binaryData, filename: file.name),
+        'type': mimeType,
+        'messaging_product': 'whatsapp',
+      });
+
+      final directResponse = await directDio.post(
+        '${AppConstants.metaGraphUrl}/$_phoneNumberId/media',
+        data: formData,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $_accessToken',
+          },
+        ),
+      );
+
+      if (directResponse.statusCode == 200 &&
+          directResponse.data != null &&
+          directResponse.data['id'] != null) {
+        return directResponse.data['id'] as String;
+      }
+    } catch (directError) {
+      if (directError is DioException && directError.response != null) {
+        final data = directError.response!.data;
+        String? message;
+        if (data is Map && data['error'] is Map) {
+          final errMap = data['error'] as Map;
+          message = errMap['error_user_msg']?.toString() ??
+                    errMap['error_user_title']?.toString() ??
+                    errMap['message']?.toString();
+        } else if (data is Map) {
+          message = data['error']?.toString() ?? data['message']?.toString();
+        }
+        message ??= directError.message;
+        throw message ?? 'Failed to upload media';
+      }
+      throw parseErrorMessage(directError, 'Failed to upload media');
+    }
+
+    throw Exception('Media upload failed. Please check network and credentials.');
   }
 
   Future<String> _getTemplateMediaHandle(PlatformFile file) async {
     if (_accessToken == null) throw Exception('Access token not set');
-    if (_appId == null || _appId!.isEmpty) {
+    final appId = _appId?.isNotEmpty == true ? _appId! : AppConstants.metaAppId;
+    if (appId.isEmpty) {
       throw Exception(
         'Meta App ID is required for media templates. Please configure it in API Configuration.',
       );
     }
 
+    final Uint8List binaryData;
+    if (file.bytes != null) {
+      binaryData = file.bytes!;
+    } else if (!kIsWeb && file.path != null) {
+      binaryData = await File(file.path!).readAsBytes();
+    } else {
+      throw Exception('File data is unavailable.');
+    }
+
+    final mimeType = _getMimeType(file);
+
+    // 1. Try Backend Proxy Upload
     try {
       final uploadDio = Dio();
       final authToken = _prefs.getString('auth_token');
+      final proxyUrl = '${AppConstants.baseUrl}/upload-media';
 
-      // --- WEB PROXY LOGIC ---
-      if (kIsWeb) {
-        final proxyUrl = '${AppConstants.baseUrl}/upload-media';
+      final response = await uploadDio.post(
+        proxyUrl,
+        data: binaryData,
+        queryParameters: {
+          'name': file.name,
+          'size': binaryData.length.toString(),
+          'type': mimeType,
+          'accessToken': _accessToken,
+          'appId': appId,
+        },
+        options: Options(
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            if (authToken != null) 'Authorization': 'Bearer $authToken',
+          },
+        ),
+      );
 
-        final dynamic fileData;
-        if (file.bytes != null) {
-          fileData = file.bytes;
-        } else {
-          throw Exception(
-            'File data is unavailable. Please ensure withData: true is set in the file picker.',
-          );
-        }
+      if (response.statusCode == 200 && response.data != null && response.data['h'] != null) {
+        return response.data['h'] as String;
+      }
+    } catch (e) {
+      debugPrint('Backend proxy template upload failed ($e), falling back to direct Meta Upload Session.');
+    }
 
-        final response = await uploadDio.post(
-          proxyUrl,
-          data: fileData,
+    // 2. Direct Meta Resumable Upload Session Fallback
+    try {
+      final directDio = Dio();
+
+      // Step 1: Create Resumable Upload Session
+      final sessionResponse = await directDio.post(
+        '${AppConstants.metaGraphUrl}/$appId/uploads',
+        queryParameters: {
+          'file_length': binaryData.length.toString(),
+          'file_type': mimeType,
+          'file_name': file.name,
+          'access_token': _accessToken,
+        },
+      );
+
+      final uploadId = sessionResponse.data?['id']?.toString();
+      if (uploadId != null && uploadId.isNotEmpty) {
+        // Step 2: Upload Binary Data to Meta
+        final uploadResponse = await directDio.post(
+          '${AppConstants.metaGraphUrl}/$uploadId',
+          data: binaryData,
           queryParameters: {
-            'name': file.name,
-            'size': file.size,
-            'type': _getMimeType(file),
-            'accessToken': _accessToken,
-            'appId': _appId,
+            'access_token': _accessToken,
           },
           options: Options(
             headers: {
+              'file_offset': '0',
               'Content-Type': 'application/octet-stream',
-              if (authToken != null) 'Authorization': 'Bearer $authToken',
             },
           ),
         );
 
-        if (response.statusCode == 200) {
-          return response.data['h'] as String;
-        } else {
-          throw Exception(
-            'Proxy upload failed: ${response.data['error'] ?? 'Unknown error'}',
-          );
+        if (uploadResponse.statusCode == 200 &&
+            uploadResponse.data != null &&
+            uploadResponse.data['h'] != null) {
+          return uploadResponse.data['h'] as String;
         }
       }
-      // --- END WEB PROXY LOGIC ---
-
-      // Non-web platforms: Initialize and upload directly
-      final baseUrl = AppConstants.baseUrl;
-      final initResponse = await uploadDio.post(
-        '$baseUrl/$_appId/uploads',
-        queryParameters: {
-          'file_name': file.name,
-          'file_length': file.size,
-          'file_type': _getMimeType(file),
-          'access_token': _accessToken,
-        },
-        options: Options(
-          headers: {'Content-Type': 'text/plain', 'Accept': '*/*'},
-        ),
-      );
-
-      final sessionId = initResponse.data['id'] as String;
-      final List<int> fileData;
-      if (file.bytes != null) {
-        fileData = file.bytes!;
-      } else if (!kIsWeb && file.path != null) {
-        fileData = await File(file.path!).readAsBytes();
-      } else {
-        throw Exception('File data unavailable');
-      }
-
-      final uploadResponse = await uploadDio.post(
-        '$baseUrl/$sessionId',
-        data: fileData,
-        queryParameters: {'access_token': _accessToken, 'file_offset': '0'},
-        options: Options(
-          headers: {'Content-Type': 'text/plain', 'Accept': '*/*'},
-        ),
-      );
-
-      return uploadResponse.data['h'] as String;
-    } catch (e) {
-      if (e is DioException) {
-        final resp = e.response;
-        if (resp != null) {
-       
-          final data = resp.data;
-          String? message;
-
-          if (data is Map) {
-            final errorData = data['error'];
-            if (errorData is Map) {
-              message = errorData['message'];
-            } else if (errorData is String) {
-              message = errorData;
-            }
-          } else if (data is String) {
-            // Handle plain text errors like "Unauthorized"
-            message = data;
-          }
-
-          message ??= e.message;
-          throw Exception('Meta Upload API Error: $message');
+    } catch (directError) {
+      if (directError is DioException && directError.response != null) {
+        final data = directError.response!.data;
+        String? message;
+        if (data is Map && data['error'] is Map) {
+          final errMap = data['error'] as Map;
+          message = errMap['error_user_msg']?.toString() ??
+                    errMap['error_user_title']?.toString() ??
+                    errMap['message']?.toString();
+        } else if (data is Map) {
+          message = data['error']?.toString() ?? data['message']?.toString();
         }
+        message ??= directError.message;
+        throw message ?? 'Failed to upload template media';
       }
-      throw Exception('Error getting template media handle: $e');
+      throw parseErrorMessage(directError, 'Failed to upload template media');
     }
+
+    throw Exception('Failed to generate template media handle. Please check your network and Meta API credentials.');
   }
 
   String _getMimeType(PlatformFile file) {
@@ -811,7 +834,19 @@ class WhatsAppRepository {
     try {
       final response = await _dio.get('/campaigns/$campaignId/recipients');
       if (response.statusCode == 200) {
-        return List<Map<String, dynamic>>.from(response.data);
+        if (response.data is List) {
+          return List<Map<String, dynamic>>.from(response.data);
+        } else if (response.data is Map) {
+          final dataMap = Map<String, dynamic>.from(response.data as Map);
+          final recipientsList = dataMap['recipients'] as List? ?? [];
+          final templateButtons = dataMap['templateButtons'] as List? ?? [];
+          final list = recipientsList.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          for (var r in list) {
+            r['_templateButtons'] = templateButtons;
+          }
+          return list;
+        }
+
       }
     } catch (_) {}
     return [];
@@ -1065,13 +1100,23 @@ class WhatsAppRepository {
       final response = await dio.get(
         '${AppConstants.metaGraphUrl}/$wabaId/phone_numbers',
         queryParameters: {
-          'fields': 'id,display_phone_number,verified_name,code_verification_status,quality_rating,platform_type,throughput,webhook_configuration',
+          'fields':
+              'id,display_phone_number,verified_name,code_verification_status,quality_rating,platform_type,throughput,webhook_configuration',
           'access_token': accessToken,
         },
       );
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'];
-        return data.cast<Map<String, dynamic>>();
+        dynamic parsed = response.data;
+        if (parsed is String) {
+          try {
+            parsed = jsonDecode(parsed);
+          } catch (_) {}
+        }
+        if (parsed is Map && parsed['data'] is List) {
+          return (parsed['data'] as List).cast<Map<String, dynamic>>();
+        } else if (parsed is List) {
+          return parsed.cast<Map<String, dynamic>>();
+        }
       }
       return null;
     } catch (_) {
@@ -1088,19 +1133,60 @@ class WhatsAppRepository {
       final response = await dio.get(
         '${AppConstants.metaGraphUrl}/$phoneNumberId/whatsapp_business_profile',
         queryParameters: {
-          'fields': 'about,address,description,email,profile_picture_url,websites,vertical',
+          'fields':
+              'about,address,description,email,profile_picture_url,websites,vertical',
           'access_token': accessToken,
         },
+        options: Options(
+          sendTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+          headers: {
+            'Authorization': 'Bearer $accessToken',
+          },
+        ),
       );
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data['data'] ?? [];
-        if (data.isNotEmpty) {
-          return Map<String, dynamic>.from(data.first);
+        dynamic parsed = response.data;
+        if (parsed is String) {
+          try {
+            parsed = jsonDecode(parsed);
+          } catch (_) {}
         }
+
+        if (parsed is Map) {
+          final data = parsed['data'];
+          if (data is List && data.isNotEmpty && data.first is Map) {
+            return Map<String, dynamic>.from(data.first);
+          } else if (data is Map) {
+            return Map<String, dynamic>.from(data);
+          } else if (parsed.containsKey('about') ||
+              parsed.containsKey('description') ||
+              parsed.containsKey('profile_picture_url')) {
+            return Map<String, dynamic>.from(parsed);
+          }
+          // Empty profile on Meta
+          return <String, dynamic>{};
+        } else if (parsed is List && parsed.isNotEmpty && parsed.first is Map) {
+          return Map<String, dynamic>.from(parsed.first);
+        }
+        return <String, dynamic>{};
       }
       return null;
-    } catch (_) {
-      return null;
+    } on DioException catch (e) {
+      dynamic errorData = e.response?.data;
+      if (errorData is String) {
+        try {
+          errorData = jsonDecode(errorData);
+        } catch (_) {}
+      }
+      if (errorData is Map &&
+          errorData['error'] != null &&
+          errorData['error']['message'] != null) {
+        throw Exception(errorData['error']['message'].toString());
+      }
+      throw Exception(e.message ?? 'Failed to connect to Meta Graph API');
+    } catch (e) {
+      rethrow;
     }
   }
 

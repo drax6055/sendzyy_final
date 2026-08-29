@@ -7,6 +7,7 @@ class CampaignResultDialog extends StatelessWidget {
   final int failureCount;
   final String campaignId;
   final DateTime? dispatchedAt;
+  final VoidCallback? onDone;
 
   const CampaignResultDialog({
     super.key,
@@ -14,6 +15,7 @@ class CampaignResultDialog extends StatelessWidget {
     required this.failureCount,
     required this.campaignId,
     this.dispatchedAt,
+    this.onDone,
   });
 
   @override
@@ -72,7 +74,10 @@ class CampaignResultDialog extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  Navigator.pop(context);
+                  onDone?.call();
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.secondaryColor,
                   foregroundColor: Colors.white,

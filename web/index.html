@@ -24,7 +24,7 @@
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="send_o">
+  <meta name="apple-mobile-web-app-title" content="Sendzyy">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
@@ -34,6 +34,13 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <script>
+  // Prevent accidental close/refresh on Web (e.g. during active broadcasts)
+  window.addEventListener('beforeunload', function (e) {
+    var confirmationMessage = 'Are you sure you want to exit? If a campaign or broadcast is in progress, leaving may interrupt it.';
+    (e || window.event).returnValue = confirmationMessage;
+    return confirmationMessage;
+  });
+
   // Captured WABA/Phone IDs from the embedded signup postMessage
   window._metaSignupData = null;
 

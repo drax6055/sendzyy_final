@@ -451,7 +451,7 @@ class _DashboardShellState extends State<DashboardShell> {
 
     return PopScope(
       canPop: false,
-      onPopInvokedWithResult: (didPop, result) {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
           Navigator.of(context).pop();
@@ -461,19 +461,10 @@ class _DashboardShellState extends State<DashboardShell> {
           _setSelectedIndex(0);
           return;
         }
-        final now = DateTime.now();
-        if (_lastBackPressTime == null ||
-            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
-          _lastBackPressTime = now;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Press back again to exit app'),
-              duration: Duration(seconds: 2),
-            ),
-          );
-          return;
+        final shouldExit = await _showExitConfirmationDialog();
+        if (shouldExit) {
+          SystemNavigator.pop();
         }
-        SystemNavigator.pop();
       },
       child: MultiBlocProvider(
         providers: [
@@ -528,38 +519,40 @@ class _DashboardShellState extends State<DashboardShell> {
                   ],
                 )
               : null,
-          body: Row(
-            children: [
-              // Desktop Sidebar
-              if (!isMobile && !isTablet) ...[
-                Container(
-                  width: 260,
-                  color: Colors.white,
-                  child: _buildSidebarContent(isDrawer: false),
-                ),
-                const VerticalDivider(
-                  width: 1,
-                  thickness: 1,
-                  color: Color(0xFFE0E0E0),
-                ),
-              ],
-              // Main Content
-              Expanded(
-                child: Container(
-                  color: AppTheme.backgroundColor,
-                  child: Column(
-                    children: [
-                      // Header
-                      _buildHeader(),
-                      if (!_checkingOnboarding && _onboardingIncomplete)
-                        _buildOnboardingWarningBanner(),
-                      // Page Content
-                      Expanded(child: _pages[_selectedIndex]),
-                    ],
+          body: SafeArea(
+            child: Row(
+              children: [
+                // Desktop Sidebar
+                if (!isMobile && !isTablet) ...[
+                  Container(
+                    width: 260,
+                    color: Colors.white,
+                    child: _buildSidebarContent(isDrawer: false),
+                  ),
+                  const VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: Color(0xFFE0E0E0),
+                  ),
+                ],
+                // Main Content
+                Expanded(
+                  child: Container(
+                    color: AppTheme.backgroundColor,
+                    child: Column(
+                      children: [
+                        // Header
+                        _buildHeader(),
+                        if (!_checkingOnboarding && _onboardingIncomplete)
+                          _buildOnboardingWarningBanner(),
+                        // Page Content
+                        Expanded(child: _pages[_selectedIndex]),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -1424,11 +1417,8 @@ class _DashboardShellState extends State<DashboardShell> {
                         onSelected: (val) {
                           if (val == 'whatsapp_profile') {
                             if (state is AuthAuthenticated) {
-                              final config =
-                                  state.tenant['whatsappConfig']
-                                      as Map<String, dynamic>? ??
-                                  {};
-                              WhatsAppBusinessProfileDialog.show(context, config);
+                              final rawConfig = state.tenant['whatsappConfig'];
+                              WhatsAppBusinessProfileDialog.show(context, rawConfig);
                             }
                           } else if (val == 'logout') {
                             _showLogoutDialog(context, name);
@@ -1670,6 +1660,71 @@ class _DashboardShellState extends State<DashboardShell> {
         ],
       ),
     );
+  }
+
+  Future<bool> _showExitConfirmationDialog() async {
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.exit_to_app_rounded,
+                color: Colors.red,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Exit App?',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: const Text(
+          'Are you sure you want to exit? If a campaign or broadcast message is currently running, closing the app may interrupt your active session.',
+          style: TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            ),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Yes, Exit',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+    return shouldExit ?? false;
   }
 }
 

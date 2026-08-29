@@ -422,10 +422,10 @@ class _FlowBuilderPageState extends State<FlowBuilderPage> {
           _NodeOptionItem(type: FlowNodeType.listMessage, label: 'List Message', icon: Icons.list_alt_outlined, color: Colors.indigo),
           _NodeOptionItem(type: FlowNodeType.condition, label: 'Condition', icon: Icons.call_split_outlined, color: Colors.orange),
           _NodeOptionItem(type: FlowNodeType.action, label: 'Action', icon: Icons.bolt_outlined, color: Colors.amber),
-          _NodeOptionItem(type: FlowNodeType.catalogMessage, label: 'Catalog Msg', icon: Icons.storefront_outlined, color: Color(0xFF25D366)),
-          _NodeOptionItem(type: FlowNodeType.singleProduct, label: 'Single Product', icon: Icons.inventory_2_outlined, color: Color(0xFF06B6D4)),
-          _NodeOptionItem(type: FlowNodeType.multiProduct, label: 'Multi Product', icon: Icons.grid_view_outlined, color: Color(0xFF6366F1)),
-          _NodeOptionItem(type: FlowNodeType.productCarousel, label: 'Carousel', icon: Icons.view_carousel_outlined, color: Color(0xFF7C3AED)),
+          _NodeOptionItem(type: FlowNodeType.catalogMessage, label: 'Catalog Msg', icon: Icons.storefront_outlined, color: const Color(0xFF25D366)),
+          _NodeOptionItem(type: FlowNodeType.singleProduct, label: 'Single Product', icon: Icons.inventory_2_outlined, color: const Color(0xFF06B6D4)),
+          _NodeOptionItem(type: FlowNodeType.multiProduct, label: 'Multi Product', icon: Icons.grid_view_outlined, color: const Color(0xFF6366F1)),
+          _NodeOptionItem(type: FlowNodeType.productCarousel, label: 'Carousel', icon: Icons.view_carousel_outlined, color: const Color(0xFF7C3AED)),
           _NodeOptionItem(type: FlowNodeType.end, label: 'End', icon: Icons.stop_circle_outlined, color: Colors.red),
         ];
 
