@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'package:iFloraBuzz/features/chat/data/services/socket_service.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
 import 'package:iFloraBuzz/features/notifications/data/datasources/fcm_service.dart';
+import 'package:iFloraBuzz/core/services/biometric_service.dart';
+import 'package:iFloraBuzz/core/services/secure_storage_service.dart';
 
 // Events
 abstract class AuthEvent extends Equatable {
@@ -33,6 +35,10 @@ class RegisterRequested extends AuthEvent {
 class AuthCheckRequested extends AuthEvent {}
 
 class LogoutRequested extends AuthEvent {}
+
+/// Fired when the user taps the biometric login button.
+/// The handler verifies the biometric then replays stored credentials.
+class BiometricLoginRequested extends AuthEvent {}
 
 /// Fired periodically or on API 403 to force-logout expired sessions
 class SubscriptionExpiryCheckRequested extends AuthEvent {}
@@ -201,6 +207,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           }
 
           _socketService.connect(tenant['id'], token, AppConstants.baseUrl);
+
+          // Persist credentials in secure storage for future biometric logins
+          await SecureStorageService.instance.saveCredentials(
+            token: token as String,
+            email: event.email.trim().toLowerCase(),
+            password: event.password,
+          );
+
           emit(AuthAuthenticated(tenant['name'], tenant));
         } else {
           emit(AuthFailure(response.data['error'] ?? 'Login failed'));
@@ -257,7 +271,40 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     on<LogoutRequested>((event, emit) async {
       await _clearSession();
+      await SecureStorageService.instance.clearCredentials();
       emit(AuthUnauthenticated());
+    });
+
+    on<BiometricLoginRequested>((event, emit) async {
+      emit(AuthLoading());
+
+      // 1. Check biometric availability
+      final bool available = await BiometricService.instance.isAvailable();
+      if (!available) {
+        emit(AuthFailure('Biometrics are not available on this device.'));
+        return;
+      }
+
+      // 2. Load stored credentials first (fail fast if none saved)
+      final StoredCredentials? creds =
+          await SecureStorageService.instance.loadCredentials();
+      if (creds == null) {
+        emit(AuthFailure(
+          'No saved credentials found. Please log in with email and password first.',
+        ));
+        return;
+      }
+
+      // 3. Trigger the native biometric prompt
+      final BiometricResult result =
+          await BiometricService.instance.authenticate();
+      if (!result.success) {
+        emit(AuthFailure(result.error ?? 'Biometric authentication failed.'));
+        return;
+      }
+
+      // 4. Re-authenticate via backend using stored credentials
+      add(LoginRequested(creds.email, creds.password));
     });
 
     on<SubscriptionExpiryCheckRequested>((event, emit) async {

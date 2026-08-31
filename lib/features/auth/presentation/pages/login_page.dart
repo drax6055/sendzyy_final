@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:iFloraBuzz/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
@@ -6,6 +7,8 @@ import 'package:iFloraBuzz/features/dashboard/presentation/pages/dashboard_shell
 import 'package:iFloraBuzz/features/auth/presentation/pages/register_page.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/whatsapp_repository.dart';
+import 'package:iFloraBuzz/core/services/biometric_service.dart';
+import 'package:iFloraBuzz/core/services/secure_storage_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -19,6 +22,36 @@ class _LoginPageState extends State<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isPasswordVisible = false;
+  bool _biometricAvailable = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initBiometric();
+  }
+
+  Future<void> _initBiometric() async {
+    if (kIsWeb) return;
+    final available = await BiometricService.instance.isAvailable();
+    final hasCreds = await SecureStorageService.instance.hasSavedCredentials();
+    if (!mounted) return;
+    setState(() => _biometricAvailable = available && hasCreds);
+
+    // Auto-trigger prompt if biometric is available (e.g. returning user)
+    if (available && hasCreds) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      if (mounted) {
+        context.read<AuthBloc>().add(BiometricLoginRequested());
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   void _showForgotPasswordDialog(BuildContext context) {
     showDialog(context: context, builder: (_) => const _ForgotPasswordDialog());
@@ -330,6 +363,75 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 20),
+                                // ── Biometric login section ──────────────
+                                if (_biometricAvailable) ...[  
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Divider(
+                                          color: Colors.grey.shade300,
+                                          thickness: 1,
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                        ),
+                                        child: Text(
+                                          'or login with',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade500,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Divider(
+                                          color: Colors.grey.shade300,
+                                          thickness: 1,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    height: 48,
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppTheme.secondaryColor,
+                                        side: BorderSide(
+                                          color: AppTheme.primaryColor
+                                              .withValues(alpha: 0.6),
+                                          width: 1.5,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      onPressed: state is AuthLoading
+                                          ? null
+                                          : () => context
+                                              .read<AuthBloc>()
+                                              .add(BiometricLoginRequested()),
+                                      icon: const Icon(
+                                        Icons.fingerprint_rounded,
+                                        size: 22,
+                                        color: AppTheme.primaryColor,
+                                      ),
+                                      label: const Text(
+                                        'Login with Biometrics',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                ],
+                                // ────────────────────────────────────────
                                 Center(
                                   child: InkWell(
                                     onTap: () {

@@ -47,6 +47,8 @@
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Sendzyy requires microphone access for WhatsApp WebRTC voice calls.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Sendzyy uses Face ID to quickly and securely log you in.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>fetch</string>
