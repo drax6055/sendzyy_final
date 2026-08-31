@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Service for storing authentication credentials in the device's
 /// secure enclave (Keychain on iOS, EncryptedSharedPreferences on Android).
+/// Safe on Web & non-secure contexts (gracefully no-ops).
 class SecureStorageService {
   SecureStorageService._();
   static final SecureStorageService instance = SecureStorageService._();
@@ -16,41 +18,63 @@ class SecureStorageService {
     iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
   );
 
-  /// Persist credentials after a successful email/password login.
+  /// Persist credentials after a successful email/password login (mobile only).
   Future<void> saveCredentials({
     required String token,
     required String email,
     required String password,
   }) async {
-    await _storage.write(key: _kToken, value: token);
-    await _storage.write(key: _kEmail, value: email);
-    await _storage.write(key: _kPassword, value: password);
-    await _storage.write(key: _kEnabled, value: 'true');
+    if (kIsWeb) return;
+    try {
+      await _storage.write(key: _kToken, value: token);
+      await _storage.write(key: _kEmail, value: email);
+      await _storage.write(key: _kPassword, value: password);
+      await _storage.write(key: _kEnabled, value: 'true');
+    } catch (e) {
+      debugPrint('[SecureStorage] saveCredentials warning: $e');
+    }
   }
 
   /// Read credentials previously saved by [saveCredentials].
-  /// Returns `null` if credentials have not been stored yet.
+  /// Returns `null` if on web or credentials have not been stored yet.
   Future<StoredCredentials?> loadCredentials() async {
-    final email = await _storage.read(key: _kEmail);
-    final password = await _storage.read(key: _kPassword);
-    final token = await _storage.read(key: _kToken);
-    final enabled = await _storage.read(key: _kEnabled);
+    if (kIsWeb) return null;
+    try {
+      final email = await _storage.read(key: _kEmail);
+      final password = await _storage.read(key: _kPassword);
+      final token = await _storage.read(key: _kToken);
+      final enabled = await _storage.read(key: _kEnabled);
 
-    if (email == null || password == null || enabled != 'true') return null;
-    return StoredCredentials(email: email, password: password, token: token);
+      if (email == null || password == null || enabled != 'true') return null;
+      return StoredCredentials(email: email, password: password, token: token);
+    } catch (e) {
+      debugPrint('[SecureStorage] loadCredentials warning: $e');
+      return null;
+    }
   }
 
   /// Returns `true` if credentials are stored and biometric login is enabled.
   Future<bool> hasSavedCredentials() async {
-    final enabled = await _storage.read(key: _kEnabled);
-    if (enabled != 'true') return false;
-    final email = await _storage.read(key: _kEmail);
-    return email != null;
+    if (kIsWeb) return false;
+    try {
+      final enabled = await _storage.read(key: _kEnabled);
+      if (enabled != 'true') return false;
+      final email = await _storage.read(key: _kEmail);
+      return email != null;
+    } catch (e) {
+      debugPrint('[SecureStorage] hasSavedCredentials warning: $e');
+      return false;
+    }
   }
 
   /// Delete all stored credentials — call on logout.
   Future<void> clearCredentials() async {
-    await _storage.deleteAll();
+    if (kIsWeb) return;
+    try {
+      await _storage.deleteAll();
+    } catch (e) {
+      debugPrint('[SecureStorage] clearCredentials warning: $e');
+    }
   }
 }
 
