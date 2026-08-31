@@ -1,4 +1,3 @@
-import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:dio/dio.dart';
@@ -6,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:iFloraBuzz/core/theme/app_theme.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
+import 'package:iFloraBuzz/core/utils/web_helper.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 
@@ -201,7 +201,7 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
                                 ),
                                 recognizer: TapGestureRecognizer()
                                   ..onTap = () {
-                                    html.window.open('https://sendzyy.com/privacy', '_blank');
+                                    webOpenUrl('https://sendzyy.com/privacy');
                                   },
                               ),
                               const TextSpan(text: '.'),
@@ -231,7 +231,7 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
                                 ),
                                 recognizer: TapGestureRecognizer()
                                   ..onTap = () {
-                                    html.window.open('https://sendzyy.com/terms', '_blank');
+                                    webOpenUrl('https://sendzyy.com/terms');
                                   },
                               ),
                               const TextSpan(text: '.'),
@@ -257,7 +257,7 @@ class _InstagramProfileSetupPageState extends State<InstagramProfileSetupPage> {
                             final prefs = await SharedPreferences.getInstance();
                             final token = prefs.getString('auth_token') ?? '';
                             final authUrl = '${AppConstants.baseUrl}/api/instagram/auth?token=$token';
-                            html.window.open(authUrl, '_blank');
+                            webOpenUrl(authUrl);
                           }
                         : null,
                     style: ElevatedButton.styleFrom(
