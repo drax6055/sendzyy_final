@@ -11,7 +11,6 @@ import 'package:iFloraBuzz/features/templates/presentation/widgets/authenticatio
 import 'package:iFloraBuzz/features/templates/presentation/widgets/category_selector_widget.dart';
 import 'package:iFloraBuzz/features/templates/presentation/widgets/message_validity_period_widget.dart';
 import 'package:iFloraBuzz/features/templates/presentation/widgets/whatsapp_preview.dart';
-import 'package:iFloraBuzz/core/utils/responsive_helper.dart';
 import 'package:iFloraBuzz/core/utils/media_validator.dart';
 import 'package:iFloraBuzz/features/templates/presentation/widgets/assistant_dialog.dart';
 
@@ -841,7 +840,6 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
   }
 
   Widget _buildHeaderSection() {
-    final isMobile = ResponsiveHelper.isMobile(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -852,29 +850,18 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
               'Header · Optional',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            if (isMobile)
-              IconButton(
-                onPressed: () => _insertNextVariable(_headerController),
-                icon: const Icon(
-                  Icons.add_circle_outline,
-                  size: 20,
-                  color: AppTheme.primaryColor,
-                ),
-                tooltip: 'Add variable',
-              )
-            else
-              TextButton.icon(
-                onPressed: () => _insertNextVariable(_headerController),
-                icon: const Icon(Icons.add, size: 16),
-                label: const Text(
-                  'Add variable',
-                  style: TextStyle(fontSize: 12),
-                ),
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                ),
+            TextButton.icon(
+              onPressed: () => _insertNextVariable(_headerController),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text(
+                'Add variable',
+                style: TextStyle(fontSize: 12),
               ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -893,11 +880,27 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
   }
 
   Widget _buildBodySection() {
-    final isMobile = ResponsiveHelper.isMobile(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Body', style: TextStyle(fontWeight: FontWeight.bold)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Body', style: TextStyle(fontWeight: FontWeight.bold)),
+            TextButton.icon(
+              onPressed: () => _insertNextVariable(_bodyController),
+              icon: const Icon(Icons.add, size: 16),
+              label: const Text(
+                'Add variable',
+                style: TextStyle(fontSize: 12),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         TextFormField(
           controller: _bodyController,
@@ -910,7 +913,7 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
           validator: (val) => val == null || val.isEmpty ? 'Required' : null,
         ),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(color: Colors.grey.shade200),
@@ -922,6 +925,7 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
                   onPressed: _showEmojiPicker,
@@ -930,6 +934,7 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
                     size: 20,
                     color: Colors.black54,
                   ),
+                  tooltip: 'Emoji',
                 ),
                 IconButton(
                   onPressed: () => _formatText('*'),
@@ -938,6 +943,7 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
                     size: 20,
                     color: Colors.black54,
                   ),
+                  tooltip: 'Bold',
                 ),
                 IconButton(
                   onPressed: () => _formatText('_'),
@@ -946,6 +952,7 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
                     size: 20,
                     color: Colors.black54,
                   ),
+                  tooltip: 'Italic',
                 ),
                 IconButton(
                   onPressed: () => _formatText('~'),
@@ -954,32 +961,14 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
                     size: 20,
                     color: Colors.black54,
                   ),
+                  tooltip: 'Strikethrough',
                 ),
                 IconButton(
                   onPressed: () => _formatText('```'),
                   icon: const Icon(Icons.code, size: 20, color: Colors.black54),
+                  tooltip: 'Monospace Code',
                 ),
-                if (!isMobile) const Spacer(),
-                if (isMobile) const SizedBox(width: 8),
-                if (isMobile)
-                  IconButton(
-                    onPressed: () => _insertNextVariable(_bodyController),
-                    icon: const Icon(
-                      Icons.add_circle_outline,
-                      size: 20,
-                      color: AppTheme.primaryColor,
-                    ),
-                    tooltip: 'Add variable',
-                  )
-                else
-                  TextButton.icon(
-                    onPressed: () => _insertNextVariable(_bodyController),
-                    icon: const Icon(Icons.add, size: 16),
-                    label: const Text(
-                      'Add variable',
-                      style: TextStyle(fontSize: 12),
-                    ),
-                  ),
+                const SizedBox(width: 12),
                 const Icon(Icons.info_outline, size: 16, color: Colors.black54),
                 const SizedBox(width: 8),
               ],
