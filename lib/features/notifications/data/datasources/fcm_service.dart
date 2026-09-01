@@ -17,8 +17,12 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // Always show via local notifications plugin — ensures delivery even on restrictive OEMs
-    await FCMService.showLocalNotification(message);
+    // If message contains a 'notification' payload, Firebase Android/iOS automatically
+    // displays the notification in the status bar/tray when app is in background or closed.
+    // Only manually trigger local notification for data-only messages to prevent duplicate alerts.
+    if (message.notification == null && message.data.isNotEmpty) {
+      await FCMService.showLocalNotification(message);
+    }
   } catch (e) {
     debugPrint('[FCM] Background handler error: $e');
   }

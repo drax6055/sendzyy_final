@@ -13,7 +13,7 @@ class _CallButtonComposerState extends State<CallButtonComposer> {
   bool _enableCallButton = false;
   final _displayTextController = TextEditingController(text: 'Call Now');
   final _payloadController = TextEditingController();
-  int _ttlMinutes = 10080; // Default 7 days
+  int _ttlMinutes = 10080; 
 
   void _notify() {
     widget.onChanged({

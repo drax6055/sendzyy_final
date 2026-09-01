@@ -790,7 +790,15 @@ class WhatsAppRepository {
     try {
       final response = await _dio.get('/campaigns');
       if (response.statusCode == 200) {
-        return List<Map<String, dynamic>>.from(response.data);
+        if (response.data is Map && response.data['campaigns'] != null) {
+          return List<Map<String, dynamic>>.from(
+            (response.data['campaigns'] as List).map((e) => Map<String, dynamic>.from(e)),
+          );
+        } else if (response.data is List) {
+          return List<Map<String, dynamic>>.from(
+            (response.data as List).map((e) => Map<String, dynamic>.from(e)),
+          );
+        }
       }
     } catch (_) {}
     return [];

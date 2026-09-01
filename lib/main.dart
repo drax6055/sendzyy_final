@@ -29,6 +29,10 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:iFloraBuzz/features/notifications/data/datasources/fcm_service.dart';
 import 'firebase_options.dart';
+import 'package:iFloraBuzz/features/app_update/presentation/bloc/app_update_bloc.dart';
+import 'package:iFloraBuzz/features/app_update/presentation/bloc/app_update_event.dart';
+import 'package:iFloraBuzz/features/app_update/presentation/bloc/app_update_state.dart';
+import 'package:iFloraBuzz/features/app_update/presentation/widgets/app_update_dialog.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -56,6 +60,7 @@ class _MyAppState extends State<MyApp> {
   Timer? _expiryTimer;
   late final AuthBloc _authBloc;
   StreamSubscription<String>? _systemUpdateSubscription;
+  bool _isUpdateDialogShowing = false;
 
   @override
   void initState() {
@@ -168,12 +173,35 @@ class _MyAppState extends State<MyApp> {
         BlocProvider.value(value: di.getIt<CallLogBloc>()),
         BlocProvider(create: (context) => di.getIt<CallSettingsBloc>()),
         BlocProvider(create: (context) => di.getIt<CallPermissionBloc>()),
+        BlocProvider(
+          create: (context) =>
+              di.getIt<AppUpdateBloc>()..add(const CheckForUpdateEvent()),
+        ),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
         debugShowCheckedModeBanner: false,
         title: 'Sendzyy',
         theme: AppTheme.lightTheme,
+        builder: (context, child) {
+          return BlocListener<AppUpdateBloc, AppUpdateState>(
+            listener: (context, updateState) {
+              if (updateState is AppUpdateAvailable && !_isUpdateDialogShowing) {
+                _isUpdateDialogShowing = true;
+                final navContext = navigatorKey.currentContext ?? context;
+                AppUpdateDialog.show(
+                  navContext,
+                  updateInfo: updateState.updateInfo,
+                  currentVersion: updateState.currentVersion,
+                  currentBuildNumber: updateState.currentBuildNumber,
+                ).then((_) {
+                  _isUpdateDialogShowing = false;
+                });
+              }
+            },
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
         onGenerateRoute: (settings) {
           if (settings.name == '/update_message' || settings.name == 'update_message') {
             return MaterialPageRoute(

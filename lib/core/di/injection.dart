@@ -30,6 +30,8 @@ import 'package:iFloraBuzz/features/calling/presentation/bloc/call_control_bloc.
 import 'package:iFloraBuzz/features/calling/presentation/bloc/call_permission_bloc.dart';
 import 'package:iFloraBuzz/features/calling/presentation/bloc/call_settings_bloc.dart';
 import 'package:iFloraBuzz/features/calling/presentation/bloc/call_log_bloc.dart';
+import 'package:iFloraBuzz/features/app_update/data/services/app_update_service.dart';
+import 'package:iFloraBuzz/features/app_update/presentation/bloc/app_update_bloc.dart';
 
 final getIt = GetIt.instance;
 
@@ -131,4 +133,8 @@ Future<void> init() async {
   // Features - Catalog
   getIt.registerLazySingleton(() => CatalogRepository(getIt()));
   getIt.registerFactory(() => CatalogBloc(getIt()));
+
+  // Features - App Update
+  getIt.registerLazySingleton(() => AppUpdateService(dio: getIt()));
+  getIt.registerFactory(() => AppUpdateBloc(updateService: getIt()));
 }
