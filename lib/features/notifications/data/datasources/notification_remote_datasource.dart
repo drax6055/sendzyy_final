@@ -96,4 +96,19 @@ class NotificationRemoteDataSource {
     );
     return response.data['unreadCount'] ?? 0;
   }
+
+  Future<int> clearAllNotifications({
+    required String tenantId,
+    String? category,
+  }) async {
+    final response = await dio.delete(
+      '/api/notifications/clear-all',
+      queryParameters: {
+        'tenantId': tenantId,
+        if (category != null && category != 'all') 'category': category,
+      },
+      options: Options(headers: {'tenant-id': tenantId}),
+    );
+    return response.data['unreadCount'] ?? 0;
+  }
 }

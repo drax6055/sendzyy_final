@@ -81,6 +81,19 @@ class DeleteNotificationEvent extends NotificationEvent {
   List<Object?> get props => [notificationId, tenantId];
 }
 
+class ClearAllNotificationsEvent extends NotificationEvent {
+  final String tenantId;
+  final String? category;
+
+  const ClearAllNotificationsEvent({
+    required this.tenantId,
+    this.category,
+  });
+
+  @override
+  List<Object?> get props => [tenantId, category];
+}
+
 // ── STATES ───────────────────────────────────────────────────────────────────
 class NotificationState extends Equatable {
   final List<NotificationModel> notifications;
@@ -144,6 +157,7 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
     on<MarkAllNotificationsReadEvent>(_onMarkAllRead);
     on<NewNotificationReceivedSocketEvent>(_onNewNotificationSocket);
     on<DeleteNotificationEvent>(_onDeleteNotification);
+    on<ClearAllNotificationsEvent>(_onClearAllNotifications);
   }
 
   Future<void> _onLoadNotifications(
@@ -251,6 +265,27 @@ class NotificationBloc extends Bloc<NotificationEvent, NotificationState> {
 
       final updatedList =
           state.notifications.where((n) => n.id != event.notificationId).toList();
+
+      emit(state.copyWith(
+        notifications: updatedList,
+        unreadCount: newCount,
+      ));
+    } catch (_) {}
+  }
+
+  Future<void> _onClearAllNotifications(
+    ClearAllNotificationsEvent event,
+    Emitter<NotificationState> emit,
+  ) async {
+    try {
+      final newCount = await repository.clearAllNotifications(
+        tenantId: event.tenantId,
+        category: event.category,
+      );
+
+      final updatedList = event.category != null && event.category != 'all'
+          ? state.notifications.where((n) => n.category != event.category).toList()
+          : <NotificationModel>[];
 
       emit(state.copyWith(
         notifications: updatedList,

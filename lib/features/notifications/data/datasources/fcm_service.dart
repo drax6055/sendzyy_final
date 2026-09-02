@@ -9,20 +9,18 @@ import 'package:iFloraBuzz/firebase_options.dart';
 import 'notification_remote_datasource.dart';
 
 /// Background handler — must be a top-level function annotated @pragma('vm:entry-point').
-/// Android calls this in a separate Isolate when the app is killed/terminated.
+/// Android/iOS calls this in a separate Isolate when the app is in background or killed.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-
-    // If message contains a 'notification' payload, Firebase Android/iOS automatically
-    // displays the notification in the status bar/tray when app is in background or closed.
-    // Only manually trigger local notification for data-only messages to prevent duplicate alerts.
-    if (message.notification == null && message.data.isNotEmpty) {
-      await FCMService.showLocalNotification(message);
-    }
+    debugPrint('[FCM] Background message received: ${message.messageId}');
+    // NOTE: Do NOT call showLocalNotification here.
+    // The OS (Android Google Play Services / Apple APNs) automatically displays
+    // notifications in the system tray / lock screen when the app is in background or closed.
+    // Manually triggering local notifications in background causes duplicate alerts.
   } catch (e) {
     debugPrint('[FCM] Background handler error: $e');
   }
@@ -77,18 +75,16 @@ class FCMService {
         return;
       }
 
-      // 2. Initialize local notifications for foreground popups
+      // 3. Initialize local notifications for foreground popups
       await _initLocalNotifications(onNotificationTap: onNotificationTap);
 
-      // 3. iOS — show notifications in foreground (critical for iOS killed-state behaviour)
+      // 4. iOS — Set alert to false in presentation options so flutter_local_notifications
+      // handles foreground display uniformly without iOS showing a duplicate banner.
       await _messaging.setForegroundNotificationPresentationOptions(
-        alert: true,
+        alert: false,
         badge: true,
         sound: true,
       );
-
-      // 4. Register background message handler
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
       // 5. Retrieve FCM Token and register with backend
       final token = await _getToken();

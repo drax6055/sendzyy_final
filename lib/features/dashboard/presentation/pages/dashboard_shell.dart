@@ -52,8 +52,8 @@ class DashboardShell extends StatefulWidget {
 
 class _DashboardShellState extends State<DashboardShell> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  DateTime? _lastBackPressTime;
   int _selectedIndex = 0;
+  final List<int> _navigationHistory = [0];
   bool _isReportsExpanded = false;
   bool _isSettingsExpanded = false;
   bool _isLeadsExpanded = false;
@@ -175,6 +175,8 @@ class _DashboardShellState extends State<DashboardShell> {
     if (mounted) {
       setState(() {
         _selectedIndex = saved;
+        _navigationHistory.clear();
+        _navigationHistory.add(saved);
         if (saved >= 5 && saved <= 7) {
           _isReportsExpanded = true;
         }
@@ -191,12 +193,17 @@ class _DashboardShellState extends State<DashboardShell> {
     }
   }
 
-  Future<void> _setSelectedIndex(int index, {bool closeDrawer = false}) async {
+  Future<void> _setSelectedIndex(int index, {bool closeDrawer = false, bool isBackNav = false}) async {
     if (closeDrawer && (_scaffoldKey.currentState?.isDrawerOpen ?? false)) {
       Navigator.of(context).pop();
     }
     setState(() {
       _selectedIndex = index;
+      if (!isBackNav) {
+        if (_navigationHistory.isEmpty || _navigationHistory.last != index) {
+          _navigationHistory.add(index);
+        }
+      }
       if (index >= 5 && index <= 7) {
         _isReportsExpanded = true;
       }
@@ -457,10 +464,23 @@ class _DashboardShellState extends State<DashboardShell> {
           Navigator.of(context).pop();
           return;
         }
-        if (_selectedIndex != 0) {
-          _setSelectedIndex(0);
+
+        // If there is navigation history, pop to the previously visited screen
+        if (_navigationHistory.length > 1) {
+          _navigationHistory.removeLast();
+          final previousIndex = _navigationHistory.last;
+          _setSelectedIndex(previousIndex, isBackNav: true);
           return;
         }
+
+        // If not on the initial screen (Broadcast), return to screen 0
+        if (_selectedIndex != 0) {
+          _navigationHistory.clear();
+          _navigationHistory.add(0);
+          _setSelectedIndex(0, isBackNav: true);
+          return;
+        }
+
         final shouldExit = await _showExitConfirmationDialog();
         if (shouldExit) {
           SystemNavigator.pop();

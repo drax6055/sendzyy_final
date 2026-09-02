@@ -48,4 +48,14 @@ class NotificationRepository {
       tenantId: tenantId,
     );
   }
+
+  Future<int> clearAllNotifications({
+    required String tenantId,
+    String? category,
+  }) async {
+    return await remoteDataSource.clearAllNotifications(
+      tenantId: tenantId,
+      category: category,
+    );
+  }
 }

@@ -28,6 +28,114 @@ class _NotificationsPageState extends State<NotificationsPage> {
     );
   }
 
+  void _showClearAllDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 380),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFFEBEE),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.delete_sweep_rounded,
+                      color: Color(0xFFD32F2F),
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Clear All Notifications',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF212121),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Text(
+                _selectedCategory == 'all'
+                    ? 'Are you sure you want to clear all notifications? This action cannot be undone.'
+                    : 'Are you sure you want to clear all notifications in "${_selectedCategory.toUpperCase()}"? This action cannot be undone.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.grey.shade700,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    ),
+                    onPressed: () => Navigator.of(dialogCtx).pop(),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Colors.grey.shade700,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFD32F2F),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.delete_sweep_rounded, size: 16),
+                    label: const Text(
+                      'Clear All',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    onPressed: () {
+                      Navigator.of(dialogCtx).pop();
+                      context.read<NotificationBloc>().add(
+                        ClearAllNotificationsEvent(
+                          tenantId: widget.tenantId,
+                          category: _selectedCategory == 'all' ? null : _selectedCategory,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isMobile = ResponsiveHelper.isMobile(context);
@@ -58,39 +166,86 @@ class _NotificationsPageState extends State<NotificationsPage> {
           ],
         ),
         actions: [
-          if (isMobile)
-            IconButton(
-              icon: const Icon(
-                Icons.done_all_rounded,
-                color: Color(0xFF2E7D32),
-              ),
-              tooltip: 'Mark All Read',
-              onPressed: () {
-                context.read<NotificationBloc>().add(
-                  MarkAllNotificationsReadEvent(tenantId: widget.tenantId),
+          BlocBuilder<NotificationBloc, NotificationState>(
+            builder: (context, state) {
+              final hasNotifications = state.notifications.isNotEmpty;
+              final hasUnread = state.unreadCount > 0 || state.notifications.any((n) => !n.isRead);
+
+              if (isMobile) {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (hasUnread)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.done_all_rounded,
+                          color: Color(0xFF2E7D32),
+                        ),
+                        tooltip: 'Mark All Read',
+                        onPressed: () {
+                          context.read<NotificationBloc>().add(
+                            MarkAllNotificationsReadEvent(tenantId: widget.tenantId),
+                          );
+                        },
+                      ),
+                    if (hasNotifications)
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_sweep_rounded,
+                          color: Color(0xFFD32F2F),
+                        ),
+                        tooltip: 'Clear All',
+                        onPressed: () => _showClearAllDialog(context),
+                      ),
+                  ],
                 );
-              },
-            )
-          else
-            TextButton.icon(
-              icon: const Icon(
-                Icons.done_all_rounded,
-                size: 18,
-                color: Color(0xFF2E7D32),
-              ),
-              label: const Text(
-                'Mark All Read',
-                style: TextStyle(
-                  color: Color(0xFF2E7D32),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              onPressed: () {
-                context.read<NotificationBloc>().add(
-                  MarkAllNotificationsReadEvent(tenantId: widget.tenantId),
+              } else {
+                return Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (hasUnread)
+                      TextButton.icon(
+                        icon: const Icon(
+                          Icons.done_all_rounded,
+                          size: 18,
+                          color: Color(0xFF2E7D32),
+                        ),
+                        label: const Text(
+                          'Mark All Read',
+                          style: TextStyle(
+                            color: Color(0xFF2E7D32),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        onPressed: () {
+                          context.read<NotificationBloc>().add(
+                            MarkAllNotificationsReadEvent(tenantId: widget.tenantId),
+                          );
+                        },
+                      ),
+                    if (hasNotifications) ...[
+                      const SizedBox(width: 4),
+                      TextButton.icon(
+                        icon: const Icon(
+                          Icons.delete_sweep_rounded,
+                          size: 18,
+                          color: Color(0xFFD32F2F),
+                        ),
+                        label: const Text(
+                          'Clear All',
+                          style: TextStyle(
+                            color: Color(0xFFD32F2F),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        onPressed: () => _showClearAllDialog(context),
+                      ),
+                    ],
+                  ],
                 );
-              },
-            ),
+              }
+            },
+          ),
           const SizedBox(width: 8),
         ],
       ),
