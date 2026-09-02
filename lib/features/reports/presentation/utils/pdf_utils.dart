@@ -366,9 +366,18 @@ class PdfUtils {
       }
     }
 
-    // 2. Also check templateButtons snapshot from campaign or attached to recipient metadata
-    final List? templateButtons = campaign['templateButtons'] as List? ??
-        (recipients.isNotEmpty ? recipients.first['_templateButtons'] as List? : null);
+    // 2. Also check templateButtons snapshot from campaign or any recipient's metadata
+    // Search ALL recipients for a non-empty list in case the first recipient has empty data
+    List? templateButtons = campaign['templateButtons'] as List?;
+    if (templateButtons == null || templateButtons.isEmpty) {
+      for (final r in recipients) {
+        final tb = r['_templateButtons'] as List?;
+        if (tb != null && tb.isNotEmpty) {
+          templateButtons = tb;
+          break;
+        }
+      }
+    }
     if (templateButtons != null) {
       for (final btn in templateButtons) {
         final text = (btn is Map ? btn['text'] : btn)?.toString().trim();

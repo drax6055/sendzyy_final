@@ -74,6 +74,14 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
     });
   }
 
+  void _reloadRecipients() {
+    final campaignId = widget.campaign['id'] as String? ?? '';
+    setState(() {
+      _recipientsFuture =
+          getIt<WhatsAppRepository>().getCampaignRecipients(campaignId);
+    });
+  }
+
   Future<void> _downloadPhasePdf() async {
     if (_currentPhaseReport == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -298,6 +306,11 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
                     ],
                   ),
           ] else ...[
+            IconButton(
+              icon: const Icon(Icons.refresh, size: 20),
+              onPressed: _reloadRecipients,
+              tooltip: 'Reload Campaign Report',
+            ),
             FutureBuilder<List<Map<String, dynamic>>>(
               future: _recipientsFuture,
               builder: (context, snapshot) {
@@ -420,9 +433,11 @@ class _CampaignReportDialogState extends State<CampaignReportDialog>
       return s == 'pending' || s == 'scheduled';
     });
     final displayStatus =
-        (campaignStatus == 'initial' && hasPendingPhase)
-            ? 'retrying'
-            : campaignStatus;
+        (campaignStatus == 'completed')
+            ? 'completed'
+            : ((campaignStatus == 'initial' && hasPendingPhase)
+                ? 'retrying'
+                : campaignStatus);
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(isMobile ? 12 : 24),

@@ -561,6 +561,12 @@ class _ReportsPageState extends State<ReportsPage> {
   }
 
   Widget _buildRetryStatusBadge(String? status, {bool hasPendingRetry = false}) {
+    if (status == 'completed') {
+      return _statusBadge('Completed', Icons.check_circle_outline, Colors.green);
+    }
+    if (status == 'error') {
+      return _statusBadge('Error', Icons.error_outline, Colors.red);
+    }
     // Campaigns actively retrying (DB status = 'retrying')
     if (status == 'retrying') {
       return _statusBadge('Retrying', Icons.replay_outlined, Colors.orange);
@@ -570,24 +576,7 @@ class _ReportsPageState extends State<ReportsPage> {
       return _statusBadge('Retrying', Icons.replay_outlined, Colors.orange);
     }
     if (status == null || status == 'initial') return const SizedBox.shrink();
-    Color color;
-    String label;
-    IconData icon;
-    switch (status) {
-      case 'completed':
-        color = Colors.green;
-        label = 'Completed';
-        icon = Icons.check_circle_outline;
-        break;
-      case 'error':
-        color = Colors.red;
-        label = 'Error';
-        icon = Icons.error_outline;
-        break;
-      default:
-        return const SizedBox.shrink();
-    }
-    return _statusBadge(label, icon, color);
+    return const SizedBox.shrink();
   }
 
   Widget _statusBadge(String label, IconData icon, Color color) {

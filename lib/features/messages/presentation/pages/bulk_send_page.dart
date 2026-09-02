@@ -748,6 +748,8 @@ class _BulkSendPageState extends State<BulkSendPage> {
                     ),
                     child: TextField(
                       controller: _manualNumbersController,
+                      onSubmitted: (_) => _addManualNumbers(),
+                      textInputAction: TextInputAction.done,
                       decoration: const InputDecoration(
                         hintText: 'Enter numbers separated by comma or newline',
                         border: InputBorder.none,
