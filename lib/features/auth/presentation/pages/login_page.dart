@@ -21,6 +21,9 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+  final _loginButtonFocusNode = FocusNode();
   bool _isPasswordVisible = false;
   bool _biometricAvailable = false;
 
@@ -50,6 +53,9 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _loginButtonFocusNode.dispose();
     super.dispose();
   }
 
@@ -97,8 +103,33 @@ class _LoginPageState extends State<LoginPage> {
             ),
           );
         } else if (state is AuthFailure) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      state.message,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFFD32F2F),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              margin: const EdgeInsets.all(16),
+              duration: const Duration(seconds: 4),
+            ),
           );
         }
       },
@@ -166,7 +197,13 @@ class _LoginPageState extends State<LoginPage> {
                                 const SizedBox(height: 28),
                                 TextFormField(
                                   controller: _emailController,
+                                  focusNode: _emailFocusNode,
                                   keyboardType: TextInputType.emailAddress,
+                                  textInputAction: TextInputAction.next,
+                                  onFieldSubmitted: (_) {
+                                    FocusScope.of(context)
+                                        .requestFocus(_passwordFocusNode);
+                                  },
                                   decoration: InputDecoration(
                                     hintText: 'Email Address',
                                     hintStyle: const TextStyle(
@@ -227,7 +264,10 @@ class _LoginPageState extends State<LoginPage> {
                                 const SizedBox(height: 16),
                                 TextFormField(
                                   controller: _passwordController,
+                                  focusNode: _passwordFocusNode,
                                   obscureText: !_isPasswordVisible,
+                                  textInputAction: TextInputAction.done,
+                                  onFieldSubmitted: (_) => _handleLogin(),
                                   decoration: InputDecoration(
                                     hintText: 'Password',
                                     hintStyle: const TextStyle(
@@ -330,6 +370,7 @@ class _LoginPageState extends State<LoginPage> {
                                   width: double.infinity,
                                   height: 48,
                                   child: ElevatedButton(
+                                    focusNode: _loginButtonFocusNode,
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppTheme.primaryColor,
                                       foregroundColor: Colors.white,

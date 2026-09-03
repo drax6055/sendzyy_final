@@ -45,48 +45,55 @@ class SubscriptionExpiryCheckRequested extends AuthEvent {}
 
 // States
 abstract class AuthState extends Equatable {
+  const AuthState();
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
-class AuthInitial extends AuthState {}
+class AuthInitial extends AuthState {
+  const AuthInitial();
+}
 
-class AuthLoading extends AuthState {}
+class AuthLoading extends AuthState {
+  const AuthLoading();
+}
 
 class AuthAuthenticated extends AuthState {
   final String user;
   final Map<String, dynamic> tenant;
-  AuthAuthenticated(this.user, this.tenant);
+  const AuthAuthenticated(this.user, this.tenant);
   @override
   List<Object> get props => [user, tenant];
 }
 
-class AuthUnauthenticated extends AuthState {}
+class AuthUnauthenticated extends AuthState {
+  const AuthUnauthenticated();
+}
 
 class AuthFailure extends AuthState {
   final String message;
-  AuthFailure(this.message);
+  const AuthFailure(this.message);
   @override
   List<Object> get props => [message];
 }
 
 class AuthSubscriptionExpired extends AuthState {
   final String message;
-  AuthSubscriptionExpired(this.message);
+  const AuthSubscriptionExpired(this.message);
   @override
   List<Object> get props => [message];
 }
 
 class AuthAccountInactive extends AuthState {
   final String message;
-  AuthAccountInactive(this.message);
+  const AuthAccountInactive(this.message);
   @override
   List<Object> get props => [message];
 }
 
 class AuthRegistered extends AuthState {
   final String regToken;
-  AuthRegistered(this.regToken);
+  const AuthRegistered(this.regToken);
   @override
   List<Object> get props => [regToken];
 }
@@ -220,6 +227,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           emit(AuthFailure(response.data['error'] ?? 'Login failed'));
         }
       } on DioException catch (e) {
+        if (e.response?.statusCode == 401) {
+          final serverMsg = e.response?.data is Map
+              ? (e.response?.data['message'] ?? e.response?.data['error'])
+              : null;
+          emit(AuthFailure(
+            serverMsg != null && serverMsg.toString().isNotEmpty && serverMsg != 'Invalid credentials'
+                ? serverMsg.toString()
+                : 'Invalid email or password. Please try again.',
+          ));
+          return;
+        }
         if (e.response?.statusCode == 403) {
           final errCode = e.response?.data?['error'];
           if (errCode == 'subscription_expired') {
@@ -232,10 +250,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           if (errCode == 'account_inactive') {
             emit(AuthAccountInactive(
               e.response?.data?['message'] ??
-                  'Your account is inactive. Please contact support.',
+                  'Your account is inactivre. Please contact support.',
             ));
             return;
-          }
+          } 
           if (errCode == 'no_subscription') {
             emit(AuthFailure(
               e.response?.data?['message'] ??
@@ -244,9 +262,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
             return;
           }
         }
-        emit(AuthFailure('Connection error: $e'));
+        // Extract friendly error from response if available
+        if (e.response?.data is Map) {
+          final msg = e.response?.data['message'] ?? e.response?.data['error'];
+          if (msg != null && msg.toString().trim().isNotEmpty) {
+            emit(AuthFailure(msg.toString()));
+            return;
+          }
+        }
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.connectionError) {
+          emit(const AuthFailure(
+            'Unable to connect to server. Please check your internet connection.',
+          ));
+          return;
+        }
+        emit(const AuthFailure(
+          'Login failed. Please check your credentials and try again.',
+        ));
       } catch (e) {
-        emit(AuthFailure('Connection error: $e'));
+        emit(const AuthFailure('An unexpected error occurred. Please try again.'));
       }
     });
 
@@ -264,8 +300,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         } else {
           emit(AuthFailure(response.data['error'] ?? 'Registration failed'));
         }
+      } on DioException catch (e) {
+        if (e.response?.data is Map) {
+          final msg = e.response?.data['message'] ?? e.response?.data['error'];
+          if (msg != null && msg.toString().trim().isNotEmpty) {
+            emit(AuthFailure(msg.toString()));
+            return;
+          }
+        }
+        if (e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.connectionError) {
+          emit(const AuthFailure(
+            'Unable to connect to server. Please check your internet connection.',
+          ));
+          return;
+        }
+        emit(const AuthFailure('Registration failed. Please try again.'));
       } catch (e) {
-        emit(AuthFailure('Connection error: $e'));
+        emit(const AuthFailure('An unexpected error occurred. Please try again.'));
       }
     });
 

@@ -48,6 +48,7 @@ class ReportLoading extends ReportState {}
 
 class ReportLoaded extends ReportState {
   final List<Map<String, dynamic>> campaigns;
+  final List<String> availableTemplates;
   final int totalSent;
   final int totalDelivered;
   final int totalRead;
@@ -58,6 +59,7 @@ class ReportLoaded extends ReportState {
 
   const ReportLoaded({
     required this.campaigns,
+    this.availableTemplates = const [],
     required this.totalSent,
     required this.totalDelivered,
     required this.totalRead,
@@ -69,6 +71,7 @@ class ReportLoaded extends ReportState {
 
   ReportLoaded copyWith({
     List<Map<String, dynamic>>? campaigns,
+    List<String>? availableTemplates,
     int? totalSent,
     int? totalDelivered,
     int? totalRead,
@@ -79,6 +82,7 @@ class ReportLoaded extends ReportState {
   }) {
     return ReportLoaded(
       campaigns: campaigns ?? this.campaigns,
+      availableTemplates: availableTemplates ?? this.availableTemplates,
       totalSent: totalSent ?? this.totalSent,
       totalDelivered: totalDelivered ?? this.totalDelivered,
       totalRead: totalRead ?? this.totalRead,
@@ -92,6 +96,7 @@ class ReportLoaded extends ReportState {
   @override
   List<Object?> get props => [
         campaigns,
+        availableTemplates,
         totalSent,
         totalDelivered,
         totalRead,
@@ -174,9 +179,13 @@ class ReportBloc extends Bloc<ReportEvent, ReportState> {
       }
 
       final hasMore = data['hasMore'] == true;
+      final availableTemplates = List<String>.from(
+        (data['templates'] as List? ?? []).map((e) => e.toString()),
+      );
 
       emit(ReportLoaded(
         campaigns: campaigns,
+        availableTemplates: availableTemplates,
         totalSent: sent,
         totalDelivered: delivered,
         totalRead: read,

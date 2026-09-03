@@ -117,6 +117,66 @@ class _SettingsPageState extends State<SettingsPage> {
           _phoneNumbers = numbers ?? [];
           _loadingPhoneNumbers = false;
         });
+
+        // Check if active phone number details need to be synced to backend/state
+        final authState = context.read<AuthBloc>().state;
+        if (authState is AuthAuthenticated) {
+          final config =
+              authState.tenant['whatsappConfig'] as Map<String, dynamic>?;
+          if (config != null) {
+            final activePhoneId = config['phoneNumberId']?.toString();
+            if (activePhoneId != null && _phoneNumbers.isNotEmpty) {
+              final activePhone = _phoneNumbers.firstWhere(
+                (p) => p['id']?.toString() == activePhoneId,
+                orElse: () => <String, dynamic>{},
+              );
+              if (activePhone.isNotEmpty) {
+                final liveRating = activePhone['quality_rating']?.toString();
+                final livePhone =
+                    activePhone['display_phone_number']?.toString();
+                final liveName = activePhone['verified_name']?.toString();
+                final liveThroughput =
+                    activePhone['throughput']?['level']?.toString();
+
+                final dbRating = config['qualityRating']?.toString();
+                final dbPhone = config['displayPhone']?.toString();
+                final dbName = config['verifiedName']?.toString();
+                final dbThroughput = config['throughputLevel']?.toString();
+
+                if ((liveRating != null &&
+                        liveRating.isNotEmpty &&
+                        liveRating != dbRating) ||
+                    (livePhone != null &&
+                        livePhone.isNotEmpty &&
+                        livePhone != dbPhone) ||
+                    (liveName != null &&
+                        liveName.isNotEmpty &&
+                        liveName != dbName) ||
+                    (liveThroughput != null &&
+                        liveThroughput.isNotEmpty &&
+                        liveThroughput != dbThroughput)) {
+                  getIt<WhatsAppRepository>()
+                      .updateConfig(
+                    phoneNumberId: activePhoneId,
+                    accessToken: config['accessToken']?.toString() ?? '',
+                    businessAccountId:
+                        config['businessAccountId']?.toString() ?? '',
+                    metaAppId: config['metaAppId']?.toString() ?? '',
+                    displayPhone: livePhone ?? dbPhone,
+                    verifiedName: liveName ?? dbName,
+                    qualityRating: liveRating ?? dbRating,
+                    throughputLevel: liveThroughput ?? dbThroughput,
+                  )
+                      .then((synced) {
+                    if (synced && mounted) {
+                      context.read<AuthBloc>().add(AuthCheckRequested());
+                    }
+                  });
+                }
+              }
+            }
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -2573,6 +2633,27 @@ class _SettingsPageState extends State<SettingsPage> {
     BuildContext context,
     Map<String, dynamic> config,
   ) {
+    final activePhoneId = config['phoneNumberId']?.toString();
+    Map<String, dynamic>? activePhone;
+    if (_phoneNumbers.isNotEmpty && activePhoneId != null) {
+      activePhone = _phoneNumbers.firstWhere(
+        (p) => p['id']?.toString() == activePhoneId,
+        orElse: () => <String, dynamic>{},
+      );
+      if (activePhone.isEmpty) {
+        activePhone = null;
+      }
+    }
+
+    final displayPhone = activePhone?['display_phone_number']?.toString() ??
+        (config['displayPhone'] as String?);
+    final verifiedName = activePhone?['verified_name']?.toString() ??
+        (config['verifiedName'] as String?);
+    final qualityRating = activePhone?['quality_rating']?.toString() ??
+        (config['qualityRating'] as String?);
+    final throughputLevel = activePhone?['throughput']?['level']?.toString() ??
+        (config['throughputLevel'] as String?);
+
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -2634,21 +2715,21 @@ class _SettingsPageState extends State<SettingsPage> {
               'Access Token',
               '••••••••••••••••${config['accessToken']?.toString().substring((config['accessToken']?.toString().length ?? 4) - 4) ?? ''}',
             ),
-            if ((config['displayPhone'] as String?)?.isNotEmpty == true) ...[
+            if (displayPhone != null && displayPhone.isNotEmpty) ...[
               const Divider(height: 32),
-              _buildDetailRow('Display Phone', config['displayPhone'] ?? ''),
+              _buildDetailRow('Display Phone', displayPhone),
             ],
-            if ((config['verifiedName'] as String?)?.isNotEmpty == true) ...[
+            if (verifiedName != null && verifiedName.isNotEmpty) ...[
               const Divider(height: 32),
-              _buildDetailRow('Verified Name', config['verifiedName'] ?? ''),
+              _buildDetailRow('Verified Name', verifiedName),
             ],
-            if ((config['qualityRating'] as String?)?.isNotEmpty == true) ...[
+            if (qualityRating != null && qualityRating.isNotEmpty) ...[
               const Divider(height: 32),
-              _buildQualityRow('Quality Rating', config['qualityRating'] ?? ''),
+              _buildQualityRow('Quality Rating', qualityRating),
             ],
-            if ((config['throughputLevel'] as String?)?.isNotEmpty == true) ...[
+            if (throughputLevel != null && throughputLevel.isNotEmpty) ...[
               const Divider(height: 32),
-              _buildDetailRow('Throughput', config['throughputLevel'] ?? ''),
+              _buildDetailRow('Throughput', throughputLevel),
             ],
             // Register Phone button — only shown when phone is NOT connected
             Builder(
@@ -2835,8 +2916,9 @@ class _SettingsPageState extends State<SettingsPage> {
             onPressed: () {
               final wabaId = config['businessAccountId']?.toString();
               final accessToken = config['accessToken']?.toString();
-              if (wabaId != null && accessToken != null)
+              if (wabaId != null && accessToken != null) {
                 _fetchPhoneNumbers(wabaId, accessToken);
+              }
             },
             icon: const Icon(Icons.refresh, size: 16),
             label: const Text('Retry'),

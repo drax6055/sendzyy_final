@@ -1017,6 +1017,66 @@ class _DashboardShellState extends State<DashboardShell> {
           _headerPhoneNumbers = numbers ?? [];
           _loadingHeaderPhoneNumbers = false;
         });
+
+        // Check if active phone number details need to be synced to backend/state
+        final authState = context.read<AuthBloc>().state;
+        if (authState is AuthAuthenticated) {
+          final config =
+              authState.tenant['whatsappConfig'] as Map<String, dynamic>?;
+          if (config != null) {
+            final activePhoneId = config['phoneNumberId']?.toString();
+            if (activePhoneId != null && _headerPhoneNumbers.isNotEmpty) {
+              final activePhone = _headerPhoneNumbers.firstWhere(
+                (p) => p['id']?.toString() == activePhoneId,
+                orElse: () => <String, dynamic>{},
+              );
+              if (activePhone.isNotEmpty) {
+                final liveRating = activePhone['quality_rating']?.toString();
+                final livePhone =
+                    activePhone['display_phone_number']?.toString();
+                final liveName = activePhone['verified_name']?.toString();
+                final liveThroughput =
+                    activePhone['throughput']?['level']?.toString();
+
+                final dbRating = config['qualityRating']?.toString();
+                final dbPhone = config['displayPhone']?.toString();
+                final dbName = config['verifiedName']?.toString();
+                final dbThroughput = config['throughputLevel']?.toString();
+
+                if ((liveRating != null &&
+                        liveRating.isNotEmpty &&
+                        liveRating != dbRating) ||
+                    (livePhone != null &&
+                        livePhone.isNotEmpty &&
+                        livePhone != dbPhone) ||
+                    (liveName != null &&
+                        liveName.isNotEmpty &&
+                        liveName != dbName) ||
+                    (liveThroughput != null &&
+                        liveThroughput.isNotEmpty &&
+                        liveThroughput != dbThroughput)) {
+                  getIt<WhatsAppRepository>()
+                      .updateConfig(
+                    phoneNumberId: activePhoneId,
+                    accessToken: config['accessToken']?.toString() ?? '',
+                    businessAccountId:
+                        config['businessAccountId']?.toString() ?? '',
+                    metaAppId: config['metaAppId']?.toString() ?? '',
+                    displayPhone: livePhone ?? dbPhone,
+                    verifiedName: liveName ?? dbName,
+                    qualityRating: liveRating ?? dbRating,
+                    throughputLevel: liveThroughput ?? dbThroughput,
+                  )
+                      .then((synced) {
+                    if (synced && mounted) {
+                      context.read<AuthBloc>().add(AuthCheckRequested());
+                    }
+                  });
+                }
+              }
+            }
+          }
+        }
       }
     } catch (_) {
       if (mounted) {

@@ -1240,13 +1240,63 @@ class WhatsAppRepository {
     required String mimeType,
     void Function(double progress)? onProgress,
   }) async {
+    final binaryData = Uint8List.fromList(imageBytes);
+    final appId = _appId?.isNotEmpty == true ? _appId! : AppConstants.metaAppId;
+    final authToken = _prefs.getString('auth_token');
+
+    // On Web: route through backend proxy to avoid CORS with application/octet-stream
+    if (kIsWeb) {
+      try {
+        final uploadDio = Dio();
+        final proxyUrl = '${AppConstants.baseUrl}/upload-profile-picture';
+
+        final response = await uploadDio.post(
+          proxyUrl,
+          data: binaryData,
+          queryParameters: {
+            'phoneNumberId': phoneNumberId,
+            'accessToken': accessToken,
+            'appId': appId,
+            'fileName': fileName,
+            'fileType': mimeType,
+          },
+          options: Options(
+            headers: {
+              'Content-Type': 'application/octet-stream',
+              if (authToken != null) 'Authorization': 'Bearer $authToken',
+            },
+          ),
+          onSendProgress: (sent, total) {
+            if (onProgress != null && total > 0) {
+              onProgress(sent / total);
+            }
+          },
+        );
+
+        if (response.statusCode == 200 && response.data?['success'] == true) {
+          return response.data['handle']?.toString() ?? 'success';
+        }
+        final errMsg = response.data?['error']?['message']?.toString();
+        throw Exception(errMsg ?? 'Profile picture upload failed via proxy.');
+      } on DioException catch (e) {
+        final data = e.response?.data;
+        if (data is Map) {
+          final errorVal = data['error'];
+          if (errorVal is Map && errorVal['message'] != null) {
+            throw Exception(errorVal['message'].toString());
+          }
+        }
+        rethrow;
+      }
+    }
+
+    // On Mobile/Native: call Meta directly (no CORS restrictions)
     try {
       final dio = Dio();
-      final binaryData = Uint8List.fromList(imageBytes);
 
       // Step 1: Create Resumable Upload Session
       final sessionResponse = await dio.post(
-        '${AppConstants.metaGraphUrl}/app/uploads',
+        '${AppConstants.metaGraphUrl}/$appId/uploads',
         queryParameters: {
           'file_length': binaryData.length.toString(),
           'file_type': mimeType,

@@ -18,6 +18,8 @@ class ReportsPage extends StatefulWidget {
 class _ReportsPageState extends State<ReportsPage> {
   DateTimeRange? _dateRange;
   String _templateFilter = 'all';
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
   late final ScrollController _scrollController;
 
   @override
@@ -41,9 +43,141 @@ class _ReportsPageState extends State<ReportsPage> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Widget _buildSearchField({double? width, bool isMobile = false}) {
+    final field = TextField(
+      controller: _searchController,
+      onChanged: (v) => setState(() => _searchQuery = v),
+      style: TextStyle(fontSize: isMobile ? 12 : 13),
+      decoration: InputDecoration(
+        hintText: 'Search campaign...',
+        hintStyle: TextStyle(fontSize: isMobile ? 12 : 13, color: Colors.grey.shade500),
+        isDense: true,
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 10 : 12,
+          vertical: isMobile ? 8 : 10,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.6), width: 1.5),
+        ),
+        prefixIcon: Icon(Icons.search, size: isMobile ? 16 : 18, color: Colors.grey.shade600),
+        prefixIconConstraints: BoxConstraints(minWidth: isMobile ? 32 : 36, minHeight: 0),
+        suffixIcon: _searchController.text.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.clear, size: 14),
+                splashRadius: 14,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 0),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() => _searchQuery = '');
+                },
+              )
+            : null,
+        suffixIconConstraints: const BoxConstraints(minWidth: 28, minHeight: 0),
+      ),
+    );
+
+    if (width != null) {
+      return SizedBox(width: width, child: field);
+    }
+    return field;
+  }
+
+  Widget _buildTemplateDropdown({
+    required List<String> templateOptions,
+    double? width,
+    bool isMobile = false,
+  }) {
+    final validValue = templateOptions.contains(_templateFilter) ? _templateFilter : 'all';
+
+    final dropdown = DropdownButtonFormField<String>(
+      initialValue: validValue,
+      isExpanded: true,
+      style: TextStyle(
+        fontSize: isMobile ? 12 : 13,
+        color: Colors.black87,
+      ),
+      selectedItemBuilder: (BuildContext context) {
+        return [
+          Text(
+            'All Templates',
+            style: TextStyle(fontSize: isMobile ? 12 : 13, color: Colors.black87),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+          ...templateOptions.map((t) => Text(
+                t,
+                style: TextStyle(fontSize: isMobile ? 12 : 13, color: Colors.black87),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              )),
+        ];
+      },
+      decoration: InputDecoration(
+        isDense: true,
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: isMobile ? 10 : 12,
+          vertical: isMobile ? 8 : 10,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.6), width: 1.5),
+        ),
+      ),
+      items: [
+        DropdownMenuItem(
+          value: 'all',
+          child: Text(
+            'All Templates',
+            style: TextStyle(fontSize: isMobile ? 12 : 13),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        ...templateOptions.map(
+          (t) => DropdownMenuItem(
+            value: t,
+            child: Text(
+              t,
+              style: TextStyle(fontSize: isMobile ? 12 : 13),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ],
+      onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
+    );
+
+    if (width != null) {
+      return SizedBox(width: width, child: dropdown);
+    }
+    return dropdown;
   }
 
   @override
@@ -58,16 +192,23 @@ class _ReportsPageState extends State<ReportsPage> {
             return Center(child: Text('Error: ${state.message}'));
           }
           if (state is ReportLoaded) {
-            // Derive unique template names for the dropdown
-            final templateOptions = state.campaigns
-                .map((c) => c['template'] as String? ?? '')
-                .where((t) => t.isNotEmpty)
-                .toSet()
-                .toList()
-              ..sort();
+            // Derive unique template names from state.availableTemplates (overall tenant list) & current loaded campaigns
+            final allTemplatesSet = <String>{
+              ...state.availableTemplates,
+              ...state.campaigns
+                  .map((c) => c['template'] as String? ?? '')
+                  .where((t) => t.isNotEmpty),
+            };
+            final templateOptions = allTemplatesSet.toList()..sort();
 
             // Filter campaigns client-side if filters are applied
             final filtered = state.campaigns.where((c) {
+              // Search query filter
+              if (_searchQuery.trim().isNotEmpty) {
+                final query = _searchQuery.trim().toLowerCase();
+                final t = (c['template'] as String? ?? '').toLowerCase();
+                if (!t.contains(query)) return false;
+              }
               // Template filter
               if (_templateFilter != 'all') {
                 final t = c['template'] as String? ?? '';
@@ -145,31 +286,16 @@ class _ReportsPageState extends State<ReportsPage> {
                         ],
                       ),
                       const SizedBox(height: 12),
+                      _buildSearchField(isMobile: true),
+                      const SizedBox(height: 8),
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            SizedBox(
-                              width: 160,
-                              child: DropdownButtonFormField<String>(
-                                value: templateOptions.contains(_templateFilter) ? _templateFilter : 'all',
-                                decoration: InputDecoration(
-                                  filled: true,
-                                  fillColor: Colors.grey.shade100,
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                    borderSide: BorderSide.none,
-                                  ),
-                                ),
-                                items: [
-                                  const DropdownMenuItem(value: 'all', child: Text('All Templates', style: TextStyle(fontSize: 12))),
-                                  ...templateOptions.map(
-                                    (t) => DropdownMenuItem(value: t, child: Text(t, style: const TextStyle(fontSize: 12), overflow: TextOverflow.ellipsis)),
-                                  ),
-                                ],
-                                onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
-                              ),
+                            _buildTemplateDropdown(
+                              templateOptions: templateOptions,
+                              width: 170,
+                              isMobile: true,
                             ),
                             const SizedBox(width: 8),
                             _DateRangeButton(
@@ -181,11 +307,9 @@ class _ReportsPageState extends State<ReportsPage> {
                         ),
                       ),
                     ] else ...[
-                      Wrap(
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 12,
-                        runSpacing: 12,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
                           Text(
                             'Campaign Reports',
@@ -194,59 +318,47 @@ class _ReportsPageState extends State<ReportsPage> {
                                   color: AppTheme.secondaryColor,
                                 ),
                           ),
-                          Wrap(
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              // Template filter dropdown
-                              SizedBox(
-                                width: 170,
-                                child: DropdownButtonFormField<String>(
-                                  value: templateOptions.contains(_templateFilter) ? _templateFilter : 'all',
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    fillColor: Colors.grey.shade100,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(30),
-                                      borderSide: BorderSide.none,
-                                    ),
+                          Flexible(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  _buildSearchField(width: 200),
+                                  const SizedBox(width: 8),
+                                  _buildTemplateDropdown(
+                                    templateOptions: templateOptions,
+                                    width: 180,
                                   ),
-                                  items: [
-                                    const DropdownMenuItem(value: 'all', child: Text('All Templates')),
-                                    ...templateOptions.map(
-                                      (t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis)),
-                                    ),
-                                  ],
-                                  onChanged: (v) => setState(() => _templateFilter = v ?? 'all'),
-                                ),
+                                  const SizedBox(width: 8),
+                                  _DateRangeButton(
+                                    dateRange: _dateRange,
+                                    onChanged: (r) => setState(() => _dateRange = r),
+                                    onClear: () => setState(() => _dateRange = null),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  IconButton(
+                                    icon: const Icon(Icons.download),
+                                    onPressed: () {
+                                      showDialog(
+                                        context: ctx,
+                                        builder: (_) => ReportDownloadDialog(
+                                          campaigns: filtered,
+                                        ),
+                                      );
+                                    },
+                                    tooltip: 'Download Report',
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.refresh),
+                                    onPressed: () =>
+                                        ctx.read<ReportBloc>().add(FetchReportHistory(isRefresh: true)),
+                                    tooltip: 'Reload History',
+                                  ),
+                                ],
                               ),
-                              // Date range filter button
-                              _DateRangeButton(
-                                dateRange: _dateRange,
-                                onChanged: (r) => setState(() => _dateRange = r),
-                                onClear: () => setState(() => _dateRange = null),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.download),
-                                onPressed: () {
-                                  showDialog(
-                                    context: ctx,
-                                    builder: (_) => ReportDownloadDialog(
-                                      campaigns: filtered,
-                                    ),
-                                  );
-                                },
-                                tooltip: 'Download Report',
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.refresh),
-                                onPressed: () =>
-                                    ctx.read<ReportBloc>().add(FetchReportHistory(isRefresh: true)),
-                                tooltip: 'Reload History',
-                              ),
-                            ],
+                            ),
                           ),
                         ],
                       ),
@@ -260,7 +372,7 @@ class _ReportsPageState extends State<ReportsPage> {
                           'Recent Campaigns',
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                         ),
-                        if (_dateRange != null || _templateFilter != 'all') ...[
+                        if (_dateRange != null || _templateFilter != 'all' || _searchQuery.trim().isNotEmpty) ...[
                           const SizedBox(width: 10),
                           Text(
                             '${filtered.length} result${filtered.length == 1 ? '' : 's'}',
@@ -289,8 +401,8 @@ class _ReportsPageState extends State<ReportsPage> {
     int read = state.totalRead;
     int failed = state.totalFailed;
 
-    // If client-side filters (template or date range) are actively selected, calculate based on filtered subset
-    if (_templateFilter != 'all' || _dateRange != null) {
+    // If client-side filters (search, template or date range) are actively selected, calculate based on filtered subset
+    if (_searchQuery.trim().isNotEmpty || _templateFilter != 'all' || _dateRange != null) {
       sent = 0;
       delivered = 0;
       read = 0;
@@ -371,7 +483,7 @@ class _ReportsPageState extends State<ReportsPage> {
           padding: const EdgeInsets.all(32),
           child: Center(
             child: Text(
-              _dateRange != null || _templateFilter != 'all'
+              _dateRange != null || _templateFilter != 'all' || _searchQuery.trim().isNotEmpty
                   ? 'No campaigns found for the selected filters.'
                   : 'Start a campaign to see results here.',
             ),
