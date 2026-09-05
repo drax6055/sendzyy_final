@@ -16,8 +16,6 @@ import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart'
 import 'package:iFloraBuzz/features/clients/data/repositories/group_repository.dart';
 import 'package:iFloraBuzz/features/clients/presentation/bloc/group_bloc.dart';
 import 'package:iFloraBuzz/features/whatsapp/data/repositories/retry_repository.dart';
-import 'package:iFloraBuzz/features/catalog/data/repositories/catalog_repository.dart';
-import 'package:iFloraBuzz/features/catalog/presentation/bloc/catalog_bloc.dart';
 import '../constants/app_constants.dart';
 
 import 'package:iFloraBuzz/features/notifications/data/datasources/notification_remote_datasource.dart';
@@ -130,10 +128,6 @@ Future<void> init() async {
   getIt.registerLazySingleton(
     () => CallLogBloc(),
   );
-  // Features - Catalog
-  getIt.registerLazySingleton(() => CatalogRepository(getIt()));
-  getIt.registerFactory(() => CatalogBloc(getIt()));
-
   // Features - App Update
   getIt.registerLazySingleton(() => AppUpdateService(dio: getIt()));
   getIt.registerFactory(() => AppUpdateBloc(updateService: getIt()));

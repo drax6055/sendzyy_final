@@ -19,7 +19,6 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 // import 'package:iFloraBuzz/features/calling/presentation/bloc/call_control_bloc.dart';
 // import 'package:iFloraBuzz/features/calling/presentation/pages/active_call_page.dart';
 
-import 'package:iFloraBuzz/features/catalog/presentation/widgets/catalog_product_picker_sheet.dart';
 
 class ChatPage extends StatefulWidget {
   const ChatPage({super.key});
@@ -1024,7 +1023,7 @@ class _ChatPageState extends State<ChatPage> {
                   ),
                   const SizedBox(height: 12),
                 ],
-                // Row 2: Audio, Document, Catalog (always shown)
+                // Row 2: Audio, Document
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -1055,22 +1054,6 @@ class _ChatPageState extends State<ChatPage> {
                           extensions: [], // Allow all extensions
                           maxSize: 100 * 1024 * 1024,
                           replyingToMessage: replyingToMessage,
-                        );
-                      },
-                    ),
-                    _attachmentOption(
-                      icon: Icons.storefront_rounded,
-                      color: const Color(0xFF10B981),
-                      label: 'Catalog\nMessage',
-                      onTap: () {
-                        Navigator.pop(sheetCtx);
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          backgroundColor: Colors.transparent,
-                          builder: (ctx) => CatalogProductPickerSheet(
-                            contactId: contactId,
-                          ),
                         );
                       },
                     ),

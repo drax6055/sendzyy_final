@@ -599,7 +599,7 @@ class _WhatsAppBusinessProfileDialogState extends State<WhatsAppBusinessProfileD
                                 decoration: InputDecoration(
                                   labelText: 'Business Description',
                                   labelStyle: TextStyle(color: _isEditing ? AppTheme.primaryColor : Colors.grey.shade700, fontWeight: FontWeight.w600),
-                                  hintText: 'Tell customers about your business vertical, services, or catalog...',
+                                  hintText: 'Tell customers about your business vertical, services, or offerings...',
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                   filled: true,
                                   fillColor: _isEditing ? Colors.white : Colors.grey.shade50,

@@ -20,8 +20,6 @@ import 'package:iFloraBuzz/features/help/presentation/pages/help_page.dart';
 import 'package:iFloraBuzz/features/scheduled/presentation/pages/scheduled_campaigns_page.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/pages/chatbot_list_page.dart';
 import 'package:iFloraBuzz/features/chatbot/presentation/bloc/chatbot_bloc.dart';
-import 'package:iFloraBuzz/features/catalog/presentation/pages/catalog_page.dart';
-import 'package:iFloraBuzz/features/catalog/presentation/bloc/catalog_bloc.dart';
 import 'package:iFloraBuzz/features/leads/presentation/pages/lead_management_page.dart';
 import 'package:iFloraBuzz/features/leads/presentation/pages/indiamart_leads_page.dart';
 import 'package:iFloraBuzz/features/integrations/presentation/pages/integration_settings_page.dart';
@@ -397,7 +395,6 @@ class _DashboardShellState extends State<DashboardShell> {
     ),
     const CallLogPage(),
     const CallingSettingsPage(phoneNumberId: ''),
-    const CatalogPage(),
   ];
 
   Widget _buildSidebarContent({bool isDrawer = false}) {
@@ -492,7 +489,6 @@ class _DashboardShellState extends State<DashboardShell> {
         providers: [
           BlocProvider(create: (context) => getIt<ChatBloc>()),
           BlocProvider(create: (context) => getIt<ChatbotBloc>()),
-          BlocProvider(create: (context) => getIt<CatalogBloc>()),
         ],
         child: Scaffold(
           key: _scaffoldKey,

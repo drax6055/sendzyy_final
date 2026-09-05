@@ -1115,7 +1115,7 @@ class _SettingsPageState extends State<SettingsPage> {
               fontWeight: FontWeight.w600,
             ),
             hintText:
-                'Tell customers about your business vertical, services, or catalog...',
+                'Tell customers about your business vertical, services, or offerings...',
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 12,

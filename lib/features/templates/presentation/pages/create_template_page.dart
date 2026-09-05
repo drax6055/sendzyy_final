@@ -1145,10 +1145,6 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
             });
           } else if (type == 'URL') {
             _buttons.add({'type': 'URL', 'text': 'Visit website', 'url': ''});
-          } else if (type == 'CATALOG') {
-            _buttons.add({'type': 'CATALOG', 'text': 'View catalog'});
-          } else if (type == 'MPM') {
-            _buttons.add({'type': 'MPM', 'text': 'View items'});
           }
         });
       },
@@ -1159,14 +1155,6 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
           child: Text('Call Phone Number'),
         ),
         const PopupMenuItem(value: 'URL', child: Text('Visit Website')),
-        const PopupMenuItem(
-          value: 'CATALOG',
-          child: Text('Catalog (View catalog)'),
-        ),
-        const PopupMenuItem(
-          value: 'MPM',
-          child: Text('Multi-Product (View items)'),
-        ),
       ],
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -1270,7 +1258,7 @@ class _CreateTemplatePageState extends State<CreateTemplatePage> {
                     keyboardType: TextInputType.url,
                   ),
                 ),
-              if (type == 'QUICK_REPLY' || type == 'CATALOG' || type == 'MPM')
+              if (type == 'QUICK_REPLY')
                 const Spacer(flex: 3),
             ],
           ),

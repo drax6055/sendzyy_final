@@ -433,16 +433,6 @@ class WhatsAppRepository {
                     'text': btn['text'],
                     'url': btn['url'],
                   };
-                } else if (type == 'CATALOG') {
-                  return {
-                    'type': 'CATALOG',
-                    'text': btn['text'] ?? 'View catalog',
-                  };
-                } else if (type == 'MPM') {
-                  return {
-                    'type': 'MPM',
-                    'text': btn['text'] ?? 'View items',
-                  };
                 }
                 return btn;
               }).toList(),
