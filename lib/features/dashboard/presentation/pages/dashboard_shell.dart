@@ -392,7 +392,9 @@ class _DashboardShellState extends State<DashboardShell> {
     const RetrySystemPage(),
     const IndiaMartLeadsPage(),
     const InstagramProfileSetupPage(),
-    const InstagramAutomationPage(),
+    InstagramAutomationPage(
+      onNavigateToProfile: () => _setSelectedIndex(14),
+    ),
     const CallLogPage(),
     const CallingSettingsPage(phoneNumberId: ''),
     const CatalogPage(),
