@@ -33,6 +33,7 @@ import 'package:iFloraBuzz/features/app_update/presentation/bloc/app_update_bloc
 import 'package:iFloraBuzz/features/app_update/presentation/bloc/app_update_event.dart';
 import 'package:iFloraBuzz/features/app_update/presentation/bloc/app_update_state.dart';
 import 'package:iFloraBuzz/features/app_update/presentation/widgets/app_update_dialog.dart';
+import 'package:iFloraBuzz/features/catalog/presentation/bloc/catalog_bloc.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -177,6 +178,7 @@ class _MyAppState extends State<MyApp> {
           create: (context) =>
               di.getIt<AppUpdateBloc>()..add(const CheckForUpdateEvent()),
         ),
+        BlocProvider(create: (context) => di.getIt<CatalogBloc>()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

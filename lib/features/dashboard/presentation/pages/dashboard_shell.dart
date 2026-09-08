@@ -28,6 +28,7 @@ import 'package:iFloraBuzz/features/instagram/presentation/pages/instagram_profi
 import 'package:iFloraBuzz/features/instagram/presentation/pages/instagram_automation_page.dart';
 import 'package:iFloraBuzz/features/calling/presentation/pages/call_log_page.dart';
 import 'package:iFloraBuzz/features/calling/presentation/pages/calling_settings_page.dart';
+import 'package:iFloraBuzz/features/catalog/presentation/pages/catalog_page.dart';
 import 'package:iFloraBuzz/core/di/injection.dart';
 import 'package:iFloraBuzz/core/services/renewal_reminder_service.dart';
 import 'package:iFloraBuzz/core/constants/app_constants.dart';
@@ -395,6 +396,7 @@ class _DashboardShellState extends State<DashboardShell> {
     ),
     const CallLogPage(),
     const CallingSettingsPage(phoneNumberId: ''),
+    const CatalogPage(),
   ];
 
   Widget _buildSidebarContent({bool isDrawer = false}) {
@@ -426,6 +428,7 @@ class _DashboardShellState extends State<DashboardShell> {
                 _buildExpandableLeadsMenu(isDrawer: isDrawer),
                 _buildExpandableReportsMenu(isDrawer: isDrawer),
                 _buildNavItem(8, Icons.smart_toy_rounded, 'Chatbot', isDrawer: isDrawer),
+                _buildNavItem(18, Icons.storefront_rounded, 'Catalog', isDrawer: isDrawer),
                 _buildNavItem(9, Icons.help_outline_rounded, 'Q & A', isDrawer: isDrawer),
                 const SizedBox(height: 16),
                 const Divider(
