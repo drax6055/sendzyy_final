@@ -8,6 +8,7 @@ class CatalogCard extends StatelessWidget {
   final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback? onUnlink;
+  final VoidCallback? onDelete;
 
   const CatalogCard({
     super.key,
@@ -15,6 +16,7 @@ class CatalogCard extends StatelessWidget {
     required this.isSelected,
     required this.onTap,
     this.onUnlink,
+    this.onDelete,
   });
 
   @override
@@ -106,23 +108,34 @@ class CatalogCard extends StatelessWidget {
                 ),
               ),
               // Actions
-              if (onUnlink != null)
+              if (onUnlink != null || onDelete != null)
                 PopupMenuButton<String>(
                   icon: Icon(Icons.more_vert_rounded,
                       color: isSelected ? Colors.white70 : Colors.grey.shade400),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   onSelected: (val) {
                     if (val == 'unlink') onUnlink?.call();
+                    if (val == 'delete') onDelete?.call();
                   },
                   itemBuilder: (_) => [
-                    const PopupMenuItem(
-                      value: 'unlink',
-                      child: Row(children: [
-                        Icon(Icons.link_off_rounded, size: 18, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Unlink Catalog'),
-                      ]),
-                    ),
+                    if (catalog.isLinked && onUnlink != null)
+                      const PopupMenuItem(
+                        value: 'unlink',
+                        child: Row(children: [
+                          Icon(Icons.link_off_rounded, size: 18, color: Colors.orange),
+                          SizedBox(width: 8),
+                          Text('Unlink from WhatsApp'),
+                        ]),
+                      ),
+                    if (onDelete != null)
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(children: [
+                          Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Delete Catalog', style: TextStyle(color: Colors.red)),
+                        ]),
+                      ),
                   ],
                 ),
             ],

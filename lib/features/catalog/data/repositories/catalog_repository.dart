@@ -64,6 +64,17 @@ class CatalogRepository {
     }
   }
 
+  Future<void> deleteCatalog(String catalogId) async {
+    try {
+      final response = await _dio.delete('/api/catalog/$catalogId');
+      if (response.statusCode != 200) {
+        throw Exception(response.data['error'] ?? 'Failed to delete catalog');
+      }
+    } catch (e) {
+      throw Exception(_parseError(e, 'Failed to delete catalog'));
+    }
+  }
+
   // ─── Product CRUD ────────────────────────────────────────────────────────────
 
   Future<List<ProductModel>> fetchProducts(String catalogId, {int page = 1, int limit = 50}) async {

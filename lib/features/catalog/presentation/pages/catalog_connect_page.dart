@@ -22,6 +22,7 @@ class _CatalogConnectPageState extends State<CatalogConnectPage> {
   String _selectedVertical = 'commerce';
 
   bool _isLoading = false;
+  bool _resultIsLinked = false;
 
   @override
   void dispose() {
@@ -41,7 +42,10 @@ class _CatalogConnectPageState extends State<CatalogConnectPage> {
           _goToStep(2); // success step
         }
         if (state is CatalogsLoaded) {
-          setState(() => _isLoading = false);
+          setState(() {
+            _isLoading = false;
+            _resultIsLinked = state.selectedCatalog?.isLinked ?? state.catalogs.firstOrNull?.isLinked ?? false;
+          });
           _goToStep(2);
         }
         if (state is CatalogError) {
@@ -301,6 +305,8 @@ class _CatalogConnectPageState extends State<CatalogConnectPage> {
   }
 
   Widget _buildStep3Success() {
+    final isLinked = _resultIsLinked;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -312,20 +318,31 @@ class _CatalogConnectPageState extends State<CatalogConnectPage> {
               height: 100,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.green.shade400, Colors.green.shade700],
+                  colors: isLinked
+                      ? [Colors.green.shade400, Colors.green.shade700]
+                      : [Colors.orange.shade400, Colors.orange.shade700],
                 ),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.check_rounded, color: Colors.white, size: 54),
+              child: Icon(
+                isLinked ? Icons.check_rounded : Icons.storefront_rounded,
+                color: Colors.white,
+                size: 50,
+              ),
             ),
             const SizedBox(height: 28),
             Text(
-              _isCreate ? 'Catalog Created!' : 'Catalog Connected!',
+              isLinked
+                  ? (_isCreate ? 'Catalog Created & Linked!' : 'Catalog Connected!')
+                  : (_isCreate ? 'Catalog Created Locally' : 'Catalog Saved Locally'),
+              textAlign: TextAlign.center,
               style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 24, color: const Color(0xFF1A1A2E)),
             ),
             const SizedBox(height: 12),
             Text(
-              'Your catalog is now linked to your WhatsApp Business Account. You can start adding products.',
+              isLinked
+                  ? 'Your catalog is linked to your WhatsApp Business Account. You can now send catalog messages to customers.'
+                  : 'Your catalog has been saved in Sendzyy. To send catalog messages in WhatsApp, link a catalog ID from Meta Commerce Manager.',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(color: Colors.grey.shade600, height: 1.6),
             ),

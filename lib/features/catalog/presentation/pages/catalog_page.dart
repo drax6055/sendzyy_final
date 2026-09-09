@@ -266,6 +266,7 @@ class _CatalogsTab extends StatelessWidget {
                   onCatalogSelected(c);
                 },
                 onUnlink: () => _confirmUnlink(context, c),
+                onDelete: () => _confirmDelete(context, c),
               )),
               const SizedBox(height: 16),
               Center(
@@ -349,8 +350,30 @@ class _CatalogsTab extends StatelessWidget {
               Navigator.pop(context);
               context.read<CatalogBloc>().add(UnlinkCatalog(catalog.catalogId));
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange, foregroundColor: Colors.white),
             child: const Text('Unlink'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, CatalogModel catalog) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Delete Catalog?'),
+        content: Text('This will permanently delete "${catalog.catalogName}" and its products from Sendzyy.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              context.read<CatalogBloc>().add(DeleteCatalog(catalog.catalogId));
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Delete'),
           ),
         ],
       ),

@@ -40,6 +40,13 @@ class UnlinkCatalog extends CatalogEvent {
   List<Object?> get props => [catalogId];
 }
 
+class DeleteCatalog extends CatalogEvent {
+  final String catalogId;
+  DeleteCatalog(this.catalogId);
+  @override
+  List<Object?> get props => [catalogId];
+}
+
 class SelectCatalog extends CatalogEvent {
   final CatalogModel catalog;
   SelectCatalog(this.catalog);
@@ -245,6 +252,7 @@ class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
     on<CreateCatalog>(_onCreateCatalog);
     on<LinkCatalog>(_onLinkCatalog);
     on<UnlinkCatalog>(_onUnlinkCatalog);
+    on<DeleteCatalog>(_onDeleteCatalog);
     on<SelectCatalog>(_onSelectCatalog);
     on<FetchProducts>(_onFetchProducts);
     on<CreateProduct>(_onCreateProduct);
@@ -297,6 +305,20 @@ class CatalogBloc extends Bloc<CatalogEvent, CatalogState> {
       _catalogs = _catalogs.map((c) => c.catalogId == event.catalogId ? c.copyWith(isLinked: false) : c).toList();
       if (_selectedCatalog?.catalogId == event.catalogId) _selectedCatalog = null;
       emit(CatalogOperationSuccess('Catalog unlinked'));
+      emit(CatalogsLoaded(catalogs: _catalogs, selectedCatalog: _selectedCatalog));
+    } catch (e) {
+      emit(CatalogError(e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteCatalog(DeleteCatalog event, Emitter<CatalogState> emit) async {
+    try {
+      await _repository.deleteCatalog(event.catalogId);
+      _catalogs = _catalogs.where((c) => c.catalogId != event.catalogId).toList();
+      if (_selectedCatalog?.catalogId == event.catalogId) {
+        _selectedCatalog = _catalogs.isNotEmpty ? _catalogs.first : null;
+      }
+      emit(CatalogOperationSuccess('Catalog deleted'));
       emit(CatalogsLoaded(catalogs: _catalogs, selectedCatalog: _selectedCatalog));
     } catch (e) {
       emit(CatalogError(e.toString()));
